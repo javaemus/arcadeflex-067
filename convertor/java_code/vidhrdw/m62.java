@@ -13,481 +13,427 @@ Tile/sprite priority system (for the Kung Fu Master M62 board):
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package vidhrdw;
 
-
-
-static int flipscreen;
-static const unsigned char *sprite_height_prom;
-static int kidniki_background_bank;
-static int irem_background_hscroll;
-static int irem_background_vscroll;
-static int kidniki_text_vscroll;
-static int spelunk2_palbank;
-
-unsigned char *irem_textram;
-size_t irem_textram_size;
-
-
-/***************************************************************************
-
-  Convert the color PROMs into a more useable format.
-
-  Kung Fu Master has a six 256x4 palette PROMs (one per gun; three for
-  characters, three for sprites).
-  I don't know the exact values of the resistors between the RAM and the
-  RGB output. I assumed these values (the same as Commando)
-
-  bit 3 -- 220 ohm resistor  -- RED/GREEN/BLUE
-        -- 470 ohm resistor  -- RED/GREEN/BLUE
-        -- 1  kohm resistor  -- RED/GREEN/BLUE
-  bit 0 -- 2.2kohm resistor  -- RED/GREEN/BLUE
-
-***************************************************************************/
-PALETTE_INIT( irem )
+public class m62
 {
-	int i;
-
-
-	for (i = 0;i < Machine->drv->total_colors;i++)
+	
+	
+	
+	static int flipscreen;
+	static const unsigned char *sprite_height_prom;
+	static int kidniki_background_bank;
+	static int irem_background_hscroll;
+	static int irem_background_vscroll;
+	static int kidniki_text_vscroll;
+	static int spelunk2_palbank;
+	
+	unsigned char *irem_textram;
+	size_t irem_textram_size;
+	
+	
+	/***************************************************************************
+	
+	  Convert the color PROMs into a more useable format.
+	
+	  Kung Fu Master has a six 256x4 palette PROMs (one per gun; three for
+	  characters, three for sprites).
+	  I don't know the exact values of the resistors between the RAM and the
+	  RGB output. I assumed these values (the same as Commando)
+	
+	  bit 3 -- 220 ohm resistor  -- RED/GREEN/BLUE
+	        -- 470 ohm resistor  -- RED/GREEN/BLUE
+	        -- 1  kohm resistor  -- RED/GREEN/BLUE
+	  bit 0 -- 2.2kohm resistor  -- RED/GREEN/BLUE
+	
+	***************************************************************************/
+	PALETTE_INIT( irem )
 	{
-		int bit0,bit1,bit2,bit3,r,g,b;
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[Machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[Machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[Machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[Machine->drv->total_colors] >> 3) & 0x01;
-		g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*Machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[2*Machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[2*Machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[2*Machine->drv->total_colors] >> 3) & 0x01;
-		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(i,r,g,b);
-
-		color_prom++;
+		int i;
+	
+	
+		for (i = 0;i < Machine->drv->total_colors;i++)
+		{
+			int bit0,bit1,bit2,bit3,r,g,b;
+	
+			/* red component */
+			bit0 = (color_prom.read(0)>> 0) & 0x01;
+			bit1 = (color_prom.read(0)>> 1) & 0x01;
+			bit2 = (color_prom.read(0)>> 2) & 0x01;
+			bit3 = (color_prom.read(0)>> 3) & 0x01;
+			r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* green component */
+			bit0 = (color_prom.read(Machine->drv->total_colors)>> 0) & 0x01;
+			bit1 = (color_prom.read(Machine->drv->total_colors)>> 1) & 0x01;
+			bit2 = (color_prom.read(Machine->drv->total_colors)>> 2) & 0x01;
+			bit3 = (color_prom.read(Machine->drv->total_colors)>> 3) & 0x01;
+			g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* blue component */
+			bit0 = (color_prom.read(2*Machine->drv->total_colors)>> 0) & 0x01;
+			bit1 = (color_prom.read(2*Machine->drv->total_colors)>> 1) & 0x01;
+			bit2 = (color_prom.read(2*Machine->drv->total_colors)>> 2) & 0x01;
+			bit3 = (color_prom.read(2*Machine->drv->total_colors)>> 3) & 0x01;
+			b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+	
+			palette_set_color(i,r,g,b);
+	
+			color_prom++;
+		}
+	
+		color_prom += 2*Machine->drv->total_colors;
+		/* color_prom now points to the beginning of the sprite height table */
+	
+		sprite_height_prom = color_prom;	/* we'll need this at run time */
 	}
-
-	color_prom += 2*Machine->drv->total_colors;
-	/* color_prom now points to the beginning of the sprite height table */
-
-	sprite_height_prom = color_prom;	/* we'll need this at run time */
-}
-
-PALETTE_INIT( battroad )
-{
-	int i;
-
-
-	for (i = 0;i < 512;i++)
+	
+	PALETTE_INIT( battroad )
 	{
-		int bit0,bit1,bit2,bit3,r,g,b;
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[512] >> 0) & 0x01;
-		bit1 = (color_prom[512] >> 1) & 0x01;
-		bit2 = (color_prom[512] >> 2) & 0x01;
-		bit3 = (color_prom[512] >> 3) & 0x01;
-		g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*512] >> 0) & 0x01;
-		bit1 = (color_prom[2*512] >> 1) & 0x01;
-		bit2 = (color_prom[2*512] >> 2) & 0x01;
-		bit3 = (color_prom[2*512] >> 3) & 0x01;
-		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(i,r,g,b);
-
-		color_prom++;
+		int i;
+	
+	
+		for (i = 0;i < 512;i++)
+		{
+			int bit0,bit1,bit2,bit3,r,g,b;
+	
+			/* red component */
+			bit0 = (color_prom.read(0)>> 0) & 0x01;
+			bit1 = (color_prom.read(0)>> 1) & 0x01;
+			bit2 = (color_prom.read(0)>> 2) & 0x01;
+			bit3 = (color_prom.read(0)>> 3) & 0x01;
+			r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* green component */
+			bit0 = (color_prom.read(512)>> 0) & 0x01;
+			bit1 = (color_prom.read(512)>> 1) & 0x01;
+			bit2 = (color_prom.read(512)>> 2) & 0x01;
+			bit3 = (color_prom.read(512)>> 3) & 0x01;
+			g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* blue component */
+			bit0 = (color_prom.read(2*512)>> 0) & 0x01;
+			bit1 = (color_prom.read(2*512)>> 1) & 0x01;
+			bit2 = (color_prom.read(2*512)>> 2) & 0x01;
+			bit3 = (color_prom.read(2*512)>> 3) & 0x01;
+			b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+	
+			palette_set_color(i,r,g,b);
+	
+			color_prom++;
+		}
+	
+		color_prom += 2*512;
+		/* color_prom now points to the beginning of the character color prom */
+	
+		for (i = 0;i < 32;i++)
+		{
+			int bit0,bit1,bit2,r,g,b;
+	
+	
+			bit0 = (color_prom.read(i)>> 0) & 0x01;
+			bit1 = (color_prom.read(i)>> 1) & 0x01;
+			bit2 = (color_prom.read(i)>> 2) & 0x01;
+			r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+			bit0 = (color_prom.read(i)>> 3) & 0x01;
+			bit1 = (color_prom.read(i)>> 4) & 0x01;
+			bit2 = (color_prom.read(i)>> 5) & 0x01;
+			g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+			bit0 = 0;
+			bit1 = (color_prom.read(i)>> 6) & 0x01;
+			bit2 = (color_prom.read(i)>> 7) & 0x01;
+			b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+	
+			palette_set_color(i+512,r,g,b);
+		}
+	
+		color_prom += 32;
+		/* color_prom now points to the beginning of the sprite height table */
+	
+		sprite_height_prom = color_prom;	/* we'll need this at run time */
 	}
-
-	color_prom += 2*512;
-	/* color_prom now points to the beginning of the character color prom */
-
-	for (i = 0;i < 32;i++)
+	
+	PALETTE_INIT( spelunk2 )
 	{
-		int bit0,bit1,bit2,r,g,b;
-
-
-		bit0 = (color_prom[i] >> 0) & 0x01;
-		bit1 = (color_prom[i] >> 1) & 0x01;
-		bit2 = (color_prom[i] >> 2) & 0x01;
-		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-		bit0 = (color_prom[i] >> 3) & 0x01;
-		bit1 = (color_prom[i] >> 4) & 0x01;
-		bit2 = (color_prom[i] >> 5) & 0x01;
-		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-		bit0 = 0;
-		bit1 = (color_prom[i] >> 6) & 0x01;
-		bit2 = (color_prom[i] >> 7) & 0x01;
-		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-
-		palette_set_color(i+512,r,g,b);
+		int i;
+	
+	
+		/* chars */
+		for (i = 0;i < 512;i++)
+		{
+			int bit0,bit1,bit2,bit3,r,g,b;
+	
+			/* red component */
+			bit0 = (color_prom.read(0)>> 0) & 0x01;
+			bit1 = (color_prom.read(0)>> 1) & 0x01;
+			bit2 = (color_prom.read(0)>> 2) & 0x01;
+			bit3 = (color_prom.read(0)>> 3) & 0x01;
+			r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* green component */
+			bit0 = (color_prom.read(0)>> 4) & 0x01;
+			bit1 = (color_prom.read(0)>> 5) & 0x01;
+			bit2 = (color_prom.read(0)>> 6) & 0x01;
+			bit3 = (color_prom.read(0)>> 7) & 0x01;
+			g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* blue component */
+			bit0 = (color_prom.read(2*256)>> 0) & 0x01;
+			bit1 = (color_prom.read(2*256)>> 1) & 0x01;
+			bit2 = (color_prom.read(2*256)>> 2) & 0x01;
+			bit3 = (color_prom.read(2*256)>> 3) & 0x01;
+			b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+	
+			palette_set_color(i,r,g,b);
+	
+			color_prom++;
+		}
+	
+		color_prom += 2*256;
+	
+		/* sprites */
+		for (i = 0;i < 256;i++)
+		{
+			int bit0,bit1,bit2,bit3,r,g,b;
+	
+			/* red component */
+			bit0 = (color_prom.read(0)>> 0) & 0x01;
+			bit1 = (color_prom.read(0)>> 1) & 0x01;
+			bit2 = (color_prom.read(0)>> 2) & 0x01;
+			bit3 = (color_prom.read(0)>> 3) & 0x01;
+			r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* green component */
+			bit0 = (color_prom.read(256)>> 0) & 0x01;
+			bit1 = (color_prom.read(256)>> 1) & 0x01;
+			bit2 = (color_prom.read(256)>> 2) & 0x01;
+			bit3 = (color_prom.read(256)>> 3) & 0x01;
+			g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* blue component */
+			bit0 = (color_prom.read(2*256)>> 0) & 0x01;
+			bit1 = (color_prom.read(2*256)>> 1) & 0x01;
+			bit2 = (color_prom.read(2*256)>> 2) & 0x01;
+			bit3 = (color_prom.read(2*256)>> 3) & 0x01;
+			b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+	
+			palette_set_color(i+512,r,g,b);
+	
+			color_prom++;
+		}
+	
+		color_prom += 2*256;
+	
+	
+		/* color_prom now points to the beginning of the sprite height table */
+		sprite_height_prom = color_prom;	/* we'll need this at run time */
 	}
-
-	color_prom += 32;
-	/* color_prom now points to the beginning of the sprite height table */
-
-	sprite_height_prom = color_prom;	/* we'll need this at run time */
-}
-
-PALETTE_INIT( spelunk2 )
-{
-	int i;
-
-
-	/* chars */
-	for (i = 0;i < 512;i++)
+	
+	
+	
+	VIDEO_START( ldrun )
 	{
-		int bit0,bit1,bit2,bit3,r,g,b;
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[0] >> 4) & 0x01;
-		bit1 = (color_prom[0] >> 5) & 0x01;
-		bit2 = (color_prom[0] >> 6) & 0x01;
-		bit3 = (color_prom[0] >> 7) & 0x01;
-		g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*256] >> 0) & 0x01;
-		bit1 = (color_prom[2*256] >> 1) & 0x01;
-		bit2 = (color_prom[2*256] >> 2) & 0x01;
-		bit3 = (color_prom[2*256] >> 3) & 0x01;
-		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(i,r,g,b);
-
-		color_prom++;
+		irem_background_hscroll = 0;
+		irem_background_vscroll = 0;
+		return video_start_generic();
 	}
-
-	color_prom += 2*256;
-
-	/* sprites */
-	for (i = 0;i < 256;i++)
+	
+	
+	static int irem_vh_start( int width, int height )
 	{
-		int bit0,bit1,bit2,bit3,r,g,b;
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[256] >> 0) & 0x01;
-		bit1 = (color_prom[256] >> 1) & 0x01;
-		bit2 = (color_prom[256] >> 2) & 0x01;
-		bit3 = (color_prom[256] >> 3) & 0x01;
-		g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*256] >> 0) & 0x01;
-		bit1 = (color_prom[2*256] >> 1) & 0x01;
-		bit2 = (color_prom[2*256] >> 2) & 0x01;
-		bit3 = (color_prom[2*256] >> 3) & 0x01;
-		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(i+512,r,g,b);
-
-		color_prom++;
-	}
-
-	color_prom += 2*256;
-
-
-	/* color_prom now points to the beginning of the sprite height table */
-	sprite_height_prom = color_prom;	/* we'll need this at run time */
-}
-
-
-
-VIDEO_START( ldrun )
-{
-	irem_background_hscroll = 0;
-	irem_background_vscroll = 0;
-	return video_start_generic();
-}
-
-
-static int irem_vh_start( int width, int height )
-{
-	irem_background_hscroll = 0;
-	irem_background_vscroll = 0;
-
-	if ((dirtybuffer = auto_malloc(videoram_size)) == 0)
-		return 1;
-	memset(dirtybuffer,1,videoram_size);
-
-	if ((tmpbitmap = auto_bitmap_alloc(width,height)) == 0)
-		return 1;
-
-	return 0;
-}
-
-VIDEO_START( kidniki )
-{
-	return irem_vh_start(512,256);
-}
-
-VIDEO_START( spelunkr )
-{
-	return irem_vh_start(512,512);
-}
-
-VIDEO_START( youjyudn )
-{
-	return irem_vh_start(512,256);
-}
-
-
-
-WRITE_HANDLER( irem_flipscreen_w )
-{
-	/* screen flip is handled both by software and hardware */
-	data ^= ~readinputport(4) & 1;
-
-	if (flipscreen != (data & 1))
-	{
-		flipscreen = data & 1;
+		irem_background_hscroll = 0;
+		irem_background_vscroll = 0;
+	
+		if ((dirtybuffer = auto_malloc(videoram_size)) == 0)
+			return 1;
 		memset(dirtybuffer,1,videoram_size);
+	
+		if ((tmpbitmap = auto_bitmap_alloc(width,height)) == 0)
+			return 1;
+	
+		return 0;
 	}
-
-	coin_counter_w(0,data & 2);
-	coin_counter_w(1,data & 4);
-}
-
-
-WRITE_HANDLER( irem_background_hscroll_w )
-{
-	switch(offset)
+	
+	VIDEO_START( kidniki )
 	{
-		case 0:
-			irem_background_hscroll = (irem_background_hscroll&0xff00)|data;
-			break;
-
-		case 1:
-			irem_background_hscroll = (irem_background_hscroll&0xff)|(data<<8);
-			break;
+		return irem_vh_start(512,256);
 	}
-}
-
-WRITE_HANDLER( kungfum_scroll_low_w )
-{
-	irem_background_hscroll_w(0,data);
-}
-WRITE_HANDLER( kungfum_scroll_high_w )
-{
-	irem_background_hscroll_w(1,data);
-}
-
-WRITE_HANDLER( irem_background_vscroll_w )
-{
-	switch( offset )
+	
+	VIDEO_START( spelunkr )
 	{
-		case 0:
-		irem_background_vscroll = (irem_background_vscroll&0xff00)|data;
-		break;
-
-		case 1:
-		irem_background_vscroll = (irem_background_vscroll&0xff)|(data<<8);
-		break;
+		return irem_vh_start(512,512);
 	}
-}
-
-WRITE_HANDLER( battroad_scroll_w )
-{
-	switch( offset )
+	
+	VIDEO_START( youjyudn )
 	{
-		case 0:
-		irem_background_vscroll_w(0, data);
-		break;
-
-		case 1:
-		irem_background_hscroll_w(1, data);
-		break;
-
-		case 2:
-		irem_background_hscroll_w(0, data);
-		break;
+		return irem_vh_start(512,256);
 	}
-}
-
-WRITE_HANDLER( ldrun3_vscroll_w )
-{
-	irem_background_vscroll = data;
-}
-
-WRITE_HANDLER( ldrun4_hscroll_w )
-{
-	irem_background_hscroll_w(offset ^ 1,data);
-}
-
-WRITE_HANDLER( kidniki_text_vscroll_w )
-{
-	switch (offset)
+	
+	
+	
+	public static WriteHandlerPtr irem_flipscreen_w = new WriteHandlerPtr() {public void handler(int offset, int data)
 	{
-		case 0:
-		kidniki_text_vscroll = (kidniki_text_vscroll & 0xff00) | data;
-		break;
-
-		case 1:
-		kidniki_text_vscroll = (kidniki_text_vscroll & 0xff) | (data << 8);
-		break;
-	}
-}
-
-WRITE_HANDLER( youjyudn_scroll_w )
-{
-	irem_background_hscroll_w(offset^1,data);
-}
-
-WRITE_HANDLER( kidniki_background_bank_w )
-{
-	if (kidniki_background_bank != (data & 1))
+		/* screen flip is handled both by software and hardware */
+		data ^= ~readinputport(4) & 1;
+	
+		if (flipscreen != (data & 1))
+		{
+			flipscreen = data & 1;
+			memset(dirtybuffer,1,videoram_size[0]);
+		}
+	
+		coin_counter_w(0,data & 2);
+		coin_counter_w(1,data & 4);
+	} };
+	
+	
+	public static WriteHandlerPtr irem_background_hscroll_w = new WriteHandlerPtr() {public void handler(int offset, int data)
 	{
-		kidniki_background_bank = data & 1;
-		memset(dirtybuffer,1,videoram_size);
-	}
-}
-
-WRITE_HANDLER( spelunkr_palbank_w )
-{
-	if (spelunk2_palbank != (data & 0x01))
+		switch(offset)
+		{
+			case 0:
+				irem_background_hscroll = (irem_background_hscroll&0xff00)|data;
+				break;
+	
+			case 1:
+				irem_background_hscroll = (irem_background_hscroll&0xff)|(data<<8);
+				break;
+		}
+	} };
+	
+	public static WriteHandlerPtr kungfum_scroll_low_w = new WriteHandlerPtr() {public void handler(int offset, int data)
 	{
-		spelunk2_palbank = data & 0x01;
-		memset(dirtybuffer,1,videoram_size);
-	}
-}
-
-WRITE_HANDLER( spelunk2_gfxport_w )
-{
-	switch( offset )
-	{
-		case 0:
-		irem_background_vscroll_w(0,data);
-		break;
-
-		case 1:
 		irem_background_hscroll_w(0,data);
-		break;
-
-		case 2:
-		irem_background_hscroll_w(1,(data&2)>>1);
-		irem_background_vscroll_w(1,(data&1));
-		if (spelunk2_palbank != ((data & 0x0c) >> 2))
-		{
-			spelunk2_palbank = (data & 0x0c) >> 2;
-			memset(dirtybuffer,1,videoram_size);
-		}
-		break;
-	}
-}
-
-
-
-/***************************************************************************
-
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function, it will be called by
-  the main emulation engine.
-
-***************************************************************************/
-static void draw_sprites(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-	for (offs = 0;offs < spriteram_size;offs += 8)
+	} };
+	public static WriteHandlerPtr kungfum_scroll_high_w = new WriteHandlerPtr() {public void handler(int offset, int data)
 	{
-		int i,incr,code,col,flipx,flipy,sx,sy;
-
-
-		code = spriteram[offs+4] + ((spriteram[offs+5] & 0x07) << 8);
-		col = spriteram[offs+0] & 0x1f;
-		sx = 256 * (spriteram[offs+7] & 1) + spriteram[offs+6],
-		sy = 256+128-15 - (256 * (spriteram[offs+3] & 1) + spriteram[offs+2]),
-		flipx = spriteram[offs+5] & 0x40;
-		flipy = spriteram[offs+5] & 0x80;
-
-		i = sprite_height_prom[(code >> 5) & 0x1f];
-		if (i == 1)	/* double height */
-		{
-			code &= ~1;
-			sy -= 16;
-		}
-		else if (i == 2)	/* quadruple height */
-		{
-			i = 3;
-			code &= ~3;
-			sy -= 3*16;
-		}
-
-		if (flipscreen)
-		{
-			sx = 496 - sx;
-			sy = 242 - i*16 - sy;	/* sprites are slightly misplaced by the hardware */
-			flipx = !flipx;
-			flipy = !flipy;
-		}
-
-		if (flipy)
-		{
-			incr = -1;
-			code += i;
-		}
-		else incr = 1;
-
-		do
-		{
-			drawgfx(bitmap,Machine->gfx[1],
-					code + i * incr,col,
-					flipx,flipy,
-					sx,sy + 16 * i,
-					&Machine->visible_area,TRANSPARENCY_PEN,0);
-
-			i--;
-		} while (i >= 0);
-	}
-}
-
-
-static void draw_priority_sprites(struct mame_bitmap *bitmap, int prioritylayer)
-{
-	int offs;
-
-	for (offs = 0;offs < spriteram_size;offs += 8)
+		irem_background_hscroll_w(1,data);
+	} };
+	
+	public static WriteHandlerPtr irem_background_vscroll_w = new WriteHandlerPtr() {public void handler(int offset, int data)
 	{
-		int i,incr,code,col,flipx,flipy,sx,sy;
-
-
-		if (!prioritylayer || (prioritylayer && (spriteram[offs] & 0x10)))
+		switch( offset )
 		{
-			code = spriteram[offs+4] + ((spriteram[offs+5] & 0x07) << 8);
-			col = spriteram[offs+0] & 0x0f;
-			sx = 256 * (spriteram[offs+7] & 1) + spriteram[offs+6],
-			sy = 256+128-15 - (256 * (spriteram[offs+3] & 1) + spriteram[offs+2]),
-			flipx = spriteram[offs+5] & 0x40;
-			flipy = spriteram[offs+5] & 0x80;
-
+			case 0:
+			irem_background_vscroll = (irem_background_vscroll&0xff00)|data;
+			break;
+	
+			case 1:
+			irem_background_vscroll = (irem_background_vscroll&0xff)|(data<<8);
+			break;
+		}
+	} };
+	
+	public static WriteHandlerPtr battroad_scroll_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		switch( offset )
+		{
+			case 0:
+			irem_background_vscroll_w(0, data);
+			break;
+	
+			case 1:
+			irem_background_hscroll_w(1, data);
+			break;
+	
+			case 2:
+			irem_background_hscroll_w(0, data);
+			break;
+		}
+	} };
+	
+	public static WriteHandlerPtr ldrun3_vscroll_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		irem_background_vscroll = data;
+	} };
+	
+	public static WriteHandlerPtr ldrun4_hscroll_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		irem_background_hscroll_w(offset ^ 1,data);
+	} };
+	
+	public static WriteHandlerPtr kidniki_text_vscroll_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		switch (offset)
+		{
+			case 0:
+			kidniki_text_vscroll = (kidniki_text_vscroll & 0xff00) | data;
+			break;
+	
+			case 1:
+			kidniki_text_vscroll = (kidniki_text_vscroll & 0xff) | (data << 8);
+			break;
+		}
+	} };
+	
+	public static WriteHandlerPtr youjyudn_scroll_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		irem_background_hscroll_w(offset^1,data);
+	} };
+	
+	public static WriteHandlerPtr kidniki_background_bank_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		if (kidniki_background_bank != (data & 1))
+		{
+			kidniki_background_bank = data & 1;
+			memset(dirtybuffer,1,videoram_size[0]);
+		}
+	} };
+	
+	public static WriteHandlerPtr spelunkr_palbank_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		if (spelunk2_palbank != (data & 0x01))
+		{
+			spelunk2_palbank = data & 0x01;
+			memset(dirtybuffer,1,videoram_size[0]);
+		}
+	} };
+	
+	public static WriteHandlerPtr spelunk2_gfxport_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		switch( offset )
+		{
+			case 0:
+			irem_background_vscroll_w(0,data);
+			break;
+	
+			case 1:
+			irem_background_hscroll_w(0,data);
+			break;
+	
+			case 2:
+			irem_background_hscroll_w(1,(data&2)>>1);
+			irem_background_vscroll_w(1,(data&1));
+			if (spelunk2_palbank != ((data & 0x0c) >> 2))
+			{
+				spelunk2_palbank = (data & 0x0c) >> 2;
+				memset(dirtybuffer,1,videoram_size[0]);
+			}
+			break;
+		}
+	} };
+	
+	
+	
+	/***************************************************************************
+	
+	  Draw the game screen in the given mame_bitmap.
+	  Do NOT call osd_update_display() from this function, it will be called by
+	  the main emulation engine.
+	
+	***************************************************************************/
+	static void draw_sprites(struct mame_bitmap *bitmap)
+	{
+		int offs;
+	
+		for (offs = 0;offs < spriteram_size;offs += 8)
+		{
+			int i,incr,code,col,flipx,flipy,sx,sy;
+	
+	
+			code = spriteram.read(offs+4)+ ((spriteram.read(offs+5)& 0x07) << 8);
+			col = spriteram.read(offs+0)& 0x1f;
+			sx = 256 * (spriteram.read(offs+7)& 1) + spriteram.read(offs+6),
+			sy = 256+128-15 - (256 * (spriteram.read(offs+3)& 1) + spriteram.read(offs+2)),
+			flipx = spriteram.read(offs+5)& 0x40;
+			flipy = spriteram.read(offs+5)& 0x80;
+	
 			i = sprite_height_prom[(code >> 5) & 0x1f];
 			if (i == 1)	/* double height */
 			{
@@ -500,7 +446,7 @@ static void draw_priority_sprites(struct mame_bitmap *bitmap, int prioritylayer)
 				code &= ~3;
 				sy -= 3*16;
 			}
-
+	
 			if (flipscreen)
 			{
 				sx = 496 - sx;
@@ -508,14 +454,14 @@ static void draw_priority_sprites(struct mame_bitmap *bitmap, int prioritylayer)
 				flipx = !flipx;
 				flipy = !flipy;
 			}
-
+	
 			if (flipy)
 			{
 				incr = -1;
 				code += i;
 			}
 			else incr = 1;
-
+	
 			do
 			{
 				drawgfx(bitmap,Machine->gfx[1],
@@ -523,706 +469,767 @@ static void draw_priority_sprites(struct mame_bitmap *bitmap, int prioritylayer)
 						flipx,flipy,
 						sx,sy + 16 * i,
 						&Machine->visible_area,TRANSPARENCY_PEN,0);
-
+	
 				i--;
 			} while (i >= 0);
 		}
 	}
-}
-
-
-void kungfum_draw_background(struct mame_bitmap *bitmap,int prioritylayer)
-{
-	int offs,i;
-	int scrollx[32];
-
-
-	if (flipscreen)
+	
+	
+	static void draw_priority_sprites(struct mame_bitmap *bitmap, int prioritylayer)
 	{
-		for (i = 31;i > 25;i--)
-			scrollx[i] = 0;
-		for (i = 25;i >= 0;i--)
-			scrollx[i] = irem_background_hscroll;
-	}
-	else
-	{
-		for (i = 0;i < 6;i++)
-			scrollx[i] = 0;
-		for (i = 6;i < 32;i++)
-			scrollx[i] = -irem_background_hscroll;
-	}
-
-
-	if (prioritylayer)
-	{
-		for (offs = videoram_size/2 - 1;offs >= 0;offs--)
+		int offs;
+	
+		for (offs = 0;offs < spriteram_size;offs += 8)
 		{
-			int color = videoram[offs+0x800] & 0x1f;
-			int sy = offs / 64;
-
-			/* is the following right? */
-			if (sy < 6 || (color >> 1) > 0x0c)
+			int i,incr,code,col,flipx,flipy,sx,sy;
+	
+	
+			if (!prioritylayer || (prioritylayer && (spriteram.read(offs)& 0x10)))
 			{
-				int code,sx,flipx,flipy;
-
-
-				sx = offs % 64;
-				code = videoram[offs] + 4 * (videoram[offs+0x800] & 0xc0);
-				flipx = videoram[offs+0x800] & 0x20;
-				flipy = 0;
+				code = spriteram.read(offs+4)+ ((spriteram.read(offs+5)& 0x07) << 8);
+				col = spriteram.read(offs+0)& 0x0f;
+				sx = 256 * (spriteram.read(offs+7)& 1) + spriteram.read(offs+6),
+				sy = 256+128-15 - (256 * (spriteram.read(offs+3)& 1) + spriteram.read(offs+2)),
+				flipx = spriteram.read(offs+5)& 0x40;
+				flipy = spriteram.read(offs+5)& 0x80;
+	
+				i = sprite_height_prom[(code >> 5) & 0x1f];
+				if (i == 1)	/* double height */
+				{
+					code &= ~1;
+					sy -= 16;
+				}
+				else if (i == 2)	/* quadruple height */
+				{
+					i = 3;
+					code &= ~3;
+					sy -= 3*16;
+				}
+	
 				if (flipscreen)
 				{
-					sx = 63 - sx;
-					sy = 31 - sy;
+					sx = 496 - sx;
+					sy = 242 - i*16 - sy;	/* sprites are slightly misplaced by the hardware */
 					flipx = !flipx;
 					flipy = !flipy;
 				}
-
-				drawgfx(bitmap,Machine->gfx[0],
-						code,
-						color,
-						flipx,flipy,
-						(8*sx+scrollx[sy])&0x1ff,8*sy,
-						0,TRANSPARENCY_NONE,0);
+	
+				if (flipy)
+				{
+					incr = -1;
+					code += i;
+				}
+				else incr = 1;
+	
+				do
+				{
+					drawgfx(bitmap,Machine->gfx[1],
+							code + i * incr,col,
+							flipx,flipy,
+							sx,sy + 16 * i,
+							&Machine->visible_area,TRANSPARENCY_PEN,0);
+	
+					i--;
+				} while (i >= 0);
 			}
 		}
 	}
-	else
+	
+	
+	void kungfum_draw_background(struct mame_bitmap *bitmap,int prioritylayer)
 	{
-		for (offs = videoram_size/2 - 1;offs >= 0;offs--)
+		int offs,i;
+		int scrollx[32];
+	
+	
+		if (flipscreen)
 		{
-			if (dirtybuffer[offs] || dirtybuffer[offs+0x800])
+			for (i = 31;i > 25;i--)
+				scrollx[i] = 0;
+			for (i = 25;i >= 0;i--)
+				scrollx[i] = irem_background_hscroll;
+		}
+		else
+		{
+			for (i = 0;i < 6;i++)
+				scrollx[i] = 0;
+			for (i = 6;i < 32;i++)
+				scrollx[i] = -irem_background_hscroll;
+		}
+	
+	
+		if (prioritylayer)
+		{
+			for (offs = videoram_size/2 - 1;offs >= 0;offs--)
 			{
-				int code,color,sx,sy,flipx,flipy;
-
-
-				dirtybuffer[offs] = dirtybuffer[offs+0x800] = 0;
-
-				sx = offs % 64;
-				sy = offs / 64;
-				code = videoram[offs] + 4 * (videoram[offs+0x800] & 0xc0);
-				color = videoram[offs+0x800] & 0x1f;
-				flipx = videoram[offs+0x800] & 0x20;
-				flipy = 0;
+				int color = videoram.read(offs+0x800)& 0x1f;
+				int sy = offs / 64;
+	
+				/* is the following right? */
+				if (sy < 6 || (color >> 1) > 0x0c)
+				{
+					int code,sx,flipx,flipy;
+	
+	
+					sx = offs % 64;
+					code = videoram.read(offs)+ 4 * (videoram.read(offs+0x800)& 0xc0);
+					flipx = videoram.read(offs+0x800)& 0x20;
+					flipy = 0;
+					if (flipscreen)
+					{
+						sx = 63 - sx;
+						sy = 31 - sy;
+						flipx = !flipx;
+						flipy = !flipy;
+					}
+	
+					drawgfx(bitmap,Machine->gfx[0],
+							code,
+							color,
+							flipx,flipy,
+							(8*sx+scrollx[sy])&0x1ff,8*sy,
+							0,TRANSPARENCY_NONE,0);
+				}
+			}
+		}
+		else
+		{
+			for (offs = videoram_size/2 - 1;offs >= 0;offs--)
+			{
+				if (dirtybuffer[offs] || dirtybuffer[offs+0x800])
+				{
+					int code,color,sx,sy,flipx,flipy;
+	
+	
+					dirtybuffer[offs] = dirtybuffer[offs+0x800] = 0;
+	
+					sx = offs % 64;
+					sy = offs / 64;
+					code = videoram.read(offs)+ 4 * (videoram.read(offs+0x800)& 0xc0);
+					color = videoram.read(offs+0x800)& 0x1f;
+					flipx = videoram.read(offs+0x800)& 0x20;
+					flipy = 0;
+					if (flipscreen)
+					{
+						sx = 63 - sx;
+						sy = 31 - sy;
+						flipx = !flipx;
+						flipy = !flipy;
+					}
+	
+					drawgfx(tmpbitmap,Machine->gfx[0],
+							code,
+							color,
+							flipx,flipy,
+							8*sx,8*sy,
+							0,TRANSPARENCY_NONE,0);
+				}
+			}
+	
+			/* copy the temporary bitmap to the screen */
+			copyscrollbitmap(bitmap,tmpbitmap,32,scrollx,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		}
+	}
+	
+	static void battroad_draw_background(struct mame_bitmap *bitmap, int prioritylayer)
+	{
+		int offs;
+	
+	
+		for (offs = videoram_size-2;offs >= 0;offs -= 2)
+		{
+			if ((dirtybuffer[offs] || dirtybuffer[offs+1]) && !(!prioritylayer && (videoram.read(offs+1)& 0x04)))
+			{
+				int sx,sy;
+	
+	
+				dirtybuffer[offs] = 0;
+				dirtybuffer[offs+1] = 0;
+	
+				sx = (offs/2) % 64;
+				sy = (offs/2) / 64;
+	
 				if (flipscreen)
 				{
 					sx = 63 - sx;
 					sy = 31 - sy;
-					flipx = !flipx;
-					flipy = !flipy;
 				}
-
+	
 				drawgfx(tmpbitmap,Machine->gfx[0],
-						code,
-						color,
-						flipx,flipy,
+						videoram.read(offs)+ ((videoram.read(offs+1)& 0x40) << 3) + ((videoram.read(offs + 1)& 0x10) << 4),
+						videoram.read(offs+1)& 0x0f,
+						flipscreen,flipscreen,
 						8*sx,8*sy,
 						0,TRANSPARENCY_NONE,0);
 			}
 		}
-
-		/* copy the temporary bitmap to the screen */
-		copyscrollbitmap(bitmap,tmpbitmap,32,scrollx,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+	
+	
+		{
+			int scrollx, scrolly;
+	
+			if (flipscreen)
+			{
+				scrollx = irem_background_hscroll;
+				scrolly = irem_background_vscroll;
+			}
+			else
+			{
+				scrollx = -irem_background_hscroll;
+				scrolly = -irem_background_vscroll;
+			}
+	
+			if (prioritylayer)
+			{
+				copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,1,&scrolly,&Machine->visible_area,TRANSPARENCY_PEN,Machine->pens[0]);
+			}
+			else
+			{
+				copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,1,&scrolly,&Machine->visible_area,TRANSPARENCY_NONE,0);
+			}
+		}
 	}
-}
-
-static void battroad_draw_background(struct mame_bitmap *bitmap, int prioritylayer)
-{
-	int offs;
-
-
-	for (offs = videoram_size-2;offs >= 0;offs -= 2)
+	
+	void ldrun_draw_background(struct mame_bitmap *bitmap, int prioritylayer)
 	{
-		if ((dirtybuffer[offs] || dirtybuffer[offs+1]) && !(!prioritylayer && (videoram[offs+1] & 0x04)))
+		int offs;
+	
+	
+		/* for every character in the Video RAM, check if it has been modified */
+		/* since last time and update it accordingly. */
+		for (offs = videoram_size-2;offs >= 0;offs -= 2)
+		{
+			if ((dirtybuffer[offs] || dirtybuffer[offs+1]) && !(!prioritylayer && (videoram.read(offs+1)& 0x04)))
+			{
+				int sx,sy,flipx;
+	
+	
+				dirtybuffer[offs] = 0;
+				dirtybuffer[offs+1] = 0;
+	
+				sx = (offs/2) % 64;
+				sy = (offs/2) / 64;
+				flipx = videoram.read(offs+1)& 0x20;
+	
+				if (flipscreen)
+				{
+					sx = 63 - sx;
+					sy = 31 - sy;
+					flipx = !flipx;
+				}
+	
+				drawgfx(tmpbitmap,Machine->gfx[0],
+						videoram.read(offs)+ ((videoram.read(offs+1)& 0xc0) << 2),
+						videoram.read(offs+1)& 0x1f,
+						flipx,flipscreen,
+						8*sx,8*sy,
+						0,TRANSPARENCY_NONE,0);
+			}
+		}
+	
+	
+		{
+			int scrolly;	/* ldrun3 only */
+	
+			if (flipscreen)
+				scrolly = irem_background_vscroll;
+			else
+				scrolly = -irem_background_vscroll;
+	
+			if (prioritylayer)
+			{
+				copyscrollbitmap(bitmap,tmpbitmap,0,0,1,&scrolly,&Machine->visible_area,TRANSPARENCY_PEN,Machine->pens[0]);
+			}
+			else
+			{
+				copyscrollbitmap(bitmap,tmpbitmap,0,0,1,&scrolly,&Machine->visible_area,TRANSPARENCY_NONE,0);
+			}
+		}
+	}
+	
+	/* almost identical but scrolling background, more characters, */
+	/* no char x flip, and more sprites */
+	void ldrun4_draw_background(struct mame_bitmap *bitmap)
+	{
+		int offs;
+	
+	
+		/* for every character in the Video RAM, check if it has been modified */
+		/* since last time and update it accordingly. */
+		for (offs = videoram_size-2;offs >= 0;offs -= 2)
+		{
+			if (dirtybuffer[offs] || dirtybuffer[offs+1])
+			{
+				int sx,sy;
+	
+	
+				dirtybuffer[offs] = 0;
+				dirtybuffer[offs+1] = 0;
+	
+				sx = (offs/2) % 64;
+				sy = (offs/2) / 64;
+	
+				if (flipscreen)
+				{
+					sx = 63 - sx;
+					sy = 31 - sy;
+				}
+	
+				drawgfx(tmpbitmap,Machine->gfx[0],
+						videoram.read(offs)+ ((videoram.read(offs+1)& 0xc0) << 2) + ((videoram.read(offs+1)& 0x20) << 5),
+						videoram.read(offs+1)& 0x1f,
+						flipscreen,flipscreen,
+						8*sx,8*sy,
+						0,TRANSPARENCY_NONE,0);
+			}
+		}
+	
+	
+		{
+			int scrollx;
+	
+			if (flipscreen)
+				scrollx = irem_background_hscroll + 2;
+			else
+				scrollx = -irem_background_hscroll + 2;
+	
+			copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		}
+	}
+	
+	void lotlot_draw_background(struct mame_bitmap *bitmap)
+	{
+		int offs;
+	
+	
+		/* for every character in the Video RAM, check if it has been modified */
+		/* since last time and update it accordingly. */
+		for (offs = videoram_size-2;offs >= 0;offs -= 2)
+		{
+			if (dirtybuffer[offs] || dirtybuffer[offs+1])
+			{
+				int sx,sy,flipx;
+	
+	
+				dirtybuffer[offs] = 0;
+				dirtybuffer[offs+1] = 0;
+	
+				sx = (offs/2) % 32;
+				sy = (offs/2) / 32;
+				flipx = videoram.read(offs+1)& 0x20;
+	
+				if (flipscreen)
+				{
+					sx = 31 - sx;
+					sy = 31 - sy;
+					flipx = !flipx;
+				}
+	
+				drawgfx(tmpbitmap,Machine->gfx[0],
+						videoram.read(offs)+ ((videoram.read(offs+1)& 0xc0) << 2),
+						videoram.read(offs+1)& 0x1f,
+						flipx,flipscreen,
+						12*sx + 64,10*sy - 32,
+						0,TRANSPARENCY_NONE,0);
+			}
+		}
+	
+	
+		copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+	
+	
+		for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
 		{
 			int sx,sy;
-
-
-			dirtybuffer[offs] = 0;
-			dirtybuffer[offs+1] = 0;
-
-			sx = (offs/2) % 64;
-			sy = (offs/2) / 64;
-
-			if (flipscreen)
-			{
-				sx = 63 - sx;
-				sy = 31 - sy;
-			}
-
-			drawgfx(tmpbitmap,Machine->gfx[0],
-					videoram[offs] + ((videoram[offs+1] & 0x40) << 3) + ((videoram[offs + 1] & 0x10) << 4),
-					videoram[offs+1] & 0x0f,
-					flipscreen,flipscreen,
-					8*sx,8*sy,
-					0,TRANSPARENCY_NONE,0);
-		}
-	}
-
-
-	{
-		int scrollx, scrolly;
-
-		if (flipscreen)
-		{
-			scrollx = irem_background_hscroll;
-			scrolly = irem_background_vscroll;
-		}
-		else
-		{
-			scrollx = -irem_background_hscroll;
-			scrolly = -irem_background_vscroll;
-		}
-
-		if (prioritylayer)
-		{
-			copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,1,&scrolly,&Machine->visible_area,TRANSPARENCY_PEN,Machine->pens[0]);
-		}
-		else
-		{
-			copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,1,&scrolly,&Machine->visible_area,TRANSPARENCY_NONE,0);
-		}
-	}
-}
-
-void ldrun_draw_background(struct mame_bitmap *bitmap, int prioritylayer)
-{
-	int offs;
-
-
-	/* for every character in the Video RAM, check if it has been modified */
-	/* since last time and update it accordingly. */
-	for (offs = videoram_size-2;offs >= 0;offs -= 2)
-	{
-		if ((dirtybuffer[offs] || dirtybuffer[offs+1]) && !(!prioritylayer && (videoram[offs+1] & 0x04)))
-		{
-			int sx,sy,flipx;
-
-
-			dirtybuffer[offs] = 0;
-			dirtybuffer[offs+1] = 0;
-
-			sx = (offs/2) % 64;
-			sy = (offs/2) / 64;
-			flipx = videoram[offs+1] & 0x20;
-
-			if (flipscreen)
-			{
-				sx = 63 - sx;
-				sy = 31 - sy;
-				flipx = !flipx;
-			}
-
-			drawgfx(tmpbitmap,Machine->gfx[0],
-					videoram[offs] + ((videoram[offs+1] & 0xc0) << 2),
-					videoram[offs+1] & 0x1f,
-					flipx,flipscreen,
-					8*sx,8*sy,
-					0,TRANSPARENCY_NONE,0);
-		}
-	}
-
-
-	{
-		int scrolly;	/* ldrun3 only */
-
-		if (flipscreen)
-			scrolly = irem_background_vscroll;
-		else
-			scrolly = -irem_background_vscroll;
-
-		if (prioritylayer)
-		{
-			copyscrollbitmap(bitmap,tmpbitmap,0,0,1,&scrolly,&Machine->visible_area,TRANSPARENCY_PEN,Machine->pens[0]);
-		}
-		else
-		{
-			copyscrollbitmap(bitmap,tmpbitmap,0,0,1,&scrolly,&Machine->visible_area,TRANSPARENCY_NONE,0);
-		}
-	}
-}
-
-/* almost identical but scrolling background, more characters, */
-/* no char x flip, and more sprites */
-void ldrun4_draw_background(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-
-	/* for every character in the Video RAM, check if it has been modified */
-	/* since last time and update it accordingly. */
-	for (offs = videoram_size-2;offs >= 0;offs -= 2)
-	{
-		if (dirtybuffer[offs] || dirtybuffer[offs+1])
-		{
-			int sx,sy;
-
-
-			dirtybuffer[offs] = 0;
-			dirtybuffer[offs+1] = 0;
-
-			sx = (offs/2) % 64;
-			sy = (offs/2) / 64;
-
-			if (flipscreen)
-			{
-				sx = 63 - sx;
-				sy = 31 - sy;
-			}
-
-			drawgfx(tmpbitmap,Machine->gfx[0],
-					videoram[offs] + ((videoram[offs+1] & 0xc0) << 2) + ((videoram[offs+1] & 0x20) << 5),
-					videoram[offs+1] & 0x1f,
-					flipscreen,flipscreen,
-					8*sx,8*sy,
-					0,TRANSPARENCY_NONE,0);
-		}
-	}
-
-
-	{
-		int scrollx;
-
-		if (flipscreen)
-			scrollx = irem_background_hscroll + 2;
-		else
-			scrollx = -irem_background_hscroll + 2;
-
-		copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
-	}
-}
-
-void lotlot_draw_background(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-
-	/* for every character in the Video RAM, check if it has been modified */
-	/* since last time and update it accordingly. */
-	for (offs = videoram_size-2;offs >= 0;offs -= 2)
-	{
-		if (dirtybuffer[offs] || dirtybuffer[offs+1])
-		{
-			int sx,sy,flipx;
-
-
-			dirtybuffer[offs] = 0;
-			dirtybuffer[offs+1] = 0;
-
+	
+	
 			sx = (offs/2) % 32;
 			sy = (offs/2) / 32;
-			flipx = videoram[offs+1] & 0x20;
-
+	
 			if (flipscreen)
 			{
 				sx = 31 - sx;
 				sy = 31 - sy;
-				flipx = !flipx;
 			}
-
-			drawgfx(tmpbitmap,Machine->gfx[0],
-					videoram[offs] + ((videoram[offs+1] & 0xc0) << 2),
-					videoram[offs+1] & 0x1f,
-					flipx,flipscreen,
+	
+			drawgfx(bitmap,Machine->gfx[2],
+					irem_textram[offs] + ((irem_textram[offs + 1] & 0xc0) << 2),
+					(irem_textram[offs + 1] & 0x1f),
+					flipscreen,flipscreen,
 					12*sx + 64,10*sy - 32,
-					0,TRANSPARENCY_NONE,0);
+					&Machine->visible_area,TRANSPARENCY_PEN, 0);
 		}
 	}
-
-
-	copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
-
-
-	for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
+	
+	static void kidniki_draw_background(struct mame_bitmap *bitmap)
 	{
-		int sx,sy;
-
-
-		sx = (offs/2) % 32;
-		sy = (offs/2) / 32;
-
-		if (flipscreen)
+		int offs;
+	
+	
+		for (offs = videoram_size-2;offs >= 0;offs -= 2)
 		{
-			sx = 31 - sx;
-			sy = 31 - sy;
+			if (dirtybuffer[offs] || dirtybuffer[offs+1])
+			{
+				int sx,sy;
+	
+	
+				dirtybuffer[offs] = 0;
+				dirtybuffer[offs+1] = 0;
+	
+				sx = (offs/2) % 64;
+				sy = (offs/2) / 64;
+	
+				if (flipscreen)
+				{
+					sx = 63 - sx;
+					sy = 31 - sy;
+				}
+	
+				drawgfx(tmpbitmap,Machine->gfx[0],
+						videoram.read(offs)+ ((videoram.read(offs+1)& 0xe0) << 3) + (kidniki_background_bank << 11),
+						videoram.read(offs+1)& 0x1f,
+						flipscreen,flipscreen,
+						8*sx,8*sy,
+						0,TRANSPARENCY_NONE,0);
+			}
 		}
-
-		drawgfx(bitmap,Machine->gfx[2],
-				irem_textram[offs] + ((irem_textram[offs + 1] & 0xc0) << 2),
-				(irem_textram[offs + 1] & 0x1f),
-				flipscreen,flipscreen,
-				12*sx + 64,10*sy - 32,
-				&Machine->visible_area,TRANSPARENCY_PEN, 0);
-	}
-}
-
-static void kidniki_draw_background(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-
-	for (offs = videoram_size-2;offs >= 0;offs -= 2)
-	{
-		if (dirtybuffer[offs] || dirtybuffer[offs+1])
+	
+	
 		{
-			int sx,sy;
-
-
-			dirtybuffer[offs] = 0;
-			dirtybuffer[offs+1] = 0;
-
-			sx = (offs/2) % 64;
-			sy = (offs/2) / 64;
-
+			int scrollx;
+	
+			if (flipscreen)
+				scrollx = irem_background_hscroll + 2;
+			else
+				scrollx = -irem_background_hscroll + 2;
+	
+			copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		}
+	}
+	
+	static void spelunkr_draw_background(struct mame_bitmap *bitmap)
+	{
+		int offs;
+	
+	
+		for (offs = videoram_size-2;offs >= 0;offs -= 2)
+		{
+			if (dirtybuffer[offs] || dirtybuffer[offs+1])
+			{
+				int sx,sy;
+	
+	
+				dirtybuffer[offs] = 0;
+				dirtybuffer[offs+1] = 0;
+	
+				sx = (offs/2) % 64;
+				sy = (offs/2) / 64;
+	
+				if (flipscreen)
+				{
+					sx = 63 - sx;
+					sy = 63 - sy;
+				}
+	
+				drawgfx(tmpbitmap,Machine->gfx[0],
+						videoram.read(offs)
+								+ ((videoram.read(offs+1)& 0x10) << 4)
+								+ ((videoram.read(offs+1)& 0x20) << 6)
+								+ ((videoram.read(offs+1)& 0xc0) << 3),
+						(videoram.read(offs+1)& 0x0f) + (spelunk2_palbank << 4),
+						flipscreen,flipscreen,
+						8*sx,8*sy,
+						0,TRANSPARENCY_NONE,0);
+			}
+		}
+	
+	
+		{
+			int scrollx,scrolly;
+	
 			if (flipscreen)
 			{
-				sx = 63 - sx;
+				scrollx = irem_background_hscroll;
+				scrolly = irem_background_vscroll - 128;
+			}
+			else
+			{
+				scrollx = -irem_background_hscroll;
+				scrolly = -irem_background_vscroll - 128;
+			}
+	
+			copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,1,&scrolly,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		}
+	}
+	
+	static void spelunk2_draw_background(struct mame_bitmap *bitmap)
+	{
+		int offs;
+	
+	
+		for (offs = videoram_size-2;offs >= 0;offs -= 2)
+		{
+			if (dirtybuffer[offs] || dirtybuffer[offs+1])
+			{
+				int sx,sy;
+	
+	
+				dirtybuffer[offs] = 0;
+				dirtybuffer[offs+1] = 0;
+	
+				sx = (offs/2) % 64;
+				sy = (offs/2) / 64;
+	
+				if (flipscreen)
+				{
+					sx = 63 - sx;
+					sy = 63 - sy;
+				}
+	
+				drawgfx(tmpbitmap,Machine->gfx[0],
+						videoram.read(offs)+ ((videoram.read(offs+1)& 0xf0) << 4),
+						(videoram.read(offs+1)& 0x0f) + (spelunk2_palbank << 4),
+						flipscreen,flipscreen,
+						8*sx,8*sy,
+						0,TRANSPARENCY_NONE,0);
+			}
+		}
+	
+	
+		{
+			int scrollx,scrolly;
+	
+			if (flipscreen)
+			{
+				scrollx = irem_background_hscroll;
+				scrolly = irem_background_vscroll - 128;
+			}
+			else
+			{
+				scrollx = -irem_background_hscroll;
+				scrolly = -irem_background_vscroll - 128;
+			}
+	
+			copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,1,&scrolly,&Machine->visible_area,TRANSPARENCY_NONE,0);
+		}
+	}
+	
+	static void youjyudn_draw_background(struct mame_bitmap *bitmap,int priority)
+	{
+		int offs;
+	
+	
+		priority <<= 4;
+	
+		for (offs = videoram_size - 2;offs >= 0;offs -= 2)
+		{
+			if ((videoram.read(offs + 1)& 0x10) == priority)
+			{
+				int sx,sy;
+				sx = (offs/2) % 64;
+				sy = (offs/2) / 64;
+	
+				if (flipscreen)
+				{
+					sx = 63 - sx;
+					sy = 15 - sy;
+				}
+	
+				drawgfx(bitmap,Machine->gfx[0],
+						videoram.read(offs)+ ((videoram.read(offs + 1)& 0x60) << 3),
+						videoram.read(offs + 1)& 0x1f,
+						flipscreen,flipscreen,
+						(8*sx - (irem_background_hscroll-2))&0x1ff,16*sy,
+						&Machine->visible_area,TRANSPARENCY_NONE,0);
+			}
+		}
+	}
+	
+	
+	
+	static void battroad_draw_text(struct mame_bitmap *bitmap)
+	{
+		int offs;
+	
+	
+		for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
+		{
+			int sx,sy;
+	
+	
+			sx = (offs/2) % 32;
+			sy = (offs/2) / 32;
+	
+			if (flipscreen)
+			{
+				sx = 31 - sx;
 				sy = 31 - sy;
 			}
-
-			drawgfx(tmpbitmap,Machine->gfx[0],
-					videoram[offs] + ((videoram[offs+1] & 0xe0) << 3) + (kidniki_background_bank << 11),
-					videoram[offs+1] & 0x1f,
+	
+			drawgfx(bitmap,Machine->gfx[2],
+					irem_textram[offs] + ((irem_textram[offs + 1] & 0x40) << 3) + ((irem_textram[offs + 1] & 0x10) << 4),
+					(irem_textram[offs + 1] & 0x0f),
 					flipscreen,flipscreen,
-					8*sx,8*sy,
-					0,TRANSPARENCY_NONE,0);
+					8*sx+128,8*sy,
+					&Machine->visible_area,TRANSPARENCY_PEN, 0);
 		}
 	}
-
-
+	
+	static void kidniki_draw_text(struct mame_bitmap *bitmap)
 	{
-		int scrollx;
-
+		int offs;
+		int scrolly;
+	
+	
 		if (flipscreen)
-			scrollx = irem_background_hscroll + 2;
+			scrolly = kidniki_text_vscroll-0x180;
 		else
-			scrollx = -irem_background_hscroll + 2;
-
-		copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
-	}
-}
-
-static void spelunkr_draw_background(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-
-	for (offs = videoram_size-2;offs >= 0;offs -= 2)
-	{
-		if (dirtybuffer[offs] || dirtybuffer[offs+1])
+			scrolly = -kidniki_text_vscroll+0x180;
+	
+	
+		for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
 		{
 			int sx,sy;
-
-
-			dirtybuffer[offs] = 0;
-			dirtybuffer[offs+1] = 0;
-
-			sx = (offs/2) % 64;
-			sy = (offs/2) / 64;
-
+	
+	
+			sx = (offs/2) % 32;
+			sy = (offs/2) / 32;
+	
 			if (flipscreen)
 			{
-				sx = 63 - sx;
-				sy = 63 - sy;
+				sx = 31 - sx;
+				sy = 31 - sy;
 			}
-
-			drawgfx(tmpbitmap,Machine->gfx[0],
-					videoram[offs]
-							+ ((videoram[offs+1] & 0x10) << 4)
-							+ ((videoram[offs+1] & 0x20) << 6)
-							+ ((videoram[offs+1] & 0xc0) << 3),
-					(videoram[offs+1] & 0x0f) + (spelunk2_palbank << 4),
+	
+			drawgfx(bitmap,Machine->gfx[2],
+					irem_textram[offs] + ((irem_textram[offs + 1] & 0xc0) << 2),
+					(irem_textram[offs + 1] & 0x1f),
 					flipscreen,flipscreen,
-					8*sx,8*sy,
-					0,TRANSPARENCY_NONE,0);
+					12*sx + 64,8*sy + scrolly,
+					&Machine->visible_area,TRANSPARENCY_PEN, 0);
 		}
 	}
-
-
+	
+	static void spelunkr_draw_text(struct mame_bitmap *bitmap)
 	{
-		int scrollx,scrolly;
-
-		if (flipscreen)
-		{
-			scrollx = irem_background_hscroll;
-			scrolly = irem_background_vscroll - 128;
-		}
-		else
-		{
-			scrollx = -irem_background_hscroll;
-			scrolly = -irem_background_vscroll - 128;
-		}
-
-		copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,1,&scrolly,&Machine->visible_area,TRANSPARENCY_NONE,0);
-	}
-}
-
-static void spelunk2_draw_background(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-
-	for (offs = videoram_size-2;offs >= 0;offs -= 2)
-	{
-		if (dirtybuffer[offs] || dirtybuffer[offs+1])
+		int offs;
+	
+	
+		for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
 		{
 			int sx,sy;
-
-
-			dirtybuffer[offs] = 0;
-			dirtybuffer[offs+1] = 0;
-
-			sx = (offs/2) % 64;
-			sy = (offs/2) / 64;
-
+	
+	
+			sx = (offs/2) % 32;
+			sy = (offs/2) / 32;
+	
 			if (flipscreen)
 			{
-				sx = 63 - sx;
-				sy = 63 - sy;
+				sx = 31 - sx;
+				sy = 31 - sy;
 			}
-
-			drawgfx(tmpbitmap,Machine->gfx[0],
-					videoram[offs] + ((videoram[offs+1] & 0xf0) << 4),
-					(videoram[offs+1] & 0x0f) + (spelunk2_palbank << 4),
+	
+			drawgfx(bitmap,Machine->gfx[2],
+					irem_textram[offs] + ((irem_textram[offs + 1] & 0x10) << 4),
+					(irem_textram[offs + 1] & 0x0f) + (spelunk2_palbank << 4),
 					flipscreen,flipscreen,
-					8*sx,8*sy,
-					0,TRANSPARENCY_NONE,0);
+					12*sx + 64,8*sy,
+					&Machine->visible_area,TRANSPARENCY_PEN, 0);
 		}
 	}
-
-
+	
+	static void youjyudn_draw_text(struct mame_bitmap *bitmap)
 	{
-		int scrollx,scrolly;
-
-		if (flipscreen)
-		{
-			scrollx = irem_background_hscroll;
-			scrolly = irem_background_vscroll - 128;
-		}
-		else
-		{
-			scrollx = -irem_background_hscroll;
-			scrolly = -irem_background_vscroll - 128;
-		}
-
-		copyscrollbitmap(bitmap,tmpbitmap,1,&scrollx,1,&scrolly,&Machine->visible_area,TRANSPARENCY_NONE,0);
-	}
-}
-
-static void youjyudn_draw_background(struct mame_bitmap *bitmap,int priority)
-{
-	int offs;
-
-
-	priority <<= 4;
-
-	for (offs = videoram_size - 2;offs >= 0;offs -= 2)
-	{
-		if ((videoram[offs + 1] & 0x10) == priority)
+		int offs;
+	
+	
+		for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
 		{
 			int sx,sy;
-			sx = (offs/2) % 64;
-			sy = (offs/2) / 64;
-
+	
+	
+			sx = (offs/2) % 32;
+			sy = (offs/2) / 32;
+	
 			if (flipscreen)
 			{
-				sx = 63 - sx;
-				sy = 15 - sy;
+				sx = 31 - sx;
+				sy = 31 - sy;
 			}
-
-			drawgfx(bitmap,Machine->gfx[0],
-					videoram[offs] + ((videoram[offs + 1] & 0x60) << 3),
-					videoram[offs + 1] & 0x1f,
+	
+			drawgfx(bitmap,Machine->gfx[2],
+					irem_textram[offs] + ((irem_textram[offs + 1] & 0xc0) << 2),
+					irem_textram[offs + 1] & 0x0f,
 					flipscreen,flipscreen,
-					(8*sx - (irem_background_hscroll-2))&0x1ff,16*sy,
-					&Machine->visible_area,TRANSPARENCY_NONE,0);
+					12*sx + 64,8*sy,
+					&Machine->visible_area,TRANSPARENCY_PEN, 0);
 		}
 	}
-}
-
-
-
-static void battroad_draw_text(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-
-	for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
+	
+	
+	VIDEO_UPDATE( kungfum )
 	{
-		int sx,sy;
-
-
-		sx = (offs/2) % 32;
-		sy = (offs/2) / 32;
-
-		if (flipscreen)
-		{
-			sx = 31 - sx;
-			sy = 31 - sy;
-		}
-
-		drawgfx(bitmap,Machine->gfx[2],
-				irem_textram[offs] + ((irem_textram[offs + 1] & 0x40) << 3) + ((irem_textram[offs + 1] & 0x10) << 4),
-				(irem_textram[offs + 1] & 0x0f),
-				flipscreen,flipscreen,
-				8*sx+128,8*sy,
-				&Machine->visible_area,TRANSPARENCY_PEN, 0);
+		kungfum_draw_background(bitmap,0);
+		draw_sprites(bitmap);
+		kungfum_draw_background(bitmap,1);
 	}
-}
-
-static void kidniki_draw_text(struct mame_bitmap *bitmap)
-{
-	int offs;
-	int scrolly;
-
-
-	if (flipscreen)
-		scrolly = kidniki_text_vscroll-0x180;
-	else
-		scrolly = -kidniki_text_vscroll+0x180;
-
-
-	for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
+	
+	VIDEO_UPDATE( battroad )
 	{
-		int sx,sy;
-
-
-		sx = (offs/2) % 32;
-		sy = (offs/2) / 32;
-
-		if (flipscreen)
-		{
-			sx = 31 - sx;
-			sy = 31 - sy;
-		}
-
-		drawgfx(bitmap,Machine->gfx[2],
-				irem_textram[offs] + ((irem_textram[offs + 1] & 0xc0) << 2),
-				(irem_textram[offs + 1] & 0x1f),
-				flipscreen,flipscreen,
-				12*sx + 64,8*sy + scrolly,
-				&Machine->visible_area,TRANSPARENCY_PEN, 0);
+		battroad_draw_background(bitmap, 0);
+		draw_priority_sprites(bitmap, 0);
+		battroad_draw_background(bitmap, 1);
+		draw_priority_sprites(bitmap, 1);
+		battroad_draw_text(bitmap);
 	}
-}
-
-static void spelunkr_draw_text(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-
-	for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
+	
+	VIDEO_UPDATE( ldrun )
 	{
-		int sx,sy;
-
-
-		sx = (offs/2) % 32;
-		sy = (offs/2) / 32;
-
-		if (flipscreen)
-		{
-			sx = 31 - sx;
-			sy = 31 - sy;
-		}
-
-		drawgfx(bitmap,Machine->gfx[2],
-				irem_textram[offs] + ((irem_textram[offs + 1] & 0x10) << 4),
-				(irem_textram[offs + 1] & 0x0f) + (spelunk2_palbank << 4),
-				flipscreen,flipscreen,
-				12*sx + 64,8*sy,
-				&Machine->visible_area,TRANSPARENCY_PEN, 0);
+		ldrun_draw_background(bitmap, 0);
+		draw_priority_sprites(bitmap, 0);
+		ldrun_draw_background(bitmap, 1);
+		draw_priority_sprites(bitmap, 1);
 	}
-}
-
-static void youjyudn_draw_text(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-
-	for (offs = irem_textram_size - 2;offs >= 0;offs -= 2)
+	
+	VIDEO_UPDATE( ldrun4 )
 	{
-		int sx,sy;
-
-
-		sx = (offs/2) % 32;
-		sy = (offs/2) / 32;
-
-		if (flipscreen)
-		{
-			sx = 31 - sx;
-			sy = 31 - sy;
-		}
-
-		drawgfx(bitmap,Machine->gfx[2],
-				irem_textram[offs] + ((irem_textram[offs + 1] & 0xc0) << 2),
-				irem_textram[offs + 1] & 0x0f,
-				flipscreen,flipscreen,
-				12*sx + 64,8*sy,
-				&Machine->visible_area,TRANSPARENCY_PEN, 0);
+		ldrun4_draw_background(bitmap);
+		draw_sprites(bitmap);
 	}
-}
-
-
-VIDEO_UPDATE( kungfum )
-{
-	kungfum_draw_background(bitmap,0);
-	draw_sprites(bitmap);
-	kungfum_draw_background(bitmap,1);
-}
-
-VIDEO_UPDATE( battroad )
-{
-	battroad_draw_background(bitmap, 0);
-	draw_priority_sprites(bitmap, 0);
-	battroad_draw_background(bitmap, 1);
-	draw_priority_sprites(bitmap, 1);
-	battroad_draw_text(bitmap);
-}
-
-VIDEO_UPDATE( ldrun )
-{
-	ldrun_draw_background(bitmap, 0);
-	draw_priority_sprites(bitmap, 0);
-	ldrun_draw_background(bitmap, 1);
-	draw_priority_sprites(bitmap, 1);
-}
-
-VIDEO_UPDATE( ldrun4 )
-{
-	ldrun4_draw_background(bitmap);
-	draw_sprites(bitmap);
-}
-
-VIDEO_UPDATE( lotlot )
-{
-	lotlot_draw_background(bitmap);
-	draw_sprites(bitmap);
-}
-
-VIDEO_UPDATE( kidniki )
-{
-	kidniki_draw_background(bitmap);
-	draw_sprites(bitmap);
-	kidniki_draw_text(bitmap);
-}
-
-VIDEO_UPDATE( spelunkr )
-{
-	spelunkr_draw_background(bitmap);
-	draw_sprites(bitmap);
-	spelunkr_draw_text(bitmap);
-}
-
-VIDEO_UPDATE( spelunk2 )
-{
-	spelunk2_draw_background(bitmap);
-	draw_sprites(bitmap);
-	spelunkr_draw_text(bitmap);
-}
-
-VIDEO_UPDATE( youjyudn )
-{
-	youjyudn_draw_background(bitmap,0);
-	draw_sprites(bitmap);
-	youjyudn_draw_background(bitmap,1);
-	youjyudn_draw_text(bitmap);
+	
+	VIDEO_UPDATE( lotlot )
+	{
+		lotlot_draw_background(bitmap);
+		draw_sprites(bitmap);
+	}
+	
+	VIDEO_UPDATE( kidniki )
+	{
+		kidniki_draw_background(bitmap);
+		draw_sprites(bitmap);
+		kidniki_draw_text(bitmap);
+	}
+	
+	VIDEO_UPDATE( spelunkr )
+	{
+		spelunkr_draw_background(bitmap);
+		draw_sprites(bitmap);
+		spelunkr_draw_text(bitmap);
+	}
+	
+	VIDEO_UPDATE( spelunk2 )
+	{
+		spelunk2_draw_background(bitmap);
+		draw_sprites(bitmap);
+		spelunkr_draw_text(bitmap);
+	}
+	
+	VIDEO_UPDATE( youjyudn )
+	{
+		youjyudn_draw_background(bitmap,0);
+		draw_sprites(bitmap);
+		youjyudn_draw_background(bitmap,1);
+		youjyudn_draw_text(bitmap);
+	}
 }

@@ -7,11 +7,8 @@ extern data16_t *deco16_pf12_control,*deco16_pf34_control;
 extern data16_t deco16_priority;
 
 extern data16_t *deco16_raster_display_list;
-extern int deco16_raster_display_position;
 
-int deco16_1_video_init(void);
 int deco16_2_video_init(int split);
-int deco_allocate_sprite_bitmap(void);
 
 void deco16_pf12_update(const data16_t *rowscroll_1_ptr, const data16_t *rowscroll_2_ptr);
 void deco16_pf34_update(const data16_t *rowscroll_1_ptr, const data16_t *rowscroll_2_ptr);
@@ -28,7 +25,6 @@ void deco16_tilemap_2_draw(struct mame_bitmap *bitmap, const struct rectangle *c
 void deco16_tilemap_3_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int flags, UINT32 priority);
 void deco16_tilemap_4_draw(struct mame_bitmap *bitmap, const struct rectangle *cliprect, int flags, UINT32 priority);
 
-void deco16_clear_sprite_priority_bitmap(void);
 void deco16_pdrawgfx(struct mame_bitmap *dest,const struct GfxElement *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
 		const struct rectangle *clip,int transparency,int transparent_color,UINT32 pri_mask,UINT32 sprite_mask);
@@ -48,4 +44,3 @@ WRITE16_HANDLER( deco16_priority_w );
 
 READ16_HANDLER( deco16_71_r );
 
-void deco16_print_debug_info(void);

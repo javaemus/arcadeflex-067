@@ -130,9 +130,6 @@ extern data32_t *paletteram32;
 	PROTOTYPES
 -------------------------------------------------*/
 
-int palette_start(void);
-int palette_init(void);
-int palette_get_total_colors_with_ui(void);
 
 void palette_update_display(struct mame_display *display);
 
@@ -160,17 +157,10 @@ pen_t get_black_pen(void);
 /* here are some functions to handle commonly used palette layouts, so you don't
    have to write your own paletteram_w() function. */
 
-READ_HANDLER( paletteram_r );
-READ_HANDLER( paletteram_2_r );
 READ16_HANDLER( paletteram16_word_r );
 READ16_HANDLER( paletteram16_2_word_r );
 READ32_HANDLER( paletteram32_r );
 
-WRITE_HANDLER( paletteram_BBGGGRRR_w );
-WRITE_HANDLER( paletteram_RRRGGGBB_w );
-WRITE_HANDLER( paletteram_BBBGGGRR_w );
-WRITE_HANDLER( paletteram_IIBBGGRR_w );
-WRITE_HANDLER( paletteram_BBGGRRII_w );
 
 /* _w       least significant byte first */
 /* _swap_w  most significant byte first */
@@ -178,39 +168,15 @@ WRITE_HANDLER( paletteram_BBGGRRII_w );
 /* _word_w  use with 16 bit CPU */
 /* R, G, B are bits, r, g, b are bytes */
 /*                        MSB          LSB */
-WRITE_HANDLER( paletteram_xxxxBBBBGGGGRRRR_w );
-WRITE_HANDLER( paletteram_xxxxBBBBGGGGRRRR_swap_w );
-WRITE_HANDLER( paletteram_xxxxBBBBGGGGRRRR_split1_w );	/* uses paletteram[] */
-WRITE_HANDLER( paletteram_xxxxBBBBGGGGRRRR_split2_w );	/* uses paletteram_2[] */
 WRITE16_HANDLER( paletteram16_xxxxBBBBGGGGRRRR_word_w );
-WRITE_HANDLER( paletteram_xxxxBBBBRRRRGGGG_w );
-WRITE_HANDLER( paletteram_xxxxBBBBRRRRGGGG_swap_w );
-WRITE_HANDLER( paletteram_xxxxBBBBRRRRGGGG_split1_w );	/* uses paletteram[] */
-WRITE_HANDLER( paletteram_xxxxBBBBRRRRGGGG_split2_w );	/* uses paletteram_2[] */
 WRITE16_HANDLER( paletteram16_xxxxBBBBRRRRGGGG_word_w );
-WRITE_HANDLER( paletteram_xxxxRRRRBBBBGGGG_split1_w );	/* uses paletteram[] */
-WRITE_HANDLER( paletteram_xxxxRRRRBBBBGGGG_split2_w );	/* uses paletteram_2[] */
-WRITE_HANDLER( paletteram_xxxxRRRRGGGGBBBB_w );
-WRITE_HANDLER( paletteram_xxxxRRRRGGGGBBBB_swap_w );
 WRITE16_HANDLER( paletteram16_xxxxRRRRGGGGBBBB_word_w );
-WRITE_HANDLER( paletteram_RRRRGGGGBBBBxxxx_swap_w );
-WRITE_HANDLER( paletteram_RRRRGGGGBBBBxxxx_split1_w );	/* uses paletteram[] */
-WRITE_HANDLER( paletteram_RRRRGGGGBBBBxxxx_split2_w );	/* uses paletteram_2[] */
 WRITE16_HANDLER( paletteram16_RRRRGGGGBBBBxxxx_word_w );
-WRITE_HANDLER( paletteram_BBBBGGGGRRRRxxxx_swap_w );
-WRITE_HANDLER( paletteram_BBBBGGGGRRRRxxxx_split1_w );	/* uses paletteram[] */
-WRITE_HANDLER( paletteram_BBBBGGGGRRRRxxxx_split2_w );	/* uses paletteram_2[] */
 WRITE16_HANDLER( paletteram16_BBBBGGGGRRRRxxxx_word_w );
-WRITE_HANDLER( paletteram_xBBBBBGGGGGRRRRR_w );
-WRITE_HANDLER( paletteram_xBBBBBGGGGGRRRRR_swap_w );
-WRITE_HANDLER( paletteram_xBBBBBGGGGGRRRRR_split1_w );	/* uses paletteram[] */
-WRITE_HANDLER( paletteram_xBBBBBGGGGGRRRRR_split2_w );	/* uses paletteram_2[] */
 WRITE16_HANDLER( paletteram16_xBBBBBGGGGGRRRRR_word_w );
-WRITE_HANDLER( paletteram_xRRRRRGGGGGBBBBB_w );
 WRITE16_HANDLER( paletteram16_xRRRRRGGGGGBBBBB_word_w );
 WRITE16_HANDLER( paletteram16_xGGGGGRRRRRBBBBB_word_w );
 WRITE16_HANDLER( paletteram16_xGGGGGBBBBBRRRRR_word_w );
-WRITE_HANDLER( paletteram_RRRRRGGGGGBBBBBx_w );
 WRITE16_HANDLER( paletteram16_RRRRRGGGGGBBBBBx_word_w );
 WRITE16_HANDLER( paletteram16_IIIIRRRRGGGGBBBB_word_w );
 WRITE16_HANDLER( paletteram16_RRRRGGGGBBBBIIII_word_w );

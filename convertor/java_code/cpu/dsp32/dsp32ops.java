@@ -9,7 +9,6 @@
 **#################################################################################################*/
 
 
-extern int debug_key_pressed;
 
 
 /*###################################################################################################
@@ -735,7 +734,7 @@ static void goto_t(void)
 
 static void goto_pl(void)
 {
-	if (!nFLAG)
+	if (nFLAG == 0)
 	{
 		UINT32 op = OP;
 		execute_one();
@@ -759,7 +758,7 @@ static void goto_mi(void)
 
 static void goto_ne(void)
 {
-	if (!zFLAG)
+	if (zFLAG == 0)
 	{
 		UINT32 op = OP;
 		execute_one();
@@ -783,7 +782,7 @@ static void goto_eq(void)
 
 static void goto_vc(void)
 {
-	if (!vFLAG)
+	if (vFLAG == 0)
 	{
 		UINT32 op = OP;
 		execute_one();
@@ -807,7 +806,7 @@ static void goto_vs(void)
 
 static void goto_cc(void)
 {
-	if (!cFLAG)
+	if (cFLAG == 0)
 	{
 		UINT32 op = OP;
 		execute_one();

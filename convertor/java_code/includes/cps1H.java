@@ -36,6 +36,5 @@ INTERRUPT_GEN( cps1_qsound_interrupt );
 
 extern struct QSound_interface qsound_interface;
 
-extern int scanline;
 
 #endif

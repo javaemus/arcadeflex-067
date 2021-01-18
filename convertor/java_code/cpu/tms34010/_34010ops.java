@@ -278,7 +278,7 @@ static void drav_b(void) { DRAV(B); }
 	INT32 *rd = &R##REG(R##DSTREG);							\
 	INT32 r = 0 - *rd;										\
 	SET_NZV_SUB(0,*rd,r);									\
-	if (!N_FLAG)											\
+	if (N_FLAG == 0)											\
 	{														\
 		*rd = r;											\
 	}														\
@@ -340,7 +340,7 @@ static void addi_l_b(void) { ADDI_L(B); }
 #define ADDK(R)				              			      	\
 {			  												\
 	INT32 r,b,*rd;											\
-	INT32 a = PARAM_K; if (!a) a = 32;						\
+	INT32 a = PARAM_K; if (a == 0) a = 32;						\
 	rd = &R##REG(R##DSTREG);								\
 	b = *rd;												\
 	r = *rd = a + b;										\
@@ -630,7 +630,7 @@ static void mmtm_b(void) { MMTM(B,0x10); }
 	INT32 *rs = &R##REG(R##SRCREG);								\
 	INT32 *rd = &R##REG(R##DSTREG);								\
 	V_FLAG = (*rs == 0);										\
-	if (!V_FLAG)												\
+	if (V_FLAG == 0)												\
 	{															\
 		*rd %= *rs;												\
 		SET_Z(*rd);												\
@@ -645,7 +645,7 @@ static void mods_b(void) { MODS(B); }
 	INT32 *rs = &R##REG(R##SRCREG);								\
 	INT32 *rd = &R##REG(R##DSTREG);								\
 	V_FLAG = (*rs == 0);										\
-	if (!V_FLAG)												\
+	if (V_FLAG == 0)												\
 	{															\
 		*rd = (UINT32)*rd % (UINT32)*rs;						\
 		SET_Z(*rd);												\
@@ -971,7 +971,7 @@ static void subi_l_b(void) { SUBI_L(B); }
 {			  													\
 	INT32 r;													\
 	INT32 *rd = &R##REG(R##DSTREG);								\
-	INT32 t = PARAM_K; if (!t) t = 32;							\
+	INT32 t = PARAM_K; if (t == 0) t = 32;							\
 	r = *rd - t;												\
 	SET_NZCV_SUB(*rd,t,r);										\
 	*rd = r;													\
@@ -1042,7 +1042,7 @@ static void movi_l_b(void) { MOVI_L(B); }
 
 #define MOVK(R)		       		       			    			\
 {																\
-	INT32 k = PARAM_K; if (!k) k = 32;							\
+	INT32 k = PARAM_K; if (k == 0) k = 32;							\
 	R##REG(R##DSTREG) = k;										\
 	COUNT_CYCLES(1);											\
 }
@@ -1410,7 +1410,7 @@ static void dsj_b (void) { DSJ(B); }
 
 #define DSJEQ(R)												\
 {																\
-	if (!NOTZ_FLAG)												\
+	if (NOTZ_FLAG == 0)												\
 	{															\
 		if (--R##REG(R##DSTREG))								\
 		{														\
@@ -2140,7 +2140,7 @@ static void cmovmc_b(void)
 {															\
 	INT32 r;												\
 	INT32 *rd = &R##REG(R##DSTREG);							\
-	INT32 t = PARAM_K; if (!t) t = 32;						\
+	INT32 t = PARAM_K; if (t == 0) t = 32;						\
 	r = *rd - t;											\
 	SET_NZCV_SUB(*rd,t,r);									\
 	COUNT_CYCLES(1);										\

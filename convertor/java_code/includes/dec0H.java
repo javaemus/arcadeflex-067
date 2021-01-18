@@ -28,9 +28,6 @@ WRITE16_HANDLER( dec0_update_sprites_w );
 WRITE16_HANDLER( dec0_paletteram_rg_w );
 WRITE16_HANDLER( dec0_paletteram_b_w );
 
-READ_HANDLER( dec0_pf3_data_8bit_r );
-WRITE_HANDLER( dec0_pf3_data_8bit_w );
-WRITE_HANDLER( dec0_pf3_control_8bit_w );
 
 /* Machine prototypes */
 READ16_HANDLER( dec0_controls_r );
@@ -47,7 +44,6 @@ WRITE16_HANDLER( slyspy_248000_w );
 WRITE16_HANDLER( slyspy_24c000_w );
 WRITE16_HANDLER( slyspy_24e000_w );
 
-WRITE_HANDLER( robocop_bankswitch_w );
 
 DRIVER_INIT( slyspy );
 DRIVER_INIT( hippodrm );
@@ -57,12 +53,6 @@ DRIVER_INIT( hbarrel );
 DRIVER_INIT( hbarrelw );
 DRIVER_INIT( birdtry );
 
-extern void dec0_i8751_write(int data);
-extern void dec0_i8751_reset(void);
-READ_HANDLER( hippodrm_prot_r );
-WRITE_HANDLER( hippodrm_prot_w );
-READ_HANDLER( hippodrm_shared_r );
-WRITE_HANDLER( hippodrm_shared_w );
 
 extern data16_t *dec0_ram;
 extern data8_t *robocop_shared_ram;

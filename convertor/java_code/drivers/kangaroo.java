@@ -116,431 +116,447 @@ interrupts:
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "kangaroo.h"
-#include "cpu/z80/z80.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-
-
-/*************************************
- *
- *	Machine init
- *
- *************************************/
-
-static MACHINE_INIT( kangaroo )
+public class kangaroo
 {
-	/* I think there is a bug in the startup checks of the game. At the very */
-	/* beginning, during the RAM check, it goes one byte too far, and ends up */
-	/* trying to write, and re-read, location dfff. To the best of my knowledge, */
-	/* that is a ROM address, so the test fails and the code keeps jumping back */
-	/* at 0000. */
-	/* However, a NMI causes a successful reset. Maybe the hardware generates a */
-	/* NMI short after power on, therefore masking the bug? The NMI is generated */
-	/* by the MB8841 custom microcontroller, so this could be a way to disguise */
-	/* the copy protection. */
-	/* Anyway, what I do here is just immediately generate the NMI, so the game */
-	/* properly starts. */
-	cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);
+	
+	
+	
+	/*************************************
+	 *
+	 *	Machine init
+	 *
+	 *************************************/
+	
+	static MACHINE_INIT( kangaroo )
+	{
+		/* I think there is a bug in the startup checks of the game. At the very */
+		/* beginning, during the RAM check, it goes one byte too far, and ends up */
+		/* trying to write, and re-read, location dfff. To the best of my knowledge, */
+		/* that is a ROM address, so the test fails and the code keeps jumping back */
+		/* at 0000. */
+		/* However, a NMI causes a successful reset. Maybe the hardware generates a */
+		/* NMI short after power on, therefore masking the bug? The NMI is generated */
+		/* by the MB8841 custom microcontroller, so this could be a way to disguise */
+		/* the copy protection. */
+		/* Anyway, what I do here is just immediately generate the NMI, so the game */
+		/* properly starts. */
+		cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Custom CPU RAM snooping
+	 *
+	 *************************************/
+	
+	static UINT8 kangaroo_clock=0;
+	
+	
+	/* I have no idea what the security chip is nor whether it really does,
+	   this just seems to do the trick -V-
+	*/
+	
+	public static ReadHandlerPtr kangaroo_sec_chip_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+	/*  kangaroo_clock = (kangaroo_clock << 1) + 1; */
+	  kangaroo_clock++;
+	  return (kangaroo_clock & 0x0f);
+	} };
+	
+	public static WriteHandlerPtr kangaroo_sec_chip_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+	/*  kangaroo_clock = val & 0x0f; */
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Coin control
+	 *
+	 *************************************/
+	
+	public static WriteHandlerPtr kangaroo_coin_counter_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		coin_counter_w(0, data & 1);
+		coin_counter_w(1, data & 2);
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Main CPU memory handlers
+	 *
+	 *************************************/
+	
+	public static Memory_ReadAddress readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x5fff, MRA_ROM ),
+		new Memory_ReadAddress( 0xc000, 0xdfff, MRA_BANK1 ),
+		new Memory_ReadAddress( 0xe000, 0xe3ff, MRA_RAM ),
+		new Memory_ReadAddress( 0xe400, 0xe400, input_port_3_r ),
+		new Memory_ReadAddress( 0xec00, 0xec00, input_port_0_r ),
+		new Memory_ReadAddress( 0xed00, 0xed00, input_port_1_r ),
+		new Memory_ReadAddress( 0xee00, 0xee00, input_port_2_r ),
+		new Memory_ReadAddress( 0xef00, 0xef00, kangaroo_sec_chip_r ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x5fff, MWA_ROM ),
+		new Memory_WriteAddress( 0x8000, 0xbfff, kangaroo_videoram_w ),
+		new Memory_WriteAddress( 0xc000, 0xdfff, MWA_ROM ),
+		new Memory_WriteAddress( 0xe000, 0xe3ff, MWA_RAM ),
+		new Memory_WriteAddress( 0xe800, 0xe805, kangaroo_blitter_w, kangaroo_blitter ),
+		new Memory_WriteAddress( 0xe806, 0xe807, MWA_RAM, kangaroo_scroll ),
+		new Memory_WriteAddress( 0xe808, 0xe808, kangaroo_bank_select_w, kangaroo_bank_select ),
+		new Memory_WriteAddress( 0xe809, 0xe809, kangaroo_video_control_w, kangaroo_video_control ),
+		new Memory_WriteAddress( 0xe80a, 0xe80a, kangaroo_color_mask_w ),
+		new Memory_WriteAddress( 0xec00, 0xec00, soundlatch_w ),
+		new Memory_WriteAddress( 0xed00, 0xed00, kangaroo_coin_counter_w ),
+		new Memory_WriteAddress( 0xef00, 0xefff, kangaroo_sec_chip_w ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound CPU memory handlers
+	 *
+	 *************************************/
+	
+	public static Memory_ReadAddress sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x0fff, MRA_ROM ),
+		new Memory_ReadAddress( 0x4000, 0x43ff, MRA_RAM ),
+		new Memory_ReadAddress( 0x6000, 0x6000, soundlatch_r ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x0fff, MWA_ROM ),
+		new Memory_WriteAddress( 0x4000, 0x43ff, MWA_RAM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static IO_WritePort sound_writeport[]={
+		new IO_WritePort(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_WritePort( 0x7000, 0x7000, AY8910_write_port_0_w ),
+		new IO_WritePort( 0x8000, 0x8000, AY8910_control_port_0_w ),
+		new IO_WritePort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Port definitions
+	 *
+	 *************************************/
+	
+	static InputPortPtr input_ports_fnkyfish = new InputPortPtr(){ public void handler() { 
+		PORT_START();       /* IN0 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START2 );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 );
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+	
+		PORT_START();       /* IN1 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY );
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 );
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+	
+		PORT_START();       /* IN2 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL );
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+	
+		PORT_START();       /* DSW0 */
+		PORT_DIPNAME( 0x01, 0x00, DEF_STR( "Lives") );
+		PORT_DIPSETTING(    0x00, "3" );
+		PORT_DIPSETTING(    0x01, "5" );
+		PORT_DIPNAME( 0x02, 0x02, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING(    0x02, DEF_STR( "Upright") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Cocktail") );
+		PORT_DIPNAME( 0x04, 0x00, DEF_STR( "Flip_Screen") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x04, DEF_STR( "On") );
+		PORT_DIPNAME( 0x08, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x08, DEF_STR( "On") );
+		PORT_DIPNAME( 0x10, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x10, DEF_STR( "On") );
+		PORT_DIPNAME( 0x20, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x20, DEF_STR( "On") );
+		PORT_DIPNAME( 0x40, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "On") );
+		PORT_DIPNAME( 0x80, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "On") );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	static InputPortPtr input_ports_kangaroo = new InputPortPtr(){ public void handler() { 
+		PORT_START();       /* IN0 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START2 );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 );
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_COIN2 );
+		PORT_DIPNAME( 0x20, 0x00, "Music" );
+		PORT_DIPSETTING(    0x20, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x40, 0x00, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Upright") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "Cocktail") );
+		PORT_DIPNAME( 0x80, 0x00, DEF_STR( "Flip_Screen") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "On") );
+	
+		PORT_START();       /* IN1 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY );
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 );
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_SERVICE( 0x80, IP_ACTIVE_HIGH );
+	
+		PORT_START();       /* IN2 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL );
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+	
+		PORT_START();       /* DSW0 */
+		PORT_DIPNAME( 0x01, 0x00, DEF_STR( "Lives") );
+		PORT_DIPSETTING(    0x00, "3" );
+		PORT_DIPSETTING(    0x01, "5" );
+		PORT_DIPNAME( 0x02, 0x00, DEF_STR( "Difficulty") );
+		PORT_DIPSETTING(    0x00, "Easy" );
+		PORT_DIPSETTING(    0x02, "Hard" );
+		PORT_DIPNAME( 0x0c, 0x00, DEF_STR( "Bonus_Life") );
+		PORT_DIPSETTING(    0x08, "10000 30000" );
+		PORT_DIPSETTING(    0x0c, "20000 40000" );
+		PORT_DIPSETTING(    0x04, "10000" );
+		PORT_DIPSETTING(    0x00, "None" );
+		PORT_DIPNAME( 0xf0, 0x00, DEF_STR( "Coinage") );
+		PORT_DIPSETTING(    0x10, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(    0x20, "A 2C/1C B 1C/3C" );
+		PORT_DIPSETTING(    0x00, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(    0x30, "A 1C/1C B 1C/2C" );
+		PORT_DIPSETTING(    0x40, "A 1C/1C B 1C/3C" );
+		PORT_DIPSETTING(    0x50, "A 1C/1C B 1C/4C" );
+		PORT_DIPSETTING(    0x60, "A 1C/1C B 1C/5C" );
+		PORT_DIPSETTING(    0x70, "A 1C/1C B 1C/6C" );
+		PORT_DIPSETTING(    0x80, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(    0x90, "A 1C/2C B 1C/4C" );
+		PORT_DIPSETTING(    0xa0, "A 1C/2C B 1C/5C" );
+		PORT_DIPSETTING(    0xe0, "A 1C/2C B 1C/6C" );
+		PORT_DIPSETTING(    0xb0, "A 1C/2C B 1C/10C" );
+		PORT_DIPSETTING(    0xc0, "A 1C/2C B 1C/11C" );
+		PORT_DIPSETTING(    0xd0, "A 1C/2C B 1C/12C" );
+		/* 0xe0 gives A 1/2 B 1/6 */
+		PORT_DIPSETTING(    0xf0, DEF_STR( "Free_Play") );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound definitions
+	 *
+	 *************************************/
+	
+	static AY8910interface ay8910_interface = new AY8910interface
+	(
+		1,  /* 1 chip */
+		10000000/8,     /* 1.25 MHz */
+		new int[] { 50 },
+		new ReadHandlerPtr[] { 0 },
+		new ReadHandlerPtr[] { 0 },
+		new WriteHandlerPtr[] { 0 },
+		new WriteHandlerPtr[] { 0 }
+	);
+	
+	
+	
+	/*************************************
+	 *
+	 *	Machine driver
+	 *
+	 *************************************/
+	
+	static MACHINE_DRIVER_START( kangaroo )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(Z80, 10000000/4)	/* 2.5 MHz */
+		MDRV_CPU_MEMORY(readmem,writemem)
+		MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	
+		MDRV_CPU_ADD(Z80, 10000000/4)	/* 2.5 MHz */
+		MDRV_CPU_FLAGS(CPU_16BIT_PORT | CPU_AUDIO_CPU)
+		MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+		MDRV_CPU_PORTS(0,sound_writeport)
+		MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	
+		MDRV_MACHINE_INIT(kangaroo)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(32*8, 32*8)
+		MDRV_VISIBLE_AREA(0, 255, 8, 255-8)
+		MDRV_PALETTE_LENGTH(24)
+	
+		MDRV_PALETTE_INIT(kangaroo)
+		MDRV_VIDEO_START(kangaroo)
+		MDRV_VIDEO_UPDATE(kangaroo)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(AY8910, ay8910_interface)
+	MACHINE_DRIVER_END
+	
+	
+	
+	/*************************************
+	 *
+	 *	ROM definitions
+	 *
+	 *************************************/
+	
+	static RomLoadPtr rom_fnkyfish = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x14000, REGION_CPU1, 0 );
+		ROM_LOAD( "tvg_64.0",    0x0000,  0x1000, 0xaf728803 );
+		ROM_LOAD( "tvg_65.1",    0x1000,  0x1000, 0x71959e6b );
+		ROM_LOAD( "tvg_66.2",    0x2000,  0x1000, 0x5ccf68d4 );
+		ROM_LOAD( "tvg_67.3",    0x3000,  0x1000, 0x938ff36f );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "tvg_68.8",    0x0000,  0x1000, 0xd36bb2be );
+	
+		ROM_REGION( 0x4000, REGION_GFX1, 0 );
+		ROM_LOAD( "tvg_69.v0",   0x0000, 0x1000, 0xcd532d0b );/* graphics ROMs */
+		ROM_LOAD( "tvg_71.v2",   0x1000, 0x1000, 0xa59c9713 );
+		ROM_LOAD( "tvg_70.v1",   0x2000, 0x1000, 0xfd308ef1 );
+		ROM_LOAD( "tvg_72.v3",   0x3000, 0x1000, 0x6ae9b584 );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_kangaroo = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x14000, REGION_CPU1, 0 );
+		ROM_LOAD( "tvg_75.0",    0x0000, 0x1000, 0x0d18c581 );
+		ROM_LOAD( "tvg_76.1",    0x1000, 0x1000, 0x5978d37a );
+		ROM_LOAD( "tvg_77.2",    0x2000, 0x1000, 0x522d1097 );
+		ROM_LOAD( "tvg_78.3",    0x3000, 0x1000, 0x063da970 );
+		ROM_LOAD( "tvg_79.4",    0x4000, 0x1000, 0x9e5cf8ca );
+		ROM_LOAD( "tvg_80.5",    0x5000, 0x1000, 0x2fc18049 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "tvg_81.8",    0x0000, 0x1000, 0xfb449bfd );
+	
+		ROM_REGION( 0x0800, REGION_CPU3, 0 ); /* 8k for the MB8841 custom microcontroller (currently not emulated) */
+		ROM_LOAD( "tvg_82.12",   0x0000, 0x0800, 0x57766f69 );
+	
+		ROM_REGION( 0x4000, REGION_GFX1, 0 );
+		ROM_LOAD( "tvg_83.v0",   0x0000, 0x1000, 0xc0446ca6 );
+		ROM_LOAD( "tvg_85.v2",   0x1000, 0x1000, 0x72c52695 );
+		ROM_LOAD( "tvg_84.v1",   0x2000, 0x1000, 0xe4cb26c2 );
+		ROM_LOAD( "tvg_86.v3",   0x3000, 0x1000, 0x9e6a599f );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_kangaroa = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );
+		ROM_LOAD( "tvg_75.0",    0x0000, 0x1000, 0x0d18c581 );
+		ROM_LOAD( "tvg_76.1",    0x1000, 0x1000, 0x5978d37a );
+		ROM_LOAD( "tvg_77.2",    0x2000, 0x1000, 0x522d1097 );
+		ROM_LOAD( "tvg_78.3",    0x3000, 0x1000, 0x063da970 );
+		ROM_LOAD( "tvg79.bin",   0x4000, 0x1000, 0x82a26c7d );
+		ROM_LOAD( "tvg80.bin",   0x5000, 0x1000, 0x3dead542 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "tvg_81.8",    0x0000, 0x1000, 0xfb449bfd );
+	
+		ROM_REGION( 0x0800, REGION_CPU3, 0 ); /* 8k for the MB8841 custom microcontroller (currently not emulated) */
+		ROM_LOAD( "tvg_82.12",   0x0000, 0x0800, 0x57766f69 );
+	
+		ROM_REGION( 0x4000, REGION_GFX1, 0 );
+		ROM_LOAD( "tvg_83.v0",   0x0000, 0x1000, 0xc0446ca6 );
+		ROM_LOAD( "tvg_85.v2",   0x1000, 0x1000, 0x72c52695 );
+		ROM_LOAD( "tvg_84.v1",   0x2000, 0x1000, 0xe4cb26c2 );
+		ROM_LOAD( "tvg_86.v3",   0x3000, 0x1000, 0x9e6a599f );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_kangarob = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x14000, REGION_CPU1, 0 );
+		ROM_LOAD( "tvg_75.0",    0x0000, 0x1000, 0x0d18c581 );
+		ROM_LOAD( "tvg_76.1",    0x1000, 0x1000, 0x5978d37a );
+		ROM_LOAD( "tvg_77.2",    0x2000, 0x1000, 0x522d1097 );
+		ROM_LOAD( "tvg_78.3",    0x3000, 0x1000, 0x063da970 );
+		ROM_LOAD( "tvg_79.4",    0x4000, 0x1000, 0x9e5cf8ca );
+		ROM_LOAD( "k6",          0x5000, 0x1000, 0x7644504a );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "tvg_81.8",    0x0000, 0x1000, 0xfb449bfd );
+	
+		ROM_REGION( 0x4000, REGION_GFX1, 0 );
+		ROM_LOAD( "tvg_83.v0",   0x0000, 0x1000, 0xc0446ca6 );
+		ROM_LOAD( "tvg_85.v2",   0x1000, 0x1000, 0x72c52695 );
+		ROM_LOAD( "tvg_84.v1",   0x2000, 0x1000, 0xe4cb26c2 );
+		ROM_LOAD( "tvg_86.v3",   0x3000, 0x1000, 0x9e6a599f );
+	ROM_END(); }}; 
+	
+	
+	
+	/*************************************
+	 *
+	 *	Game drivers
+	 *
+	 *************************************/
+	
+	public static GameDriver driver_fnkyfish	   = new GameDriver("1981"	,"fnkyfish"	,"kangaroo.java"	,rom_fnkyfish,null	,machine_driver_kangaroo	,input_ports_fnkyfish	,null	,ROT90	,	"Sun Electronics", "Funky Fish" )
+	public static GameDriver driver_kangaroo	   = new GameDriver("1982"	,"kangaroo"	,"kangaroo.java"	,rom_kangaroo,null	,machine_driver_kangaroo	,input_ports_kangaroo	,null	,ROT90	,	"Sun Electronics", "Kangaroo" )
+	public static GameDriver driver_kangaroa	   = new GameDriver("1982"	,"kangaroa"	,"kangaroo.java"	,rom_kangaroa,driver_kangaroo	,machine_driver_kangaroo	,input_ports_kangaroo	,null	,ROT90	,	"[Sun Electronics] (Atari license)", "Kangaroo (Atari)" )
+	public static GameDriver driver_kangarob	   = new GameDriver("1982"	,"kangarob"	,"kangaroo.java"	,rom_kangarob,driver_kangaroo	,machine_driver_kangaroo	,input_ports_kangaroo	,null	,ROT90	,	"bootleg", "Kangaroo (bootleg)" )
 }
-
-
-
-/*************************************
- *
- *	Custom CPU RAM snooping
- *
- *************************************/
-
-static UINT8 kangaroo_clock=0;
-
-
-/* I have no idea what the security chip is nor whether it really does,
-   this just seems to do the trick -V-
-*/
-
-static READ_HANDLER( kangaroo_sec_chip_r )
-{
-/*  kangaroo_clock = (kangaroo_clock << 1) + 1; */
-  kangaroo_clock++;
-  return (kangaroo_clock & 0x0f);
-}
-
-static WRITE_HANDLER( kangaroo_sec_chip_w )
-{
-/*  kangaroo_clock = val & 0x0f; */
-}
-
-
-
-/*************************************
- *
- *	Coin control
- *
- *************************************/
-
-static WRITE_HANDLER( kangaroo_coin_counter_w )
-{
-	coin_counter_w(0, data & 1);
-	coin_counter_w(1, data & 2);
-}
-
-
-
-/*************************************
- *
- *	Main CPU memory handlers
- *
- *************************************/
-
-static MEMORY_READ_START( readmem )
-	{ 0x0000, 0x5fff, MRA_ROM },
-	{ 0xc000, 0xdfff, MRA_BANK1 },
-	{ 0xe000, 0xe3ff, MRA_RAM },
-	{ 0xe400, 0xe400, input_port_3_r },
-	{ 0xec00, 0xec00, input_port_0_r },
-	{ 0xed00, 0xed00, input_port_1_r },
-	{ 0xee00, 0xee00, input_port_2_r },
-	{ 0xef00, 0xef00, kangaroo_sec_chip_r },
-MEMORY_END
-
-
-static MEMORY_WRITE_START( writemem )
-	{ 0x0000, 0x5fff, MWA_ROM },
-	{ 0x8000, 0xbfff, kangaroo_videoram_w },
-	{ 0xc000, 0xdfff, MWA_ROM },
-	{ 0xe000, 0xe3ff, MWA_RAM },
-	{ 0xe800, 0xe805, kangaroo_blitter_w, &kangaroo_blitter },
-	{ 0xe806, 0xe807, MWA_RAM, &kangaroo_scroll },
-	{ 0xe808, 0xe808, kangaroo_bank_select_w, &kangaroo_bank_select },
-	{ 0xe809, 0xe809, kangaroo_video_control_w, &kangaroo_video_control },
-	{ 0xe80a, 0xe80a, kangaroo_color_mask_w },
-	{ 0xec00, 0xec00, soundlatch_w },
-	{ 0xed00, 0xed00, kangaroo_coin_counter_w },
-	{ 0xef00, 0xefff, kangaroo_sec_chip_w },
-MEMORY_END
-
-
-
-/*************************************
- *
- *	Sound CPU memory handlers
- *
- *************************************/
-
-static MEMORY_READ_START( sound_readmem )
-	{ 0x0000, 0x0fff, MRA_ROM },
-	{ 0x4000, 0x43ff, MRA_RAM },
-	{ 0x6000, 0x6000, soundlatch_r },
-MEMORY_END
-
-
-static MEMORY_WRITE_START( sound_writemem )
-	{ 0x0000, 0x0fff, MWA_ROM },
-	{ 0x4000, 0x43ff, MWA_RAM },
-MEMORY_END
-
-
-static PORT_WRITE_START( sound_writeport )
-	{ 0x7000, 0x7000, AY8910_write_port_0_w },
-	{ 0x8000, 0x8000, AY8910_control_port_0_w },
-PORT_END
-
-
-
-/*************************************
- *
- *	Port definitions
- *
- *************************************/
-
-INPUT_PORTS_START( fnkyfish )
-	PORT_START      /* IN0 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START2 )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-
-	PORT_START      /* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-
-	PORT_START      /* IN2 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-
-	PORT_START      /* DSW0 */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPSETTING(    0x01, "5" )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
-INPUT_PORTS_END
-
-
-INPUT_PORTS_START( kangaroo )
-	PORT_START      /* IN0 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START2 )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_COIN2 )
-	PORT_DIPNAME( 0x20, 0x00, "Music" )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
-
-	PORT_START      /* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
-
-	PORT_START      /* IN2 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-
-	PORT_START      /* DSW0 */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPSETTING(    0x01, "5" )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x00, "Easy" )
-	PORT_DIPSETTING(    0x02, "Hard" )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x08, "10000 30000" )
-	PORT_DIPSETTING(    0x0c, "20000 40000" )
-	PORT_DIPSETTING(    0x04, "10000" )
-	PORT_DIPSETTING(    0x00, "None" )
-	PORT_DIPNAME( 0xf0, 0x00, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x20, "A 2C/1C B 1C/3C" )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x30, "A 1C/1C B 1C/2C" )
-	PORT_DIPSETTING(    0x40, "A 1C/1C B 1C/3C" )
-	PORT_DIPSETTING(    0x50, "A 1C/1C B 1C/4C" )
-	PORT_DIPSETTING(    0x60, "A 1C/1C B 1C/5C" )
-	PORT_DIPSETTING(    0x70, "A 1C/1C B 1C/6C" )
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x90, "A 1C/2C B 1C/4C" )
-	PORT_DIPSETTING(    0xa0, "A 1C/2C B 1C/5C" )
-	PORT_DIPSETTING(    0xe0, "A 1C/2C B 1C/6C" )
-	PORT_DIPSETTING(    0xb0, "A 1C/2C B 1C/10C" )
-	PORT_DIPSETTING(    0xc0, "A 1C/2C B 1C/11C" )
-	PORT_DIPSETTING(    0xd0, "A 1C/2C B 1C/12C" )
-	/* 0xe0 gives A 1/2 B 1/6 */
-	PORT_DIPSETTING(    0xf0, DEF_STR( Free_Play ) )
-INPUT_PORTS_END
-
-
-
-/*************************************
- *
- *	Sound definitions
- *
- *************************************/
-
-static struct AY8910interface ay8910_interface =
-{
-	1,  /* 1 chip */
-	10000000/8,     /* 1.25 MHz */
-	{ 50 },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ 0 }
-};
-
-
-
-/*************************************
- *
- *	Machine driver
- *
- *************************************/
-
-static MACHINE_DRIVER_START( kangaroo )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 10000000/4)	/* 2.5 MHz */
-	MDRV_CPU_MEMORY(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_CPU_ADD(Z80, 10000000/4)	/* 2.5 MHz */
-	MDRV_CPU_FLAGS(CPU_16BIT_PORT | CPU_AUDIO_CPU)
-	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
-	MDRV_CPU_PORTS(0,sound_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_MACHINE_INIT(kangaroo)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0, 255, 8, 255-8)
-	MDRV_PALETTE_LENGTH(24)
-
-	MDRV_PALETTE_INIT(kangaroo)
-	MDRV_VIDEO_START(kangaroo)
-	MDRV_VIDEO_UPDATE(kangaroo)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(AY8910, ay8910_interface)
-MACHINE_DRIVER_END
-
-
-
-/*************************************
- *
- *	ROM definitions
- *
- *************************************/
-
-ROM_START( fnkyfish )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 )
-	ROM_LOAD( "tvg_64.0",    0x0000,  0x1000, 0xaf728803 )
-	ROM_LOAD( "tvg_65.1",    0x1000,  0x1000, 0x71959e6b )
-	ROM_LOAD( "tvg_66.2",    0x2000,  0x1000, 0x5ccf68d4 )
-	ROM_LOAD( "tvg_67.3",    0x3000,  0x1000, 0x938ff36f )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "tvg_68.8",    0x0000,  0x1000, 0xd36bb2be )
-
-	ROM_REGION( 0x4000, REGION_GFX1, 0 )
-	ROM_LOAD( "tvg_69.v0",   0x0000, 0x1000, 0xcd532d0b ) /* graphics ROMs */
-	ROM_LOAD( "tvg_71.v2",   0x1000, 0x1000, 0xa59c9713 )
-	ROM_LOAD( "tvg_70.v1",   0x2000, 0x1000, 0xfd308ef1 )
-	ROM_LOAD( "tvg_72.v3",   0x3000, 0x1000, 0x6ae9b584 )
-ROM_END
-
-
-ROM_START( kangaroo )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 )
-	ROM_LOAD( "tvg_75.0",    0x0000, 0x1000, 0x0d18c581 )
-	ROM_LOAD( "tvg_76.1",    0x1000, 0x1000, 0x5978d37a )
-	ROM_LOAD( "tvg_77.2",    0x2000, 0x1000, 0x522d1097 )
-	ROM_LOAD( "tvg_78.3",    0x3000, 0x1000, 0x063da970 )
-	ROM_LOAD( "tvg_79.4",    0x4000, 0x1000, 0x9e5cf8ca )
-	ROM_LOAD( "tvg_80.5",    0x5000, 0x1000, 0x2fc18049 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "tvg_81.8",    0x0000, 0x1000, 0xfb449bfd )
-
-	ROM_REGION( 0x0800, REGION_CPU3, 0 )  /* 8k for the MB8841 custom microcontroller (currently not emulated) */
-	ROM_LOAD( "tvg_82.12",   0x0000, 0x0800, 0x57766f69 )
-
-	ROM_REGION( 0x4000, REGION_GFX1, 0 )
-	ROM_LOAD( "tvg_83.v0",   0x0000, 0x1000, 0xc0446ca6 )
-	ROM_LOAD( "tvg_85.v2",   0x1000, 0x1000, 0x72c52695 )
-	ROM_LOAD( "tvg_84.v1",   0x2000, 0x1000, 0xe4cb26c2 )
-	ROM_LOAD( "tvg_86.v3",   0x3000, 0x1000, 0x9e6a599f )
-ROM_END
-
-
-ROM_START( kangaroa )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "tvg_75.0",    0x0000, 0x1000, 0x0d18c581 )
-	ROM_LOAD( "tvg_76.1",    0x1000, 0x1000, 0x5978d37a )
-	ROM_LOAD( "tvg_77.2",    0x2000, 0x1000, 0x522d1097 )
-	ROM_LOAD( "tvg_78.3",    0x3000, 0x1000, 0x063da970 )
-	ROM_LOAD( "tvg79.bin",   0x4000, 0x1000, 0x82a26c7d )
-	ROM_LOAD( "tvg80.bin",   0x5000, 0x1000, 0x3dead542 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "tvg_81.8",    0x0000, 0x1000, 0xfb449bfd )
-
-	ROM_REGION( 0x0800, REGION_CPU3, 0 )  /* 8k for the MB8841 custom microcontroller (currently not emulated) */
-	ROM_LOAD( "tvg_82.12",   0x0000, 0x0800, 0x57766f69 )
-
-	ROM_REGION( 0x4000, REGION_GFX1, 0 )
-	ROM_LOAD( "tvg_83.v0",   0x0000, 0x1000, 0xc0446ca6 )
-	ROM_LOAD( "tvg_85.v2",   0x1000, 0x1000, 0x72c52695 )
-	ROM_LOAD( "tvg_84.v1",   0x2000, 0x1000, 0xe4cb26c2 )
-	ROM_LOAD( "tvg_86.v3",   0x3000, 0x1000, 0x9e6a599f )
-ROM_END
-
-
-ROM_START( kangarob )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 )
-	ROM_LOAD( "tvg_75.0",    0x0000, 0x1000, 0x0d18c581 )
-	ROM_LOAD( "tvg_76.1",    0x1000, 0x1000, 0x5978d37a )
-	ROM_LOAD( "tvg_77.2",    0x2000, 0x1000, 0x522d1097 )
-	ROM_LOAD( "tvg_78.3",    0x3000, 0x1000, 0x063da970 )
-	ROM_LOAD( "tvg_79.4",    0x4000, 0x1000, 0x9e5cf8ca )
-	ROM_LOAD( "k6",          0x5000, 0x1000, 0x7644504a )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "tvg_81.8",    0x0000, 0x1000, 0xfb449bfd )
-
-	ROM_REGION( 0x4000, REGION_GFX1, 0 )
-	ROM_LOAD( "tvg_83.v0",   0x0000, 0x1000, 0xc0446ca6 )
-	ROM_LOAD( "tvg_85.v2",   0x1000, 0x1000, 0x72c52695 )
-	ROM_LOAD( "tvg_84.v1",   0x2000, 0x1000, 0xe4cb26c2 )
-	ROM_LOAD( "tvg_86.v3",   0x3000, 0x1000, 0x9e6a599f )
-ROM_END
-
-
-
-/*************************************
- *
- *	Game drivers
- *
- *************************************/
-
-GAME( 1981, fnkyfish, 0,        kangaroo, fnkyfish, 0, ROT90, "Sun Electronics", "Funky Fish" )
-GAME( 1982, kangaroo, 0,        kangaroo, kangaroo, 0, ROT90, "Sun Electronics", "Kangaroo" )
-GAME( 1982, kangaroa, kangaroo, kangaroo, kangaroo, 0, ROT90, "[Sun Electronics] (Atari license)", "Kangaroo (Atari)" )
-GAME( 1982, kangarob, kangaroo, kangaroo, kangaroo, 0, ROT90, "bootleg", "Kangaroo (bootleg)" )

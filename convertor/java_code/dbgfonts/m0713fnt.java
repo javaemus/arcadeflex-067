@@ -263,14 +263,14 @@ static UINT8 fontdata[] =
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 };
 
-static struct GfxLayout fontlayout =
-{
+static GfxLayout fontlayout = new GfxLayout
+(
 	7,13,	/* 7*13 characters */
 	256,	/* 256 characters */
 	1,		/* 1 bit per pixel */
-	{ 0 },
-	{ 0, 1, 2, 3, 4, 5, 6},	/* straightforward layout */
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
+	new int[] { 0 },
+	new int[] { 0, 1, 2, 3, 4, 5, 6},	/* straightforward layout */
+	new int[] { 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
 	  8*8, 9*8,10*8,11*8,12*8},
 	8*13 /* every char takes 13 consecutive bytes */
-};
+);

@@ -63,17 +63,13 @@ enum {
 	V60_REGMAX
 };
 
-extern int v60_ICount;
 
 extern const char *v60_reg_names[];
-void v60_dasm_init(void);
 
 #if HAS_V60
-void v60_init(void);
 #endif
 
 void v60_reset(void *param);
-void v60_exit(void);
 int v60_execute(int cycles);
 unsigned v60_get_context(void *dst);
 void v60_set_context(void *src);
@@ -88,7 +84,6 @@ unsigned v60_dasm(char *buffer, unsigned pc);
 #if HAS_V70
 #define v70_ICount v60_ICount
 
-void v70_init(void);
 unsigned v70_dasm(char *buffer, unsigned pc);
 const char *v70_info(void *context, int regnum);
 

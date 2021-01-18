@@ -19,8 +19,6 @@ READ16_HANDLER ( vimana_mcu_r );
 WRITE16_HANDLER( vimana_mcu_w );
 READ16_HANDLER ( vimana_input_port_5_word_r );
 
-WRITE_HANDLER( rallybik_coin_w );
-WRITE_HANDLER( toaplan1_coin_w );
 WRITE16_HANDLER( samesame_coin_w );
 
 MACHINE_INIT( toaplan1 );
@@ -28,7 +26,6 @@ MACHINE_INIT( demonwld );
 MACHINE_INIT( vimana );
 MACHINE_INIT( zerozone );	/* hack for ZeroWing/OutZone. See vidhrdw */
 
-extern int toaplan1_unk_reset_port;
 
 extern data8_t *toaplan1_sharedram;
 

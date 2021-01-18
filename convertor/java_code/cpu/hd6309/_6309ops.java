@@ -1011,7 +1011,7 @@ INLINE void tfmpp( void )
 			default: /* F  */ done = TRUE; break;
 		}
 
-		if ( !done )
+		if (done == 0)
 		{
 			switch(tb&15) {
 				case  0: WM(D++, srcValue); break;
@@ -1070,7 +1070,7 @@ INLINE void tfmmm( void )
 			default: /* F  */ done = TRUE; break;
 		}
 
-		if ( !done )
+		if (done == 0)
 		{
 			switch(tb&15) {
 				case  0: WM(D--, srcValue); break;
@@ -1129,7 +1129,7 @@ INLINE void tfmpc( void )
 			default: /* F  */ done = TRUE; break;
 		}
 
-		if ( !done )
+		if (done == 0)
 		{
 			switch(tb&15) {
 				case  0: WM(D, srcValue); break;
@@ -1188,7 +1188,7 @@ INLINE void tfmcp( void )
 			default: /* F  */ done = TRUE; break;
 		}
 
-		if ( !done )
+		if (done == 0)
 		{
 			switch(tb&15) {
 				case  0: WM(D++, srcValue); break;

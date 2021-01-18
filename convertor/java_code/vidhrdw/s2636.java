@@ -73,215 +73,223 @@
 
  *************************************************************/
 
-#include "driver.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package vidhrdw;
 
-static int SpriteOffset[4] = {0,0x10,0x20,0x40};
-
-/* To adjust sprites against bitmap */
-
-int s2636_x_offset=0;
-int s2636_y_offset=0;
-
-void s2636_w(unsigned char *workram,int offset,int data,unsigned char *dirty)
+public class s2636
 {
-	if (workram[offset] != data)
-    {
-        workram[offset] = data;
-
-        if(offset < 10)
-			dirty[0]=1;
-        else
-        {
-	        if((offset > 15) && (offset < 26))
-				dirty[1]=1;
-            else
-            {
-		        if((offset > 31) && (offset < 42))
-					dirty[2]=1;
-                else
-                {
-			        if((offset > 63) && (offset < 74))
-						dirty[3]=1;
-                }
-            }
-        }
-    }
-}
-
-/*****************************************/
-/* Check for Collision between 2 sprites */
-/*****************************************/
-
-static int SpriteCheck(int first,int second,unsigned char *workram,int Graphics_Bank,struct mame_bitmap *collision_bitmap)
-{
-	int Checksum=0;
-	int x,y;
-
-    // Does not check shadow sprites yet
-
-    if((workram[SpriteOffset[first] + 10] != 0xff) && (workram[SpriteOffset[second] + 10] != 0xff))
-    {
-    	int fx1 = workram[SpriteOffset[first] + 10] + s2636_x_offset;
-        int fy1 = workram[SpriteOffset[first] + 12] + s2636_y_offset;
-		int fx2 = workram[SpriteOffset[second] + 10] + s2636_x_offset;
-		int fy2 = workram[SpriteOffset[second] + 12] + s2636_y_offset;
-
-        if((fx1>=0) && (fy1>=0) && (fx2>=0) && (fy2>=0))
-		{
-  		    int expand1 = 1 << (16+((workram[0xC0]>>(first<<1)) & 3));
-  		    int expand2 = 1 << (16+((workram[0xC0]>>(second<<1)) & 3));
-
-    	    int char1   = SpriteOffset[first]>>4;
-    	    int char2   = SpriteOffset[second]>>4;
-
-            /* Draw first sprite */
-
-		    drawgfxzoom(collision_bitmap,Machine->gfx[Graphics_Bank],
-		                char1,
-			            1,
-		                0,0,
-		                fx1,fy1,
-		                &Machine->visible_area, TRANSPARENCY_PEN, 0,
-				        expand1,expand1);
-
-            /* Get fingerprint */
-
-	        for (x = fx1; x < fx1 + Machine->gfx[Graphics_Bank]->width; x++)
+	
+	static int SpriteOffset[4] = {0,0x10,0x20,0x40};
+	
+	/* To adjust sprites against bitmap */
+	
+	int s2636_x_offset=0;
+	int s2636_y_offset=0;
+	
+	void s2636_w(unsigned char *workram,int offset,int data,unsigned char *dirty)
+	{
+		if (workram[offset] != data)
+	    {
+	        workram[offset] = data;
+	
+	        if(offset < 10)
+				dirty[0]=1;
+	        else
 	        {
-		        for (y = fy1; y < fy1 + Machine->gfx[Graphics_Bank]->height; y++)
-                {
-			        if ((x < Machine->visible_area.min_x) ||
-			            (x > Machine->visible_area.max_x) ||
-			            (y < Machine->visible_area.min_y) ||
-			            (y > Machine->visible_area.max_y))
-			        {
-				        continue;
-			        }
-
-        	        Checksum += read_pixel(collision_bitmap, x, y);
-                }
+		        if((offset > 15) && (offset < 26))
+					dirty[1]=1;
+	            else
+	            {
+			        if((offset > 31) && (offset < 42))
+						dirty[2]=1;
+	                else
+	                {
+				        if((offset > 63) && (offset < 74))
+							dirty[3]=1;
+	                }
+	            }
 	        }
-
-            /* Blackout second sprite */
-
-		    drawgfxzoom(collision_bitmap,Machine->gfx[Graphics_Bank],
-		                char2,
-			            0,
-		                0,0,
-				        fx2,fy2,
-		                &Machine->visible_area, TRANSPARENCY_PEN, 0,
-				        expand2,expand2);
-
-            /* Remove fingerprint */
-
-	        for (x = fx1; x < fx1 + Machine->gfx[Graphics_Bank]->width; x++)
-	        {
-		        for (y = fy1; y < fy1 + Machine->gfx[Graphics_Bank]->height; y++)
-                {
-			        if ((x < Machine->visible_area.min_x) ||
-			            (x > Machine->visible_area.max_x) ||
-			            (y < Machine->visible_area.min_y) ||
-			            (y > Machine->visible_area.max_y))
-			        {
-				        continue;
-			        }
-
-        	        Checksum -= read_pixel(collision_bitmap, x, y);
-                }
-	        }
-
-            /* Zero bitmap */
-
-		    drawgfxzoom(collision_bitmap,Machine->gfx[Graphics_Bank],
-		                char1,
-			            0,
-		                0,0,
-		                fx1,fy1,
-		                &Machine->visible_area, TRANSPARENCY_PEN, 0,
-				        expand1,expand1);
-            }
-    }
-
-	return Checksum;
-}
-
-void Update_Bitmap(struct mame_bitmap *bitmap,unsigned char *workram,unsigned char *dirty,int Graphics_Bank,struct mame_bitmap *collision_bitmap)
-{
-	int CollisionSprite = 0;
-    int spriteno;
-    int offs;
-
-    for(spriteno=0;spriteno<4;spriteno++)
-    {
-    	offs = SpriteOffset[spriteno];
-
-    	if(workram[offs+10]!=0xFF)
-		{
-			int charno   = offs>>4;
-	  		int expand   = 1 << (16+((workram[0xC0]>>(spriteno<<1)) & 3));
-            int bx       = workram[offs+10] + s2636_x_offset;
-            int by       = workram[offs+12] + s2636_y_offset;
-
-            if((bx >= 0) && (by >= 0))
-            {
-                /* Get colour and mask correct bits */
-
-                int colour   = workram[0xC1 + (spriteno >> 1)];
-
-                if((spriteno & 1)==0) colour >>= 3;
-
-                colour = (colour & 7) + 7;
-
-                if(dirty[spriteno])
-                {
-	   			    decodechar(Machine->gfx[Graphics_Bank],charno,workram,Machine->drv->gfxdecodeinfo[Graphics_Bank].gfxlayout);
-                    dirty[spriteno] = 0;
-                }
-
-		        drawgfxzoom(bitmap,Machine->gfx[Graphics_Bank],
-			                charno,
-				            colour,
+	    }
+	}
+	
+	/*****************************************/
+	/* Check for Collision between 2 sprites */
+	/*****************************************/
+	
+	static int SpriteCheck(int first,int second,unsigned char *workram,int Graphics_Bank,struct mame_bitmap *collision_bitmap)
+	{
+		int Checksum=0;
+		int x,y;
+	
+	    // Does not check shadow sprites yet
+	
+	    if((workram[SpriteOffset[first] + 10] != 0xff) && (workram[SpriteOffset[second] + 10] != 0xff))
+	    {
+	    	int fx1 = workram[SpriteOffset[first] + 10] + s2636_x_offset;
+	        int fy1 = workram[SpriteOffset[first] + 12] + s2636_y_offset;
+			int fx2 = workram[SpriteOffset[second] + 10] + s2636_x_offset;
+			int fy2 = workram[SpriteOffset[second] + 12] + s2636_y_offset;
+	
+	        if((fx1>=0) && (fy1>=0) && (fx2>=0) && (fy2>=0))
+			{
+	  		    int expand1 = 1 << (16+((workram[0xC0]>>(first<<1)) & 3));
+	  		    int expand2 = 1 << (16+((workram[0xC0]>>(second<<1)) & 3));
+	
+	    	    int char1   = SpriteOffset[first]>>4;
+	    	    int char2   = SpriteOffset[second]>>4;
+	
+	            /* Draw first sprite */
+	
+			    drawgfxzoom(collision_bitmap,Machine->gfx[Graphics_Bank],
+			                char1,
+				            1,
 			                0,0,
-			                bx,by,
-			                &Machine->visible_area,
-							TRANSPARENCY_BLEND_RAW, 0,
-					        expand,expand);
-
-                /* Shadow Sprites */
-
-                if((workram[offs+11]!=0xff) && (workram[offs+13]!=0xfe))
-                {
-            	    bx=workram[offs+11] + s2636_x_offset;
-
-                    if(bx >= 0)
-                    {
-	            	    for(;by < 255;)
-					    {
-						    by=by+10+workram[offs+13];
-
-				            drawgfxzoom(bitmap,Machine->gfx[Graphics_Bank],
-					                    charno,
-						                colour,
-				    	                0,0,
-				        	            bx,by,
-				            	        &Machine->visible_area,
-										TRANSPARENCY_BLEND_RAW, 0,
-						        	    expand,expand);
+			                fx1,fy1,
+			                &Machine->visible_area, TRANSPARENCY_PEN, 0,
+					        expand1,expand1);
+	
+	            /* Get fingerprint */
+	
+		        for (x = fx1; x < fx1 + Machine->gfx[Graphics_Bank]->width; x++)
+		        {
+			        for (y = fy1; y < fy1 + Machine->gfx[Graphics_Bank]->height; y++)
+	                {
+				        if ((x < Machine->visible_area.min_x) ||
+				            (x > Machine->visible_area.max_x) ||
+				            (y < Machine->visible_area.min_y) ||
+				            (y > Machine->visible_area.max_y))
+				        {
+					        continue;
+				        }
+	
+	        	        Checksum += read_pixel(collision_bitmap, x, y);
+	                }
+		        }
+	
+	            /* Blackout second sprite */
+	
+			    drawgfxzoom(collision_bitmap,Machine->gfx[Graphics_Bank],
+			                char2,
+				            0,
+			                0,0,
+					        fx2,fy2,
+			                &Machine->visible_area, TRANSPARENCY_PEN, 0,
+					        expand2,expand2);
+	
+	            /* Remove fingerprint */
+	
+		        for (x = fx1; x < fx1 + Machine->gfx[Graphics_Bank]->width; x++)
+		        {
+			        for (y = fy1; y < fy1 + Machine->gfx[Graphics_Bank]->height; y++)
+	                {
+				        if ((x < Machine->visible_area.min_x) ||
+				            (x > Machine->visible_area.max_x) ||
+				            (y < Machine->visible_area.min_y) ||
+				            (y > Machine->visible_area.max_y))
+				        {
+					        continue;
+				        }
+	
+	        	        Checksum -= read_pixel(collision_bitmap, x, y);
+	                }
+		        }
+	
+	            /* Zero bitmap */
+	
+			    drawgfxzoom(collision_bitmap,Machine->gfx[Graphics_Bank],
+			                char1,
+				            0,
+			                0,0,
+			                fx1,fy1,
+			                &Machine->visible_area, TRANSPARENCY_PEN, 0,
+					        expand1,expand1);
+	            }
+	    }
+	
+		return Checksum;
+	}
+	
+	void Update_Bitmap(struct mame_bitmap *bitmap,unsigned char *workram,unsigned char *dirty,int Graphics_Bank,struct mame_bitmap *collision_bitmap)
+	{
+		int CollisionSprite = 0;
+	    int spriteno;
+	    int offs;
+	
+	    for(spriteno=0;spriteno<4;spriteno++)
+	    {
+	    	offs = SpriteOffset[spriteno];
+	
+	    	if(workram[offs+10]!=0xFF)
+			{
+				int charno   = offs>>4;
+		  		int expand   = 1 << (16+((workram[0xC0]>>(spriteno<<1)) & 3));
+	            int bx       = workram[offs+10] + s2636_x_offset;
+	            int by       = workram[offs+12] + s2636_y_offset;
+	
+	            if((bx >= 0) && (by >= 0))
+	            {
+	                /* Get colour and mask correct bits */
+	
+	                int colour   = workram[0xC1 + (spriteno >> 1)];
+	
+	                if((spriteno & 1)==0) colour >>= 3;
+	
+	                colour = (colour & 7) + 7;
+	
+	                if(dirty[spriteno])
+	                {
+		   			    decodechar(Machine->gfx[Graphics_Bank],charno,workram,Machine->drv->gfxdecodeinfo[Graphics_Bank].gfxlayout);
+	                    dirty[spriteno] = 0;
+	                }
+	
+			        drawgfxzoom(bitmap,Machine->gfx[Graphics_Bank],
+				                charno,
+					            colour,
+				                0,0,
+				                bx,by,
+				                &Machine->visible_area,
+								TRANSPARENCY_BLEND_RAW, 0,
+						        expand,expand);
+	
+	                /* Shadow Sprites */
+	
+	                if((workram[offs+11]!=0xff) && (workram[offs+13]!=0xfe))
+	                {
+	            	    bx=workram[offs+11] + s2636_x_offset;
+	
+	                    if(bx >= 0)
+	                    {
+		            	    for(;by < 255;)
+						    {
+							    by=by+10+workram[offs+13];
+	
+					            drawgfxzoom(bitmap,Machine->gfx[Graphics_Bank],
+						                    charno,
+							                colour,
+					    	                0,0,
+					        	            bx,by,
+					            	        &Machine->visible_area,
+											TRANSPARENCY_BLEND_RAW, 0,
+							        	    expand,expand);
+		                    }
 	                    }
-                    }
-                }
-            }
-        }
-    }
-
-    /* Sprite->Sprite collision detection */
-
-    if(SpriteCheck(0,1,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x20;
-    if(SpriteCheck(0,2,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x10;
-    if(SpriteCheck(0,3,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x08;
-    if(SpriteCheck(1,2,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x04;
-    if(SpriteCheck(1,3,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x02;
-    if(SpriteCheck(2,3,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x01;
-
-    workram[0xCB] = CollisionSprite;
+	                }
+	            }
+	        }
+	    }
+	
+	    /* Sprite->Sprite collision detection */
+	
+	    if(SpriteCheck(0,1,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x20;
+	    if(SpriteCheck(0,2,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x10;
+	    if(SpriteCheck(0,3,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x08;
+	    if(SpriteCheck(1,2,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x04;
+	    if(SpriteCheck(1,3,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x02;
+	    if(SpriteCheck(2,3,workram,Graphics_Bank,collision_bitmap)) CollisionSprite |= 0x01;
+	
+	    workram[0xCB] = CollisionSprite;
+	}
 }

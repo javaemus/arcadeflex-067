@@ -29,118 +29,121 @@ Version 0.2, May 2000
 /* Todo ?
 -rename uclock to sysdep_clock (Hans de Goede)
 */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package windows;
 
-#ifndef _MSC_VER
-#include <sys/time.h>
-#endif
-
-#include "misc.h"
-
-
-#ifdef HAVE_GETTIMEOFDAY
-/* Standard UNIX clock() is based on CPU time, not real time.
-   Here is a real-time drop in replacement for UNIX systems that have the
-   gettimeofday() routine.  This results in much more accurate timing.
-*/
-uclock_t uclock(void)
+public class misc
 {
-  static uclock_t init_sec = 0;
-  struct timeval tv;
-
-  gettimeofday(&tv, 0);
-  if (init_sec == 0) init_sec = tv.tv_sec;
-
-  return (tv.tv_sec - init_sec) * 1000000 + tv.tv_usec;
-}
-#else
-
-/* some platforms don't define CLOCKS_PER_SEC, according to posix it should
-   always be 1000000, so asume that's the case if it is not defined,
-   except for openstep which doesn't define it and has it at 64 */
-#ifndef CLOCKS_PER_SEC
-#ifdef openstep
-#define CLOCKS_PER_SEC 64     /* this is correct for OS4.2 intel */
-#else
-#define CLOCKS_PER_SEC 1000000
-#endif
-#endif
-
-uclock_t uclock(void)
-{
-   return (clock() * (1000000 / CLOCKS_PER_SEC));
-}
-
-#endif
-
-void print_colums(const char *text1, const char *text2)
-{
-   fprint_colums(stdout, text1, text2);
-}
-
-void fprint_colums(FILE *f, const char *text1, const char *text2)
-{
-   const char *text[2];
-   int i, j, cols, width[2], done = 0;
-   char *e_cols = getenv("COLUMNS");
-
-   cols = e_cols? atoi(e_cols):80;
-   if ( cols < 6 ) cols = 6;  /* minimum must be 6 */
-   cols--;
-
-   /* initialize our arrays */
-   text[0] = text1;
-   text[1] = text2;
-   width[0] = cols * 0.4;
-   width[1] = cols - width[0];
-
-   while(!done)
-   {
-      done = 1;
-      for(i = 0; i < 2; i++)
-      {
-         int to_print = width[i]-1; /* always leave one space open */
-
-         /* we don't want to print more then we have */
-         j = strlen(text[i]);
-         if (to_print > j)
-           to_print = j;
-
-         /* if they have preffered breaks, try to give them to them */
-         for(j=0; j<to_print; j++)
-            if(text[i][j] == '\n')
-            {
-               to_print = j;
-               break;
-            }
-
-         /* if we don't have enough space, break at the first ' ' or '\n' */
-         if(to_print < strlen(text[i]))
-         {
-           while(to_print && (text[i][to_print] != ' ') &&
-              (text[i][to_print] != '\n'))
-              to_print--;
-
-           /* if it didn't work, just print the columnwidth */
-           if(!to_print)
-              to_print = width[i]-1;
-         }
-         fprintf(f, "%-*.*s", width[i], to_print, text[i]);
-
-         /* adjust ptr */
-         text[i] += to_print;
-
-         /* skip ' ' and '\n' */
-         while((text[i][0] == ' ') || (text[i][0] == '\n'))
-            text[i]++;
-
-         /* do we still have text to print */
-         if(text[i][0])
-            done = 0;
-      }
-      fprintf(f, "\n");
-   }
+	
+	#ifndef _MSC_VER
+	#endif
+	
+	
+	
+	#ifdef HAVE_GETTIMEOFDAY
+	/* Standard UNIX clock() is based on CPU time, not real time.
+	   Here is a real-time drop in replacement for UNIX systems that have the
+	   gettimeofday() routine.  This results in much more accurate timing.
+	*/
+	uclock_t uclock(void)
+	{
+	  static uclock_t init_sec = 0;
+	  struct timeval tv;
+	
+	  gettimeofday(&tv, 0);
+	  if (init_sec == 0) init_sec = tv.tv_sec;
+	
+	  return (tv.tv_sec - init_sec) * 1000000 + tv.tv_usec;
+	}
+	#else
+	
+	/* some platforms don't define CLOCKS_PER_SEC, according to posix it should
+	   always be 1000000, so asume that's the case if it is not defined,
+	   except for openstep which doesn't define it and has it at 64 */
+	#ifndef CLOCKS_PER_SEC
+	#ifdef openstep
+	#define CLOCKS_PER_SEC 64     /* this is correct for OS4.2 intel */
+	#else
+	#define CLOCKS_PER_SEC 1000000
+	#endif
+	#endif
+	
+	uclock_t uclock(void)
+	{
+	   return (clock() * (1000000 / CLOCKS_PER_SEC));
+	}
+	
+	#endif
+	
+	void print_colums(const char *text1, const char *text2)
+	{
+	   fprint_colums(stdout, text1, text2);
+	}
+	
+	void fprint_colums(FILE *f, const char *text1, const char *text2)
+	{
+	   const char *text[2];
+	   int i, j, cols, width[2], done = 0;
+	   char *e_cols = getenv("COLUMNS");
+	
+	   cols = e_cols? atoi(e_cols):80;
+	   if ( cols < 6 ) cols = 6;  /* minimum must be 6 */
+	   cols--;
+	
+	   /* initialize our arrays */
+	   text[0] = text1;
+	   text[1] = text2;
+	   width[0] = cols * 0.4;
+	   width[1] = cols - width[0];
+	
+	   while(!done)
+	   {
+	      done = 1;
+	      for(i = 0; i < 2; i++)
+	      {
+	         int to_print = width[i]-1; /* always leave one space open */
+	
+	         /* we don't want to print more then we have */
+	         j = strlen(text[i]);
+	         if (to_print > j)
+	           to_print = j;
+	
+	         /* if they have preffered breaks, try to give them to them */
+	         for(j=0; j<to_print; j++)
+	            if(text[i][j] == '\n')
+	            {
+	               to_print = j;
+	               break;
+	            }
+	
+	         /* if we don't have enough space, break at the first ' ' or '\n' */
+	         if(to_print < strlen(text[i]))
+	         {
+	           while(to_print && (text[i][to_print] != ' ') &&
+	              (text[i][to_print] != '\n'))
+	              to_print--;
+	
+	           /* if it didn't work, just print the columnwidth */
+	           if (to_print == 0)
+	              to_print = width[i]-1;
+	         }
+	         fprintf(f, "%-*.*s", width[i], to_print, text[i]);
+	
+	         /* adjust ptr */
+	         text[i] += to_print;
+	
+	         /* skip ' ' and '\n' */
+	         while((text[i][0] == ' ') || (text[i][0] == '\n'))
+	            text[i]++;
+	
+	         /* do we still have text to print */
+	         if(text[i][0])
+	            done = 0;
+	      }
+	      fprintf(f, "\n");
+	   }
+	}
 }

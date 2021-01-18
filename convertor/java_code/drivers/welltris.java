@@ -265,404 +265,420 @@ There are read/writes on bit 7 of 0xfff009 ($f009) ...
 
 #define WELLTRIS_4P_HACK 0
 
-#include "driver.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-data16_t *welltris_spriteram;
-size_t welltris_spriteram_size;
-data16_t *welltris_pixelram;
-data16_t *welltris_charvideoram;
-
-WRITE16_HANDLER( welltris_palette_bank_w );
-WRITE16_HANDLER( welltris_gfxbank_w );
-WRITE16_HANDLER( welltris_charvideoram_w );
-VIDEO_START( welltris );
-VIDEO_UPDATE( welltris );
-
-
-
-
-static WRITE_HANDLER( welltris_sh_bankswitch_w )
+public class welltris
 {
-	data8_t *rom = memory_region(REGION_CPU2) + 0x10000;
-
-	cpu_setbank(1,rom + (data & 0x03) * 0x8000);
-}
-
-
-static int pending_command;
-
-static WRITE16_HANDLER( sound_command_w )
-{
-	if (ACCESSING_LSB)
+	
+	data16_t *welltris_spriteram;
+	size_t welltris_spriteram_size;
+	data16_t *welltris_pixelram;
+	data16_t *welltris_charvideoram;
+	
+	WRITE16_HANDLER( welltris_palette_bank_w );
+	WRITE16_HANDLER( welltris_gfxbank_w );
+	WRITE16_HANDLER( welltris_charvideoram_w );
+	VIDEO_START( welltris );
+	VIDEO_UPDATE( welltris );
+	
+	
+	
+	
+	public static WriteHandlerPtr welltris_sh_bankswitch_w = new WriteHandlerPtr() {public void handler(int offset, int data)
 	{
-		soundlatch_w(offset,data & 0xff);
-		cpu_set_nmi_line(1, PULSE_LINE);
+		data8_t *rom = memory_region(REGION_CPU2) + 0x10000;
+	
+		cpu_setbank(1,rom + (data & 0x03) * 0x8000);
+	} };
+	
+	
+	static int pending_command;
+	
+	static WRITE16_HANDLER( sound_command_w )
+	{
+		if (ACCESSING_LSB)
+		{
+			soundlatch_w(offset,data & 0xff);
+			cpu_set_nmi_line(1, PULSE_LINE);
+		}
 	}
+	
+	static READ16_HANDLER( in0_r )
+	{
+		return readinputport(0) | (pending_command ? 0x80 : 0);
+	}
+	
+	public static WriteHandlerPtr pending_command_clear_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		pending_command = 0;
+	} };
+	
+	
+	static MEMORY_READ16_START( welltris_readmem )
+		{ 0x000000, 0x03ffff, MRA16_ROM },
+		{ 0x100000, 0x17ffff, MRA16_ROM },
+		{ 0x800000, 0x81ffff, MRA16_RAM }, /* Graph_1 & 2*/
+		{ 0xff8000, 0xffcfff, MRA16_RAM }, /* Work */
+		{ 0xffc000, 0xffc3ff, MRA16_RAM }, /* Sprite */
+		{ 0xffd000, 0xffdfff, MRA16_RAM }, /* Char */
+		{ 0xffe000, 0xffefff, MRA16_RAM }, /* Palette */
+	
+		{ 0xfff000, 0xfff001, input_port_1_word_r }, /* Bottom Controls */
+		{ 0xfff002, 0xfff003, input_port_2_word_r }, /* Top Controls */
+		{ 0xfff004, 0xfff005, input_port_3_word_r }, /* Left Side Ctrls */
+		{ 0xfff006, 0xfff007, input_port_4_word_r }, /* Right Side Ctrls */
+	
+		{ 0xfff008, 0xfff009, in0_r }, /* Coinage, Start Buttons, pending sound command etc. */  /* Bit 5 Tested at start of irq 1 */
+		{ 0xfff00a, 0xfff00b, input_port_5_word_r }, /* P3+P4 Coin + Start Buttons */
+		{ 0xfff00c, 0xfff00d, input_port_6_word_r }, /* DSW0 Coinage */
+		{ 0xfff00e, 0xfff00f, input_port_7_word_r }, /* DSW1 Game Options */
+	MEMORY_END
+	
+	static MEMORY_WRITE16_START( welltris_writemem )
+		{ 0x000000, 0x03ffff, MWA16_ROM },
+		{ 0x100000, 0x17ffff, MWA16_ROM },
+		{ 0x800000, 0x81ffff, MWA16_RAM, &welltris_pixelram },
+		{ 0xff8000, 0xffcfff, MWA16_RAM },
+		{ 0xffc000, 0xffc3ff, MWA16_RAM, &welltris_spriteram, &welltris_spriteram_size },
+		{ 0xffd000, 0xffdfff, welltris_charvideoram_w, &welltris_charvideoram},
+		{ 0xffe000, 0xffefff, paletteram16_xRRRRRGGGGGBBBBB_word_w, &paletteram16 },
+	
+		{ 0xfff000, 0xfff001, welltris_palette_bank_w },
+		{ 0xfff002, 0xfff003, welltris_gfxbank_w },
+	//	{ 0xfff004, 0xfff005, ?? },
+	//	{ 0xfff006, 0xfff007, ?? },
+		{ 0xfff008, 0xfff009, sound_command_w },
+	//	{ 0xfff00c, 0xfff00d, ?? },
+	//	{ 0xfff00e, 0xfff00f, ?? },
+	MEMORY_END
+	
+	public static Memory_ReadAddress sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x77ff, MRA_ROM ),
+		new Memory_ReadAddress( 0x7800, 0x7fff, MRA_RAM ),
+		new Memory_ReadAddress( 0x8000, 0xffff, MRA_BANK1 ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x77ff, MWA_ROM ),
+		new Memory_WriteAddress( 0x7800, 0x7fff, MWA_RAM ),
+		new Memory_WriteAddress( 0x8000, 0xffff, MWA_ROM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static IO_ReadPort sound_readport[]={
+		new IO_ReadPort(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_ReadPort( 0x08, 0x08, YM2610_status_port_0_A_r ),
+		new IO_ReadPort( 0x0a, 0x0a, YM2610_status_port_0_B_r ),
+		new IO_ReadPort( 0x10, 0x10, soundlatch_r ),
+		new IO_ReadPort(MEMPORT_MARKER, 0)
+	};
+	
+	public static IO_WritePort sound_writeport[]={
+		new IO_WritePort(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_WritePort( 0x00, 0x00, welltris_sh_bankswitch_w ),
+		new IO_WritePort( 0x08, 0x08, YM2610_control_port_0_A_w ),
+		new IO_WritePort( 0x09, 0x09, YM2610_data_port_0_A_w ),
+		new IO_WritePort( 0x0a, 0x0a, YM2610_control_port_0_B_w ),
+		new IO_WritePort( 0x0b, 0x0b, YM2610_data_port_0_B_w ),
+		new IO_WritePort( 0x18, 0x18, pending_command_clear_w ),
+		new IO_WritePort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	static InputPortPtr input_ports_welltris = new InputPortPtr(){ public void handler() { 
+		PORT_START(); 
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE2 );/* Test (used to go through tests in service mode) */
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_TILT );	/* Tested at start of irq 1 */
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 );/* Service (adds a coin) */
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL );/* pending sound command */
+	
+		PORT_START(); 
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+		PORT_START(); 
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY | IPF_PLAYER2 );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_PLAYER2 );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_PLAYER2 );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2 );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+	#if WELLTRIS_4P_HACK
+		/* These can actually be read in the test mode even if they're not used by the game without patching the code
+		   might be useful if a real 4 player version ever turns up if it was ever produced */
+		PORT_START(); 
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY | IPF_PLAYER3 );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_PLAYER3 );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_PLAYER3 );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER3 );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER3 );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER3 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+		PORT_START(); 
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY | IPF_PLAYER4 );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_PLAYER4 );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_PLAYER4 );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER4 );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER4 );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER4 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	#else
+		PORT_START(); 
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED );
+	
+		PORT_START(); 
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED );
+	#endif
+	
+		PORT_START(); 
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN4 );
+	#if WELLTRIS_4P_HACK
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START4 );
+	#else
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	#endif
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+		PORT_START(); 
+		PORT_DIPNAME( 0x000f, 0x000f, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(      0x0006, DEF_STR( "5C_1C") );
+		PORT_DIPSETTING(      0x0007, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(      0x0008, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(      0x0009, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(      0x0004, "2-1, 4-2, 5-3, 6-4" );
+		PORT_DIPSETTING(      0x0003, "2-1, 4-3" );
+		PORT_DIPSETTING(      0x000f, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(      0x0001, "1-1, 2-2, 3-3, 4-5" );
+		PORT_DIPSETTING(      0x0002, "1-1, 2-2, 3-3, 4-4, 5-6" );
+		PORT_DIPSETTING(      0x0000, "1-1, 2-3" );
+		PORT_DIPSETTING(      0x0005, DEF_STR( "2C_3C") );
+		PORT_DIPSETTING(      0x000e, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(      0x000d, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(      0x000c, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(      0x000b, DEF_STR( "1C_5C") );
+		PORT_DIPSETTING(      0x000a, DEF_STR( "1C_6C") );
+		PORT_DIPNAME( 0x00f0, 0x00f0, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(      0x0060, DEF_STR( "5C_1C") );
+		PORT_DIPSETTING(      0x0070, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(      0x0080, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(      0x0090, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(      0x0040, "2-1, 4-2, 5-3, 6-4" );
+		PORT_DIPSETTING(      0x0030, "2-1, 4-3" );
+		PORT_DIPSETTING(      0x00f0, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(      0x0010, "1-1, 2-2, 3-3, 4-5" );
+		PORT_DIPSETTING(      0x0020, "1-1, 2-2, 3-3, 4-4, 5-6" );
+		PORT_DIPSETTING(      0x0000, "1-1, 2-3" );
+		PORT_DIPSETTING(      0x0050, DEF_STR( "2C_3C") );
+		PORT_DIPSETTING(      0x00e0, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(      0x00d0, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(      0x00c0, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(      0x00b0, DEF_STR( "1C_5C") );
+		PORT_DIPSETTING(      0x00a0, DEF_STR( "1C_6C") );
+	
+		PORT_START(); 
+		PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( "Difficulty") );
+		PORT_DIPSETTING(      0x0002, "Easy" );
+		PORT_DIPSETTING(      0x0003, "Normal" );
+		PORT_DIPSETTING(      0x0001, "Hard" );
+		PORT_DIPSETTING(      0x0000, "Hardest" );		// "Super" in test mode
+		PORT_DIPNAME( 0x0004, 0x0000, "Coin Mode" );
+		PORT_DIPSETTING(      0x0004, "Mono Player" );
+		PORT_DIPSETTING(      0x0000, "Many Player" );
+		PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0008, DEF_STR( "On") );
+	#if WELLTRIS_4P_HACK
+		/* again might be handy if a real 4 player version shows up */
+		PORT_DIPNAME( 0x0010, 0x0010, "DIPSW 2-5 (see notes); )
+		PORT_DIPSETTING(      0x0010, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0020, 0x0020, "4 Players Mode (see notes); )
+		PORT_DIPSETTING(      0x0020, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+	#else
+		PORT_DIPNAME( 0x0010, 0x0010, "DIPSW 2-5 (unused); )
+		PORT_DIPSETTING(      0x0010, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0020, 0x0020, "DIPSW 2-6 (unused); )
+		PORT_DIPSETTING(      0x0020, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+	#endif
+		PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( "Flip_Screen") ); /* Flip Screen Not Currently Supported */
+		PORT_DIPSETTING(      0x0040, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+	  	PORT_SERVICE( 0x0080, IP_ACTIVE_LOW );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	static GfxLayout welltris_charlayout = new GfxLayout
+	(
+		8,8,
+		RGN_FRAC(1,1),
+		4,
+		new int[] { 0, 1, 2, 3 },
+		new int[] { 1*4, 0*4, 3*4, 2*4, 5*4, 4*4, 7*4, 6*4 },
+		new int[] { 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32 },
+		32*8
+	);
+	
+	static GfxLayout welltris_spritelayout = new GfxLayout
+	(
+		16,16,
+		RGN_FRAC(1,2),
+		4,
+		new int[] { 0, 1, 2, 3 },
+		new int[] { 1*4, 0*4, 3*4, 2*4, RGN_FRAC(1,2)+1*4, RGN_FRAC(1,2)+0*4, RGN_FRAC(1,2)+3*4, RGN_FRAC(1,2)+2*4,
+				5*4, 4*4, 7*4, 6*4, RGN_FRAC(1,2)+5*4, RGN_FRAC(1,2)+4*4, RGN_FRAC(1,2)+7*4, RGN_FRAC(1,2)+6*4 },
+		new int[] { 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32,
+				8*32, 9*32, 10*32, 11*32, 12*32, 13*32, 14*32, 15*32 },
+		64*8
+	);
+	
+	static GfxDecodeInfo welltris_gfxdecodeinfo[] =
+	{
+		new GfxDecodeInfo( REGION_GFX1, 0, welltris_charlayout,   0x000, 64 ),
+		new GfxDecodeInfo( REGION_GFX2, 0, welltris_spritelayout, 0x700, 64 ),
+		new GfxDecodeInfo( -1 ) /* end of array */
+	};
+	
+	
+	
+	static void irqhandler(int irq)
+	{
+		cpu_set_irq_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	}
+	
+	static struct YM2610interface ym2610_interface =
+	{
+		1,
+		8000000,	/* 8 MHz??? */
+		{ 25 },
+		{ 0 },
+		{ 0 },
+		{ 0 },
+		{ 0 },
+		{ irqhandler },
+		{ REGION_SOUND1 },
+		{ REGION_SOUND2 },
+		{ YM3012_VOL(100,MIXER_PAN_LEFT,100,MIXER_PAN_RIGHT) }
+	};
+	
+	
+	public static InitDriverPtr init_welltris = new InitDriverPtr() { public void handler() 
+	{
+	#if WELLTRIS_4P_HACK
+		/* A Hack which shows 4 player mode in code which is disabled */
+		data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
+		RAM[0xB91C/2] = 0x4e71;
+		RAM[0xB91E/2] = 0x4e71;
+	#endif
+	} };
+	
+	static MACHINE_DRIVER_START( welltris )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz */
+		MDRV_CPU_MEMORY(welltris_readmem,welltris_writemem)
+		MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+	
+		MDRV_CPU_ADD(Z80,8000000/2)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
+		MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+		MDRV_CPU_PORTS(sound_readport,sound_writeport)
+									/* IRQs are triggered by the YM2610 */
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(512, 256)
+		MDRV_VISIBLE_AREA(0, 351, 0, 239)
+		MDRV_GFXDECODE(welltris_gfxdecodeinfo)
+		MDRV_PALETTE_LENGTH(2048)
+	
+		MDRV_VIDEO_START(welltris)
+		MDRV_VIDEO_UPDATE(welltris)
+	
+		/* sound hardware */
+		MDRV_SOUND_ATTRIBUTES(SOUND_SUPPORTS_STEREO)
+		MDRV_SOUND_ADD(YM2610, ym2610_interface)
+	MACHINE_DRIVER_END
+	
+	
+	
+	static RomLoadPtr rom_welltris = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x180000, REGION_CPU1, 0 );/* 68000 code */
+		ROM_LOAD16_BYTE( "j2.8",			0x000000, 0x20000, 0x68ec5691 );
+		ROM_LOAD16_BYTE( "j1.7",			0x000001, 0x20000, 0x1598ea2c );
+		/* Space */
+		ROM_LOAD16_BYTE( "lh532j10.10",		0x100000, 0x40000, 0x1187c665 );
+		ROM_LOAD16_BYTE( "lh532j11.9",		0x100001, 0x40000, 0x18eda9e5 );
+	
+		ROM_REGION( 0x30000, REGION_CPU2, 0 );/* 64k for the audio CPU + banks */
+		ROM_LOAD( "3.144",        0x00000, 0x20000, 0xae8f763e );
+		ROM_RELOAD(               0x10000, 0x20000 );
+	
+		ROM_REGION( 0x0a0000, REGION_GFX1, ROMREGION_DISPOSE );/* CHAR Tiles */
+		ROM_LOAD( "lh534j12.77",          0x000000, 0x80000, 0xb61a8b74 );
+	
+		ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE );/* SPRITE Tiles */
+		ROM_LOAD( "046.93",          0x000000, 0x40000, 0x31d96d77 );
+		ROM_LOAD( "048.94",          0x040000, 0x40000, 0xbb4643da );
+	
+		ROM_REGION( 0x080000, REGION_SOUND1, 0 );/* sound samples */
+		ROM_LOAD( "lh534j11.126",          0x00000, 0x80000, 0xbf85fb0d );
+	
+		ROM_REGION( 0x100000, REGION_SOUND2, 0 );/* sound samples */
+		ROM_LOAD( "lh534j09.123",          0x00000, 0x80000, 0x6c2ce9a5 );
+		ROM_LOAD( "lh534j10.124",          0x80000, 0x80000, 0xe3682221 );
+	ROM_END(); }}; 
+	
+	
+	
+	public static GameDriver driver_welltris	   = new GameDriver("1991"	,"welltris"	,"welltris.java"	,rom_welltris,null	,machine_driver_welltris	,input_ports_welltris	,init_welltris	,ROT0	,	"Video System Co.", "Welltris (Japan, 2 players)", GAME_NO_COCKTAIL )
 }
-
-static READ16_HANDLER( in0_r )
-{
-	return readinputport(0) | (pending_command ? 0x80 : 0);
-}
-
-static WRITE_HANDLER( pending_command_clear_w )
-{
-	pending_command = 0;
-}
-
-
-static MEMORY_READ16_START( welltris_readmem )
-	{ 0x000000, 0x03ffff, MRA16_ROM },
-	{ 0x100000, 0x17ffff, MRA16_ROM },
-	{ 0x800000, 0x81ffff, MRA16_RAM }, /* Graph_1 & 2*/
-	{ 0xff8000, 0xffcfff, MRA16_RAM }, /* Work */
-	{ 0xffc000, 0xffc3ff, MRA16_RAM }, /* Sprite */
-	{ 0xffd000, 0xffdfff, MRA16_RAM }, /* Char */
-	{ 0xffe000, 0xffefff, MRA16_RAM }, /* Palette */
-
-	{ 0xfff000, 0xfff001, input_port_1_word_r }, /* Bottom Controls */
-	{ 0xfff002, 0xfff003, input_port_2_word_r }, /* Top Controls */
-	{ 0xfff004, 0xfff005, input_port_3_word_r }, /* Left Side Ctrls */
-	{ 0xfff006, 0xfff007, input_port_4_word_r }, /* Right Side Ctrls */
-
-	{ 0xfff008, 0xfff009, in0_r }, /* Coinage, Start Buttons, pending sound command etc. */  /* Bit 5 Tested at start of irq 1 */
-	{ 0xfff00a, 0xfff00b, input_port_5_word_r }, /* P3+P4 Coin + Start Buttons */
-	{ 0xfff00c, 0xfff00d, input_port_6_word_r }, /* DSW0 Coinage */
-	{ 0xfff00e, 0xfff00f, input_port_7_word_r }, /* DSW1 Game Options */
-MEMORY_END
-
-static MEMORY_WRITE16_START( welltris_writemem )
-	{ 0x000000, 0x03ffff, MWA16_ROM },
-	{ 0x100000, 0x17ffff, MWA16_ROM },
-	{ 0x800000, 0x81ffff, MWA16_RAM, &welltris_pixelram },
-	{ 0xff8000, 0xffcfff, MWA16_RAM },
-	{ 0xffc000, 0xffc3ff, MWA16_RAM, &welltris_spriteram, &welltris_spriteram_size },
-	{ 0xffd000, 0xffdfff, welltris_charvideoram_w, &welltris_charvideoram},
-	{ 0xffe000, 0xffefff, paletteram16_xRRRRRGGGGGBBBBB_word_w, &paletteram16 },
-
-	{ 0xfff000, 0xfff001, welltris_palette_bank_w },
-	{ 0xfff002, 0xfff003, welltris_gfxbank_w },
-//	{ 0xfff004, 0xfff005, ?? },
-//	{ 0xfff006, 0xfff007, ?? },
-	{ 0xfff008, 0xfff009, sound_command_w },
-//	{ 0xfff00c, 0xfff00d, ?? },
-//	{ 0xfff00e, 0xfff00f, ?? },
-MEMORY_END
-
-static MEMORY_READ_START( sound_readmem )
-	{ 0x0000, 0x77ff, MRA_ROM },
-	{ 0x7800, 0x7fff, MRA_RAM },
-	{ 0x8000, 0xffff, MRA_BANK1 },
-MEMORY_END
-
-static MEMORY_WRITE_START( sound_writemem )
-	{ 0x0000, 0x77ff, MWA_ROM },
-	{ 0x7800, 0x7fff, MWA_RAM },
-	{ 0x8000, 0xffff, MWA_ROM },
-MEMORY_END
-
-static PORT_READ_START( sound_readport )
-	{ 0x08, 0x08, YM2610_status_port_0_A_r },
-	{ 0x0a, 0x0a, YM2610_status_port_0_B_r },
-	{ 0x10, 0x10, soundlatch_r },
-PORT_END
-
-static PORT_WRITE_START( sound_writeport )
-	{ 0x00, 0x00, welltris_sh_bankswitch_w },
-	{ 0x08, 0x08, YM2610_control_port_0_A_w },
-	{ 0x09, 0x09, YM2610_data_port_0_A_w },
-	{ 0x0a, 0x0a, YM2610_control_port_0_B_w },
-	{ 0x0b, 0x0b, YM2610_data_port_0_B_w },
-	{ 0x18, 0x18, pending_command_clear_w },
-PORT_END
-
-
-
-INPUT_PORTS_START( welltris )
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE2 )	/* Test (used to go through tests in service mode) */
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_TILT )		/* Tested at start of irq 1 */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* Service (adds a coin) */
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* pending sound command */
-
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#if WELLTRIS_4P_HACK
-	/* These can actually be read in the test mode even if they're not used by the game without patching the code
-	   might be useful if a real 4 player version ever turns up if it was ever produced */
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY | IPF_PLAYER3 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_PLAYER3 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_PLAYER3 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER3 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER3 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER3 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_8WAY | IPF_PLAYER4 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_PLAYER4 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_PLAYER4 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER4 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER4 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER4 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-#else
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
-#endif
-
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN4 )
-#if WELLTRIS_4P_HACK
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START4 )
-#else
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
-#endif
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START
-	PORT_DIPNAME( 0x000f, 0x000f, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(      0x0006, DEF_STR( 5C_1C ) )
-	PORT_DIPSETTING(      0x0007, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x0008, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0x0009, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x0004, "2-1, 4-2, 5-3, 6-4" )
-	PORT_DIPSETTING(      0x0003, "2-1, 4-3" )
-	PORT_DIPSETTING(      0x000f, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x0001, "1-1, 2-2, 3-3, 4-5" )
-	PORT_DIPSETTING(      0x0002, "1-1, 2-2, 3-3, 4-4, 5-6" )
-	PORT_DIPSETTING(      0x0000, "1-1, 2-3" )
-	PORT_DIPSETTING(      0x0005, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(      0x000e, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0x000d, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x000c, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(      0x000b, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(      0x000a, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x00f0, 0x00f0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(      0x0060, DEF_STR( 5C_1C ) )
-	PORT_DIPSETTING(      0x0070, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x0080, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0x0090, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x0040, "2-1, 4-2, 5-3, 6-4" )
-	PORT_DIPSETTING(      0x0030, "2-1, 4-3" )
-	PORT_DIPSETTING(      0x00f0, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x0010, "1-1, 2-2, 3-3, 4-5" )
-	PORT_DIPSETTING(      0x0020, "1-1, 2-2, 3-3, 4-4, 5-6" )
-	PORT_DIPSETTING(      0x0000, "1-1, 2-3" )
-	PORT_DIPSETTING(      0x0050, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(      0x00e0, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0x00d0, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x00c0, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(      0x00b0, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(      0x00a0, DEF_STR( 1C_6C ) )
-
-	PORT_START
-	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(      0x0002, "Easy" )
-	PORT_DIPSETTING(      0x0003, "Normal" )
-	PORT_DIPSETTING(      0x0001, "Hard" )
-	PORT_DIPSETTING(      0x0000, "Hardest" )			// "Super" in test mode
-	PORT_DIPNAME( 0x0004, 0x0000, "Coin Mode" )
-	PORT_DIPSETTING(      0x0004, "Mono Player" )
-	PORT_DIPSETTING(      0x0000, "Many Player" )
-	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0008, DEF_STR( On ) )
-#if WELLTRIS_4P_HACK
-	/* again might be handy if a real 4 player version shows up */
-	PORT_DIPNAME( 0x0010, 0x0010, "DIPSW 2-5 (see notes)" )
-	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, "4 Players Mode (see notes)" )
-	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-#else
-	PORT_DIPNAME( 0x0010, 0x0010, "DIPSW 2-5 (unused)" )
-	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, "DIPSW 2-6 (unused)" )
-	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-#endif
-	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Flip_Screen ) ) /* Flip Screen Not Currently Supported */
-	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-  	PORT_SERVICE( 0x0080, IP_ACTIVE_LOW )
-INPUT_PORTS_END
-
-
-
-static struct GfxLayout welltris_charlayout =
-{
-	8,8,
-	RGN_FRAC(1,1),
-	4,
-	{ 0, 1, 2, 3 },
-	{ 1*4, 0*4, 3*4, 2*4, 5*4, 4*4, 7*4, 6*4 },
-	{ 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32 },
-	32*8
-};
-
-static struct GfxLayout welltris_spritelayout =
-{
-	16,16,
-	RGN_FRAC(1,2),
-	4,
-	{ 0, 1, 2, 3 },
-	{ 1*4, 0*4, 3*4, 2*4, RGN_FRAC(1,2)+1*4, RGN_FRAC(1,2)+0*4, RGN_FRAC(1,2)+3*4, RGN_FRAC(1,2)+2*4,
-			5*4, 4*4, 7*4, 6*4, RGN_FRAC(1,2)+5*4, RGN_FRAC(1,2)+4*4, RGN_FRAC(1,2)+7*4, RGN_FRAC(1,2)+6*4 },
-	{ 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32,
-			8*32, 9*32, 10*32, 11*32, 12*32, 13*32, 14*32, 15*32 },
-	64*8
-};
-
-static struct GfxDecodeInfo welltris_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &welltris_charlayout,   0x000, 64 },
-	{ REGION_GFX2, 0, &welltris_spritelayout, 0x700, 64 },
-	{ -1 } /* end of array */
-};
-
-
-
-static void irqhandler(int irq)
-{
-	cpu_set_irq_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
-}
-
-static struct YM2610interface ym2610_interface =
-{
-	1,
-	8000000,	/* 8 MHz??? */
-	{ 25 },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ irqhandler },
-	{ REGION_SOUND1 },
-	{ REGION_SOUND2 },
-	{ YM3012_VOL(100,MIXER_PAN_LEFT,100,MIXER_PAN_RIGHT) }
-};
-
-
-void init_welltris(void)
-{
-#if WELLTRIS_4P_HACK
-	/* A Hack which shows 4 player mode in code which is disabled */
-	data16_t *RAM = (data16_t *)memory_region(REGION_CPU1);
-	RAM[0xB91C/2] = 0x4e71;
-	RAM[0xB91E/2] = 0x4e71;
-#endif
-}
-
-static MACHINE_DRIVER_START( welltris )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz */
-	MDRV_CPU_MEMORY(welltris_readmem,welltris_writemem)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
-
-	MDRV_CPU_ADD(Z80,8000000/2)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 4 MHz ??? */
-	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
-	MDRV_CPU_PORTS(sound_readport,sound_writeport)
-								/* IRQs are triggered by the YM2610 */
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(512, 256)
-	MDRV_VISIBLE_AREA(0, 351, 0, 239)
-	MDRV_GFXDECODE(welltris_gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(2048)
-
-	MDRV_VIDEO_START(welltris)
-	MDRV_VIDEO_UPDATE(welltris)
-
-	/* sound hardware */
-	MDRV_SOUND_ATTRIBUTES(SOUND_SUPPORTS_STEREO)
-	MDRV_SOUND_ADD(YM2610, ym2610_interface)
-MACHINE_DRIVER_END
-
-
-
-ROM_START( welltris )
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )	/* 68000 code */
-	ROM_LOAD16_BYTE( "j2.8",			0x000000, 0x20000, 0x68ec5691 )
-	ROM_LOAD16_BYTE( "j1.7",			0x000001, 0x20000, 0x1598ea2c )
-	/* Space */
-	ROM_LOAD16_BYTE( "lh532j10.10",		0x100000, 0x40000, 0x1187c665 )
-	ROM_LOAD16_BYTE( "lh532j11.9",		0x100001, 0x40000, 0x18eda9e5 )
-
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )	/* 64k for the audio CPU + banks */
-	ROM_LOAD( "3.144",        0x00000, 0x20000, 0xae8f763e )
-	ROM_RELOAD(               0x10000, 0x20000 )
-
-	ROM_REGION( 0x0a0000, REGION_GFX1, ROMREGION_DISPOSE ) /* CHAR Tiles */
-	ROM_LOAD( "lh534j12.77",          0x000000, 0x80000, 0xb61a8b74 )
-
-	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE ) /* SPRITE Tiles */
-	ROM_LOAD( "046.93",          0x000000, 0x40000, 0x31d96d77 )
-	ROM_LOAD( "048.94",          0x040000, 0x40000, 0xbb4643da )
-
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* sound samples */
-	ROM_LOAD( "lh534j11.126",          0x00000, 0x80000, 0xbf85fb0d )
-
-	ROM_REGION( 0x100000, REGION_SOUND2, 0 ) /* sound samples */
-	ROM_LOAD( "lh534j09.123",          0x00000, 0x80000, 0x6c2ce9a5 )
-	ROM_LOAD( "lh534j10.124",          0x80000, 0x80000, 0xe3682221 )
-ROM_END
-
-
-
-GAMEX( 1991, welltris, 0,        welltris, welltris, welltris, ROT0,   "Video System Co.", "Welltris (Japan, 2 players)", GAME_NO_COCKTAIL )

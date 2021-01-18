@@ -52,7 +52,6 @@ struct TTL74123_interface {
 };
 
 
-void TTL74123_unconfig(void);
 void TTL74123_config(int which, const struct TTL74123_interface *intf);
 
 void TTL74123_trigger_w(int which, int data);

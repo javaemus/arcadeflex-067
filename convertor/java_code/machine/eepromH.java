@@ -19,7 +19,6 @@ struct EEPROM_interface
 void EEPROM_init(struct EEPROM_interface *interface);
 
 void EEPROM_write_bit(int bit);
-int EEPROM_read_bit(void);
 void EEPROM_set_cs_line(int state);
 void EEPROM_set_clock_line(int state);
 

@@ -215,393 +215,415 @@
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/vector.h"
-#include "vidhrdw/avgdvg.h"
-
-
-
-/*************************************
- *
- *	Machine init
- *
- *************************************/
-
-static MACHINE_INIT( omegrace )
-{
-	/* Omega Race expects the vector processor to be ready. */
-	avgdvg_reset_w (0, 0);
-}
-
-
-
-/*************************************
- *
- *	Vector processor interaction
- *
- *************************************/
-
-static READ_HANDLER( omegrace_vg_go_r )
-{
-	avgdvg_go_w(0,0);
-	return 0;
-}
-
-
-static READ_HANDLER( omegrace_watchdog_r )
-{
-	return 0;
-}
-
-
-static READ_HANDLER( omegrace_vg_status_r )
-{
-	return avgdvg_done() ? 0x00 : 0x80;
-}
-
-
-
-/*************************************
- *
- *	Input handlers
- *
- *************************************/
-
 /*
- * Encoder bit mappings
- * The encoder is a 64 way switch, with the inputs scrambled
- * on the input port (and shifted 2 bits to the left for the
- * 1 player encoder
- *
- * 3 6 5 4 7 2 for encoder 1 (shifted two bits left..)
- *
- *
- * 5 4 3 2 1 0 for encoder 2 (not shifted..)
- */
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-static unsigned char spinnerTable[64] =
+public class omegrace
 {
-	0x00, 0x04, 0x14, 0x10, 0x18, 0x1c, 0x5c, 0x58,
-	0x50, 0x54, 0x44, 0x40, 0x48, 0x4c, 0x6c, 0x68,
-	0x60, 0x64, 0x74, 0x70, 0x78, 0x7c, 0xfc, 0xf8,
-	0xf0, 0xf4, 0xe4, 0xe0, 0xe8, 0xec, 0xcc, 0xc8,
-	0xc0, 0xc4, 0xd4, 0xd0, 0xd8, 0xdc, 0x9c, 0x98,
-	0x90, 0x94, 0x84, 0x80, 0x88, 0x8c, 0xac, 0xa8,
-	0xa0, 0xa4, 0xb4, 0xb0, 0xb8, 0xbc, 0x3c, 0x38,
-	0x30, 0x34, 0x24, 0x20, 0x28, 0x2c, 0x0c, 0x08
-};
-
-
-READ_HANDLER( omegrace_spinner1_r )
-{
-	return (spinnerTable[readinputport(4) & 0x3f]);
+	
+	
+	
+	/*************************************
+	 *
+	 *	Machine init
+	 *
+	 *************************************/
+	
+	static MACHINE_INIT( omegrace )
+	{
+		/* Omega Race expects the vector processor to be ready. */
+		avgdvg_reset_w (0, 0);
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Vector processor interaction
+	 *
+	 *************************************/
+	
+	public static ReadHandlerPtr omegrace_vg_go_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		avgdvg_go_w(0,0);
+		return 0;
+	} };
+	
+	
+	public static ReadHandlerPtr omegrace_watchdog_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return 0;
+	} };
+	
+	
+	public static ReadHandlerPtr omegrace_vg_status_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return avgdvg_done() ? 0x00 : 0x80;
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Input handlers
+	 *
+	 *************************************/
+	
+	/*
+	 * Encoder bit mappings
+	 * The encoder is a 64 way switch, with the inputs scrambled
+	 * on the input port (and shifted 2 bits to the left for the
+	 * 1 player encoder
+	 *
+	 * 3 6 5 4 7 2 for encoder 1 (shifted two bits left..)
+	 *
+	 *
+	 * 5 4 3 2 1 0 for encoder 2 (not shifted..)
+	 */
+	
+	static unsigned char spinnerTable[64] =
+	{
+		0x00, 0x04, 0x14, 0x10, 0x18, 0x1c, 0x5c, 0x58,
+		0x50, 0x54, 0x44, 0x40, 0x48, 0x4c, 0x6c, 0x68,
+		0x60, 0x64, 0x74, 0x70, 0x78, 0x7c, 0xfc, 0xf8,
+		0xf0, 0xf4, 0xe4, 0xe0, 0xe8, 0xec, 0xcc, 0xc8,
+		0xc0, 0xc4, 0xd4, 0xd0, 0xd8, 0xdc, 0x9c, 0x98,
+		0x90, 0x94, 0x84, 0x80, 0x88, 0x8c, 0xac, 0xa8,
+		0xa0, 0xa4, 0xb4, 0xb0, 0xb8, 0xbc, 0x3c, 0x38,
+		0x30, 0x34, 0x24, 0x20, 0x28, 0x2c, 0x0c, 0x08
+	};
+	
+	
+	public static ReadHandlerPtr omegrace_spinner1_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return (spinnerTable[readinputport(4) & 0x3f]);
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Output handlers
+	 *
+	 *************************************/
+	
+	public static WriteHandlerPtr omegrace_leds_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		/* bits 0 and 1 are coin counters */
+		coin_counter_w(0,data & 0x01);
+		coin_counter_w(1,data & 0x02);
+	
+		/* bits 2 to 5 are the start leds (4 and 5 cocktail only) */
+		set_led_status(0,~data & 0x04);
+		set_led_status(1,~data & 0x08);
+		set_led_status(2,~data & 0x10);
+		set_led_status(3,~data & 0x20);
+	
+		/* bit 6 flips screen (not supported) */
+	} };
+	
+	
+	public static WriteHandlerPtr omegrace_soundlatch_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		soundlatch_w (offset, data);
+		cpu_set_irq_line(1, 0, HOLD_LINE);
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Overlay
+	 *
+	 *************************************/
+	
+	OVERLAY_START( omegrace_overlay )
+		OVERLAY_RECT( 0.0, 0.0, 1.0, 1.0, MAKE_ARGB(0x04,0xff,0xe4,0x57) )
+	OVERLAY_END
+	
+	
+	
+	/*************************************
+	 *
+	 *	Main CPU memory handlers
+	 *
+	 *************************************/
+	
+	public static Memory_ReadAddress readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x3fff, MRA_ROM ),
+		new Memory_ReadAddress( 0x4000, 0x4bff, MRA_RAM ),
+		new Memory_ReadAddress( 0x5c00, 0x5cff, MRA_RAM ), /* NVRAM */
+		new Memory_ReadAddress( 0x8000, 0x8fff, MRA_RAM ),
+		new Memory_ReadAddress( 0x9000, 0x9fff, MRA_ROM ), /* vector rom */
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x3fff, MWA_ROM ), /* Omega Race tries to write there! */
+		new Memory_WriteAddress( 0x4000, 0x4bff, MWA_RAM ),
+		new Memory_WriteAddress( 0x5c00, 0x5cff, MWA_RAM, generic_nvram, generic_nvram_size ), /* NVRAM */
+		new Memory_WriteAddress( 0x8000, 0x8fff, MWA_RAM, vectorram, vectorram_size ), /* vector ram */
+		new Memory_WriteAddress( 0x9000, 0x9fff, MWA_ROM ), /* vector rom */
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static IO_ReadPort readport[]={
+		new IO_ReadPort(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_ReadPort( 0x08, 0x08, omegrace_vg_go_r ),
+		new IO_ReadPort( 0x09, 0x09, omegrace_watchdog_r ),
+		new IO_ReadPort( 0x0b, 0x0b, omegrace_vg_status_r ), /* vg_halt */
+		new IO_ReadPort( 0x10, 0x10, input_port_0_r ), /* DIP SW C4 */
+		new IO_ReadPort( 0x17, 0x17, input_port_1_r ), /* DIP SW C6 */
+		new IO_ReadPort( 0x11, 0x11, input_port_2_r ), /* Player 1 input */
+		new IO_ReadPort( 0x12, 0x12, input_port_3_r ), /* Player 2 input */
+		new IO_ReadPort( 0x15, 0x15, omegrace_spinner1_r ), /* 1st controller */
+		new IO_ReadPort( 0x16, 0x16, input_port_5_r ), /* 2nd controller (cocktail) */
+		new IO_ReadPort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static IO_WritePort writeport[]={
+		new IO_WritePort(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_WritePort( 0x0a, 0x0a, avgdvg_reset_w ),
+		new IO_WritePort( 0x13, 0x13, omegrace_leds_w ), /* coin counters, leds, flip screen */
+		new IO_WritePort( 0x14, 0x14, omegrace_soundlatch_w ), /* Sound command */
+		new IO_WritePort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound CPU memory handlers
+	 *
+	 *************************************/
+	
+	public static Memory_ReadAddress sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x07ff, MRA_ROM ),
+		new Memory_ReadAddress( 0x1000, 0x13ff, MRA_RAM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x07ff, MWA_ROM ),
+		new Memory_WriteAddress( 0x1000, 0x13ff, MWA_RAM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static IO_ReadPort sound_readport[]={
+		new IO_ReadPort(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_ReadPort( 0x00, 0x00, soundlatch_r ),
+		new IO_ReadPort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static IO_WritePort sound_writeport[]={
+		new IO_WritePort(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_WritePort( 0x00, 0x00, AY8910_control_port_0_w ),
+		new IO_WritePort( 0x01, 0x01, AY8910_write_port_0_w ),
+		new IO_WritePort( 0x02, 0x02, AY8910_control_port_1_w ),
+		new IO_WritePort( 0x03, 0x03, AY8910_write_port_1_w ),
+		new IO_WritePort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Port definitions
+	 *
+	 *************************************/
+	
+	static InputPortPtr input_ports_omegrace = new InputPortPtr(){ public void handler() { 
+		PORT_START();  /* SW0 */
+		PORT_DIPNAME( 0x03, 0x03, "1st Bonus Life" );
+		PORT_DIPSETTING (   0x00, "40k" );
+		PORT_DIPSETTING (   0x01, "50k" );
+		PORT_DIPSETTING (   0x02, "70k" );
+		PORT_DIPSETTING (   0x03, "100k" );
+		PORT_DIPNAME( 0x0c, 0x0c, "2nd & 3rd Bonus Life" );
+		PORT_DIPSETTING (   0x00, "150k 250k" );
+		PORT_DIPSETTING (   0x04, "250k 500k" );
+		PORT_DIPSETTING (   0x08, "500k 750k" );
+		PORT_DIPSETTING (   0x0c, "750k 1500k" );
+		PORT_DIPNAME( 0x30, 0x30, "Credit(s);Ships" )
+		PORT_DIPSETTING (   0x00, "1C/2S 2C/4S" );
+		PORT_DIPSETTING (   0x10, "1C/2S 2C/5S" );
+		PORT_DIPSETTING (   0x20, "1C/3S 2C/6S" );
+		PORT_DIPSETTING (   0x30, "1C/3S 2C/7S" );
+		PORT_DIPNAME( 0x40, 0x40, DEF_STR( "Unused") );
+		PORT_DIPSETTING (   0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING (   0x40, DEF_STR( "On") );
+		PORT_DIPNAME( 0x80, 0x80, DEF_STR( "Unused") );
+		PORT_DIPSETTING (   0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING (   0x80, DEF_STR( "On") );
+	
+		PORT_START();  /* SW1 */
+		PORT_DIPNAME( 0x07, 0x07, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING (   0x06, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING (   0x07, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING (   0x03, DEF_STR( "4C_5C") );
+		PORT_DIPSETTING (   0x04, DEF_STR( "3C_4C") );
+		PORT_DIPSETTING (   0x05, DEF_STR( "2C_3C") );
+		PORT_DIPSETTING (   0x00, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING (   0x01, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING (   0x02, DEF_STR( "1C_5C") );
+		PORT_DIPNAME( 0x38, 0x38, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING (   0x30, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING (   0x38, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING (   0x18, DEF_STR( "4C_5C") );
+		PORT_DIPSETTING (   0x20, DEF_STR( "3C_4C") );
+		PORT_DIPSETTING (   0x28, DEF_STR( "2C_3C") );
+		PORT_DIPSETTING (   0x00, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING (   0x08, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING (   0x10, DEF_STR( "1C_5C") );
+		PORT_DIPNAME( 0x40, 0x00, DEF_STR( "Free_Play") );
+		PORT_DIPSETTING (   0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING (   0x40, DEF_STR( "On") );
+		PORT_DIPNAME( 0x80, 0x00, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING (   0x00, DEF_STR( "Upright") );
+		PORT_DIPSETTING (   0x80, DEF_STR( "Cocktail") );
+	
+		PORT_START();  /* IN2 - port 0x11 */
+		PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN1 );
+		PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN2 );
+		PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_TILT );
+		PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 );
+		PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_SERVICE( 0x80, IP_ACTIVE_LOW );
+	
+		PORT_START();  /* IN3 - port 0x12 */
+		PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL );
+		PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL );
+		PORT_BITX( 0x04, IP_ACTIVE_HIGH, IPT_START2, "2 Players Start (1 credit);, IP_KEY_DEFAULT, IP_JOY_DEFAULT )
+		PORT_BITX( 0x08, IP_ACTIVE_HIGH, IPT_START4, "2 Players Start (2 credits);, IP_KEY_DEFAULT, IP_JOY_DEFAULT )
+		PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BITX( 0x40, IP_ACTIVE_HIGH, IPT_START1, "1 Player Start (1 credit);, IP_KEY_DEFAULT, IP_JOY_DEFAULT )
+		PORT_BITX( 0x80, IP_ACTIVE_HIGH, IPT_START3, "1 Player Start (2 credits);, IP_KEY_DEFAULT, IP_JOY_DEFAULT )
+	
+		PORT_START();  /* IN4 - port 0x15 - spinner */
+		PORT_ANALOG(0x3f, 0x00, IPT_DIAL, 12, 10, 0, 0 );
+	
+		PORT_START();  /* IN5 - port 0x16 - second spinner */
+		PORT_ANALOG(0x3f, 0x00, IPT_DIAL | IPF_COCKTAIL, 12, 10, 0, 0 );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound interfaces
+	 *
+	 *************************************/
+	
+	static AY8910interface ay8910_interface = new AY8910interface
+	(
+		2,	/* 2 chips */
+		1500000,	/* 1.5 MHz */
+		new int[] { 25, 25 },
+		new ReadHandlerPtr[] { 0 },
+		new ReadHandlerPtr[] { 0 },
+		new WriteHandlerPtr[] { 0 },
+		new WriteHandlerPtr[] { 0 }
+	);
+	
+	
+	
+	/*************************************
+	 *
+	 *	Machine drivers
+	 *
+	 *************************************/
+	
+	static MACHINE_DRIVER_START( omegrace )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(Z80, 3000000)
+		MDRV_CPU_MEMORY(readmem,writemem)
+		MDRV_CPU_PORTS(readport,writeport)
+		MDRV_CPU_PERIODIC_INT(irq0_line_hold,250)
+	
+		MDRV_CPU_ADD(Z80, 1500000)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+		MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+		MDRV_CPU_PORTS(sound_readport,sound_writeport)
+		MDRV_CPU_PERIODIC_INT(nmi_line_pulse,250)
+	
+		MDRV_FRAMES_PER_SECOND(40)
+	
+		MDRV_MACHINE_INIT(omegrace)
+		MDRV_NVRAM_HANDLER(generic_0fill)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR | VIDEO_RGB_DIRECT)
+		MDRV_SCREEN_SIZE(400, 300)
+		MDRV_VISIBLE_AREA(0, 1020, -10, 1010)
+		MDRV_PALETTE_LENGTH(32768)
+	
+		MDRV_PALETTE_INIT(avg_white)
+		MDRV_VIDEO_START(dvg)
+		MDRV_VIDEO_UPDATE(vector)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(AY8910, ay8910_interface)
+	MACHINE_DRIVER_END
+	
+	
+	
+	/*************************************
+	 *
+	 *	ROM definitions
+	 *
+	 *************************************/
+	
+	static RomLoadPtr rom_omegrace = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );/* 64k for code */
+		ROM_LOAD( "omega.m7",     0x0000, 0x1000, 0x0424d46e );
+		ROM_LOAD( "omega.l7",     0x1000, 0x1000, 0xedcd7a7d );
+		ROM_LOAD( "omega.k7",     0x2000, 0x1000, 0x6d10f197 );
+		ROM_LOAD( "omega.j7",     0x3000, 0x1000, 0x8e8d4b54 );
+		ROM_LOAD( "omega.e1",     0x9000, 0x0800, 0x1d0fdf3a );
+		ROM_LOAD( "omega.f1",     0x9800, 0x0800, 0xd44c0814 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* 64k for audio cpu */
+		ROM_LOAD( "sound.k5",     0x0000, 0x0800, 0x7d426017 );
+	ROM_END(); }}; 
+	
+	
+	
+	/*************************************
+	 *
+	 *	Driver initialization
+	 *
+	 *************************************/
+	
+	static DRIVER_INIT( omegrace )
+	{
+		artwork_set_overlay(omegrace_overlay);
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Game drivers
+	 *
+	 *************************************/
+	
+	public static GameDriver driver_omegrace	   = new GameDriver("1981"	,"omegrace"	,"omegrace.java"	,rom_omegrace,null	,machine_driver_omegrace	,input_ports_omegrace	,init_omegrace	,ROT0	,	"Midway", "Omega Race", GAME_NO_COCKTAIL )
+	
 }
-
-
-
-/*************************************
- *
- *	Output handlers
- *
- *************************************/
-
-WRITE_HANDLER( omegrace_leds_w )
-{
-	/* bits 0 and 1 are coin counters */
-	coin_counter_w(0,data & 0x01);
-	coin_counter_w(1,data & 0x02);
-
-	/* bits 2 to 5 are the start leds (4 and 5 cocktail only) */
-	set_led_status(0,~data & 0x04);
-	set_led_status(1,~data & 0x08);
-	set_led_status(2,~data & 0x10);
-	set_led_status(3,~data & 0x20);
-
-	/* bit 6 flips screen (not supported) */
-}
-
-
-WRITE_HANDLER( omegrace_soundlatch_w )
-{
-	soundlatch_w (offset, data);
-	cpu_set_irq_line(1, 0, HOLD_LINE);
-}
-
-
-
-/*************************************
- *
- *	Overlay
- *
- *************************************/
-
-OVERLAY_START( omegrace_overlay )
-	OVERLAY_RECT( 0.0, 0.0, 1.0, 1.0, MAKE_ARGB(0x04,0xff,0xe4,0x57) )
-OVERLAY_END
-
-
-
-/*************************************
- *
- *	Main CPU memory handlers
- *
- *************************************/
-
-static MEMORY_READ_START( readmem )
-	{ 0x0000, 0x3fff, MRA_ROM },
-	{ 0x4000, 0x4bff, MRA_RAM },
-	{ 0x5c00, 0x5cff, MRA_RAM }, /* NVRAM */
-	{ 0x8000, 0x8fff, MRA_RAM },
-	{ 0x9000, 0x9fff, MRA_ROM }, /* vector rom */
-MEMORY_END
-
-
-static MEMORY_WRITE_START( writemem )
-	{ 0x0000, 0x3fff, MWA_ROM }, /* Omega Race tries to write there! */
-	{ 0x4000, 0x4bff, MWA_RAM },
-	{ 0x5c00, 0x5cff, MWA_RAM, &generic_nvram, &generic_nvram_size }, /* NVRAM */
-	{ 0x8000, 0x8fff, MWA_RAM, &vectorram, &vectorram_size }, /* vector ram */
-	{ 0x9000, 0x9fff, MWA_ROM }, /* vector rom */
-MEMORY_END
-
-
-static PORT_READ_START( readport )
-	{ 0x08, 0x08, omegrace_vg_go_r },
-	{ 0x09, 0x09, omegrace_watchdog_r },
-	{ 0x0b, 0x0b, omegrace_vg_status_r }, /* vg_halt */
-	{ 0x10, 0x10, input_port_0_r }, /* DIP SW C4 */
-	{ 0x17, 0x17, input_port_1_r }, /* DIP SW C6 */
-	{ 0x11, 0x11, input_port_2_r }, /* Player 1 input */
-	{ 0x12, 0x12, input_port_3_r }, /* Player 2 input */
-	{ 0x15, 0x15, omegrace_spinner1_r }, /* 1st controller */
-	{ 0x16, 0x16, input_port_5_r }, /* 2nd controller (cocktail) */
-PORT_END
-
-
-static PORT_WRITE_START( writeport )
-	{ 0x0a, 0x0a, avgdvg_reset_w },
-	{ 0x13, 0x13, omegrace_leds_w }, /* coin counters, leds, flip screen */
-	{ 0x14, 0x14, omegrace_soundlatch_w }, /* Sound command */
-PORT_END
-
-
-
-/*************************************
- *
- *	Sound CPU memory handlers
- *
- *************************************/
-
-static MEMORY_READ_START( sound_readmem )
-	{ 0x0000, 0x07ff, MRA_ROM },
-	{ 0x1000, 0x13ff, MRA_RAM },
-MEMORY_END
-
-
-static MEMORY_WRITE_START( sound_writemem )
-	{ 0x0000, 0x07ff, MWA_ROM },
-	{ 0x1000, 0x13ff, MWA_RAM },
-MEMORY_END
-
-
-static PORT_READ_START( sound_readport )
-	{ 0x00, 0x00, soundlatch_r },
-PORT_END
-
-
-static PORT_WRITE_START( sound_writeport )
-	{ 0x00, 0x00, AY8910_control_port_0_w },
-	{ 0x01, 0x01, AY8910_write_port_0_w },
-	{ 0x02, 0x02, AY8910_control_port_1_w },
-	{ 0x03, 0x03, AY8910_write_port_1_w },
-PORT_END
-
-
-
-/*************************************
- *
- *	Port definitions
- *
- *************************************/
-
-INPUT_PORTS_START( omegrace )
-	PORT_START /* SW0 */
-	PORT_DIPNAME( 0x03, 0x03, "1st Bonus Life" )
-	PORT_DIPSETTING (   0x00, "40k" )
-	PORT_DIPSETTING (   0x01, "50k" )
-	PORT_DIPSETTING (   0x02, "70k" )
-	PORT_DIPSETTING (   0x03, "100k" )
-	PORT_DIPNAME( 0x0c, 0x0c, "2nd & 3rd Bonus Life" )
-	PORT_DIPSETTING (   0x00, "150k 250k" )
-	PORT_DIPSETTING (   0x04, "250k 500k" )
-	PORT_DIPSETTING (   0x08, "500k 750k" )
-	PORT_DIPSETTING (   0x0c, "750k 1500k" )
-	PORT_DIPNAME( 0x30, 0x30, "Credit(s)/Ships" )
-	PORT_DIPSETTING (   0x00, "1C/2S 2C/4S" )
-	PORT_DIPSETTING (   0x10, "1C/2S 2C/5S" )
-	PORT_DIPSETTING (   0x20, "1C/3S 2C/6S" )
-	PORT_DIPSETTING (   0x30, "1C/3S 2C/7S" )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
-	PORT_DIPSETTING (   0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING (   0x40, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
-	PORT_DIPSETTING (   0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING (   0x80, DEF_STR( On ) )
-
-	PORT_START /* SW1 */
-	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING (   0x06, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING (   0x07, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING (   0x03, DEF_STR( 4C_5C ) )
-	PORT_DIPSETTING (   0x04, DEF_STR( 3C_4C ) )
-	PORT_DIPSETTING (   0x05, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING (   0x00, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING (   0x01, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING (   0x02, DEF_STR( 1C_5C ) )
-	PORT_DIPNAME( 0x38, 0x38, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING (   0x30, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING (   0x38, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING (   0x18, DEF_STR( 4C_5C ) )
-	PORT_DIPSETTING (   0x20, DEF_STR( 3C_4C ) )
-	PORT_DIPSETTING (   0x28, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING (   0x00, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING (   0x08, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING (   0x10, DEF_STR( 1C_5C ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Free_Play ) )
-	PORT_DIPSETTING (   0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING (   0x40, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING (   0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING (   0x80, DEF_STR( Cocktail ) )
-
-	PORT_START /* IN2 - port 0x11 */
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_TILT )
-	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
-
-	PORT_START /* IN3 - port 0x12 */
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL )
-	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
-	PORT_BITX( 0x04, IP_ACTIVE_HIGH, IPT_START2, "2 Players Start (1 credit)", IP_KEY_DEFAULT, IP_JOY_DEFAULT )
-	PORT_BITX( 0x08, IP_ACTIVE_HIGH, IPT_START4, "2 Players Start (2 credits)", IP_KEY_DEFAULT, IP_JOY_DEFAULT )
-	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BITX( 0x40, IP_ACTIVE_HIGH, IPT_START1, "1 Player Start (1 credit)", IP_KEY_DEFAULT, IP_JOY_DEFAULT )
-	PORT_BITX( 0x80, IP_ACTIVE_HIGH, IPT_START3, "1 Player Start (2 credits)", IP_KEY_DEFAULT, IP_JOY_DEFAULT )
-
-	PORT_START /* IN4 - port 0x15 - spinner */
-	PORT_ANALOG(0x3f, 0x00, IPT_DIAL, 12, 10, 0, 0 )
-
-	PORT_START /* IN5 - port 0x16 - second spinner */
-	PORT_ANALOG(0x3f, 0x00, IPT_DIAL | IPF_COCKTAIL, 12, 10, 0, 0 )
-INPUT_PORTS_END
-
-
-
-/*************************************
- *
- *	Sound interfaces
- *
- *************************************/
-
-static struct AY8910interface ay8910_interface =
-{
-	2,	/* 2 chips */
-	1500000,	/* 1.5 MHz */
-	{ 25, 25 },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ 0 }
-};
-
-
-
-/*************************************
- *
- *	Machine drivers
- *
- *************************************/
-
-static MACHINE_DRIVER_START( omegrace )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 3000000)
-	MDRV_CPU_MEMORY(readmem,writemem)
-	MDRV_CPU_PORTS(readport,writeport)
-	MDRV_CPU_PERIODIC_INT(irq0_line_hold,250)
-
-	MDRV_CPU_ADD(Z80, 1500000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
-	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
-	MDRV_CPU_PORTS(sound_readport,sound_writeport)
-	MDRV_CPU_PERIODIC_INT(nmi_line_pulse,250)
-
-	MDRV_FRAMES_PER_SECOND(40)
-
-	MDRV_MACHINE_INIT(omegrace)
-	MDRV_NVRAM_HANDLER(generic_0fill)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR | VIDEO_RGB_DIRECT)
-	MDRV_SCREEN_SIZE(400, 300)
-	MDRV_VISIBLE_AREA(0, 1020, -10, 1010)
-	MDRV_PALETTE_LENGTH(32768)
-
-	MDRV_PALETTE_INIT(avg_white)
-	MDRV_VIDEO_START(dvg)
-	MDRV_VIDEO_UPDATE(vector)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(AY8910, ay8910_interface)
-MACHINE_DRIVER_END
-
-
-
-/*************************************
- *
- *	ROM definitions
- *
- *************************************/
-
-ROM_START( omegrace )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
-	ROM_LOAD( "omega.m7",     0x0000, 0x1000, 0x0424d46e )
-	ROM_LOAD( "omega.l7",     0x1000, 0x1000, 0xedcd7a7d )
-	ROM_LOAD( "omega.k7",     0x2000, 0x1000, 0x6d10f197 )
-	ROM_LOAD( "omega.j7",     0x3000, 0x1000, 0x8e8d4b54 )
-	ROM_LOAD( "omega.e1",     0x9000, 0x0800, 0x1d0fdf3a )
-	ROM_LOAD( "omega.f1",     0x9800, 0x0800, 0xd44c0814 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for audio cpu */
-	ROM_LOAD( "sound.k5",     0x0000, 0x0800, 0x7d426017 )
-ROM_END
-
-
-
-/*************************************
- *
- *	Driver initialization
- *
- *************************************/
-
-static DRIVER_INIT( omegrace )
-{
-	artwork_set_overlay(omegrace_overlay);
-}
-
-
-
-/*************************************
- *
- *	Game drivers
- *
- *************************************/
-
-GAMEX( 1981, omegrace, 0, omegrace, omegrace, omegrace, ROT0, "Midway", "Omega Race", GAME_NO_COCKTAIL )
-

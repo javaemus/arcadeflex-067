@@ -14,128 +14,134 @@
  *
  */
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package sndhrdw;
 
-extern void astinvad_set_flash(int flag);
-
-
-static const char *astinvad_sample_names[] =
+public class astinvad
 {
-	"*invaders",
-	"0.wav",
-	"1.wav",
-	"2.wav",
-	"3.wav",
-	"4.wav",
-	"5.wav",
-	"6.wav",
-	"7.wav",
-	"8.wav",
-	0       /* end of array */
-};
-
-/* sample sound IDs - must match sample file name table above */
-enum
-{
-	SND_UFO = 0,
-	SND_SHOT,
-	SND_BASEHIT,
-	SND_INVADERHIT,
-	SND_FLEET1,
-	SND_FLEET2,
-	SND_FLEET3,
-	SND_FLEET4,
-	SND_UFOHIT
-};
-
-
-struct Samplesinterface astinvad_samples_interface =
-{
-	6,   /* channels */
-	25,  /* volume   */
-	astinvad_sample_names
-};
-
-
-WRITE_HANDLER( astinvad_sound1_w )
-{
-	static int state;
-
-	int bitsGoneHi = data & ~state;
-
-	mixer_sound_enable_global_w(data & 0x20);
-
-	if (!(data & 1))
+	
+	
+	
+	static const char *astinvad_sample_names[] =
 	{
-		sample_stop(0);
-	}
-
-	if (bitsGoneHi & 0x01) sample_start(0, SND_UFO, 1);
-	if (bitsGoneHi & 0x02) sample_start(1, SND_SHOT, 0);
-	if (bitsGoneHi & 0x04) sample_start(2, SND_BASEHIT, 0);
-	if (bitsGoneHi & 0x08) sample_start(3, SND_INVADERHIT, 0);
-
-	astinvad_set_flash(data & 0x04); /* LT 20-3-1998 */
-
-	state = data;
-}
-
-
-WRITE_HANDLER( astinvad_sound2_w )
-{
-	static int state;
-
-	int bitsGoneHi = data & ~state;
-
-	if (bitsGoneHi & 0x01) sample_start(5, SND_FLEET1, 0);
-	if (bitsGoneHi & 0x02) sample_start(5, SND_FLEET2, 0);
-	if (bitsGoneHi & 0x04) sample_start(5, SND_FLEET3, 0);
-	if (bitsGoneHi & 0x08) sample_start(5, SND_FLEET4, 0);
-	if (bitsGoneHi & 0x10) sample_start(4, SND_UFOHIT, 0);
-
-	flip_screen_set(readinputport(3) & data & 0x20);
-
-	state = data;
-}
-
-
-WRITE_HANDLER( spaceint_sound1_w )
-{
-	static int state;
-
-	int bitsGoneHi = data & ~state;
-
-	if (!(data & 0x08))
+		"*invaders",
+		"0.wav",
+		"1.wav",
+		"2.wav",
+		"3.wav",
+		"4.wav",
+		"5.wav",
+		"6.wav",
+		"7.wav",
+		"8.wav",
+		0       /* end of array */
+	};
+	
+	/* sample sound IDs - must match sample file name table above */
+	enum
 	{
-		sample_stop(0);
-	}
-
-	if (bitsGoneHi & 0x01) sample_start(1, SND_SHOT, 0);
-	if (bitsGoneHi & 0x02) sample_start(2, SND_BASEHIT, 0);
-	if (bitsGoneHi & 0x04) sample_start(4, SND_UFOHIT, 0);
-	if (bitsGoneHi & 0x08) sample_start(0, SND_UFO, 1);
-
-	if (bitsGoneHi & 0x10) sample_start(5, SND_FLEET1, 0);
-	if (bitsGoneHi & 0x20) sample_start(5, SND_FLEET2, 0);
-	if (bitsGoneHi & 0x40) sample_start(5, SND_FLEET3, 0);
-	if (bitsGoneHi & 0x80) sample_start(5, SND_FLEET4, 0);
-
-	state = data;
-}
-
-
-WRITE_HANDLER( spaceint_sound2_w )
-{
-	static int state;
-
-	int bitsGoneHi = data & ~state;
-
-	mixer_sound_enable_global_w(data & 0x02);
-
-	if (bitsGoneHi & 0x04) sample_start(3, SND_INVADERHIT, 0);
-
-	flip_screen_set(readinputport(3) & data & 0x80);
-
-	state = data;
+		SND_UFO = 0,
+		SND_SHOT,
+		SND_BASEHIT,
+		SND_INVADERHIT,
+		SND_FLEET1,
+		SND_FLEET2,
+		SND_FLEET3,
+		SND_FLEET4,
+		SND_UFOHIT
+	};
+	
+	
+	struct Samplesinterface astinvad_samples_interface =
+	{
+		6,   /* channels */
+		25,  /* volume   */
+		astinvad_sample_names
+	};
+	
+	
+	public static WriteHandlerPtr astinvad_sound1_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		static int state;
+	
+		int bitsGoneHi = data & ~state;
+	
+		mixer_sound_enable_global_w(data & 0x20);
+	
+		if (!(data & 1))
+		{
+			sample_stop(0);
+		}
+	
+		if (bitsGoneHi & 0x01) sample_start(0, SND_UFO, 1);
+		if (bitsGoneHi & 0x02) sample_start(1, SND_SHOT, 0);
+		if (bitsGoneHi & 0x04) sample_start(2, SND_BASEHIT, 0);
+		if (bitsGoneHi & 0x08) sample_start(3, SND_INVADERHIT, 0);
+	
+		astinvad_set_flash(data & 0x04); /* LT 20-3-1998 */
+	
+		state = data;
+	} };
+	
+	
+	public static WriteHandlerPtr astinvad_sound2_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		static int state;
+	
+		int bitsGoneHi = data & ~state;
+	
+		if (bitsGoneHi & 0x01) sample_start(5, SND_FLEET1, 0);
+		if (bitsGoneHi & 0x02) sample_start(5, SND_FLEET2, 0);
+		if (bitsGoneHi & 0x04) sample_start(5, SND_FLEET3, 0);
+		if (bitsGoneHi & 0x08) sample_start(5, SND_FLEET4, 0);
+		if (bitsGoneHi & 0x10) sample_start(4, SND_UFOHIT, 0);
+	
+		flip_screen_set(readinputport(3) & data & 0x20);
+	
+		state = data;
+	} };
+	
+	
+	public static WriteHandlerPtr spaceint_sound1_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		static int state;
+	
+		int bitsGoneHi = data & ~state;
+	
+		if (!(data & 0x08))
+		{
+			sample_stop(0);
+		}
+	
+		if (bitsGoneHi & 0x01) sample_start(1, SND_SHOT, 0);
+		if (bitsGoneHi & 0x02) sample_start(2, SND_BASEHIT, 0);
+		if (bitsGoneHi & 0x04) sample_start(4, SND_UFOHIT, 0);
+		if (bitsGoneHi & 0x08) sample_start(0, SND_UFO, 1);
+	
+		if (bitsGoneHi & 0x10) sample_start(5, SND_FLEET1, 0);
+		if (bitsGoneHi & 0x20) sample_start(5, SND_FLEET2, 0);
+		if (bitsGoneHi & 0x40) sample_start(5, SND_FLEET3, 0);
+		if (bitsGoneHi & 0x80) sample_start(5, SND_FLEET4, 0);
+	
+		state = data;
+	} };
+	
+	
+	public static WriteHandlerPtr spaceint_sound2_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		static int state;
+	
+		int bitsGoneHi = data & ~state;
+	
+		mixer_sound_enable_global_w(data & 0x02);
+	
+		if (bitsGoneHi & 0x04) sample_start(3, SND_INVADERHIT, 0);
+	
+		flip_screen_set(readinputport(3) & data & 0x80);
+	
+		state = data;
+	} };
 }

@@ -95,385 +95,391 @@
 ***************************************************************************/
 
 
-#include "driver.h"
-#include "machine/6821pia.h"
-#include "vidhrdw/generic.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-
-#define LOG_SOUND		0
-
-
-static UINT8 sound_response;
-static UINT8 sound_response_ack_clk;
-
-
-/* sound driver data & functions */
-int victory_sh_start(const struct MachineSound *msound);
-
-READ_HANDLER( exidy_shriot_r );
-READ_HANDLER( exidy_sh6840_r );
-READ_HANDLER( exidy_sh8253_r );
-WRITE_HANDLER( exidy_shriot_w );
-WRITE_HANDLER( exidy_sh6840_w );
-WRITE_HANDLER( exidy_sh8253_w );
-WRITE_HANDLER( exidy_sfxctrl_w );
-
-
-/* video driver data & functions */
-extern UINT8 *victory_charram;
-
-VIDEO_START( victory );
-VIDEO_EOF( victory );
-VIDEO_UPDATE( victory );
-INTERRUPT_GEN( victory_vblank_interrupt );
-
-READ_HANDLER( victory_video_control_r );
-WRITE_HANDLER( victory_video_control_w );
-WRITE_HANDLER( victory_paletteram_w );
-WRITE_HANDLER( victory_videoram_w );
-WRITE_HANDLER( victory_charram_w );
-
-
-
-/*************************************
- *
- *	Sound CPU control
- *
- *************************************/
-
-static READ_HANDLER( sound_response_r )
+public class victory
 {
-	if (LOG_SOUND) logerror("%04X:!!!! Sound response read = %02X\n", activecpu_get_previouspc(), sound_response);
-	pia_0_cb1_w(0, 0);
-	return sound_response;
-}
-
-
-static READ_HANDLER( sound_status_r )
-{
-	if (LOG_SOUND) logerror("%04X:!!!! Sound status read = %02X\n", activecpu_get_previouspc(), (pia_0_ca1_r(0) << 7) | (pia_0_cb1_r(0) << 6));
-	return (pia_0_ca1_r(0) << 7) | (pia_0_cb1_r(0) << 6);
-}
-
-
-static void delayed_command_w(int data)
-{
-	pia_0_porta_w(0, data);
-	pia_0_ca1_w(0, 0);
-	if (LOG_SOUND) logerror("%04X:!!!! Sound command = %02X\n", activecpu_get_previouspc(), data);
-}
-
-static WRITE_HANDLER( sound_command_w )
-{
-	timer_set(TIME_NOW, data, delayed_command_w);
-}
-
-
-WRITE_HANDLER( victory_sound_response_w )
-{
-	sound_response = data;
-	if (LOG_SOUND) logerror("%04X:!!!! Sound response = %02X\n", activecpu_get_previouspc(), data);
-}
-
-
-WRITE_HANDLER( victory_sound_irq_clear_w )
-{
-	if (LOG_SOUND) logerror("%04X:!!!! Sound IRQ clear = %02X\n", activecpu_get_previouspc(), data);
-	if (!data) pia_0_ca1_w(0, 1);
-}
-
-
-WRITE_HANDLER( victory_main_ack_w )
-{
-	if (LOG_SOUND) logerror("%04X:!!!! Sound ack = %02X\n", activecpu_get_previouspc(), data);
-	if (sound_response_ack_clk && !data)
-		pia_0_cb1_w(0, 1);
-	sound_response_ack_clk = data;
-}
-
-
-
-/*************************************
- *
- *	Misc I/O
- *
- *************************************/
-
-static WRITE_HANDLER( lamp_control_w )
-{
-	set_led_status(0,data & 0x80);
-	set_led_status(1,data & 0x40);
-	set_led_status(2,data & 0x20);
-	set_led_status(3,data & 0x10);
-}
-
-
-
-/*************************************
- *
- *	Main CPU memory handlers
- *
- *************************************/
-
-static MEMORY_READ_START( main_readmem )
-	{ 0x0000, 0xbfff, MRA_ROM },
-	{ 0xc000, 0xc0ff, victory_video_control_r },
-	{ 0xc400, 0xc7ff, MRA_RAM },
-	{ 0xc800, 0xdfff, MRA_RAM },
-	{ 0xe000, 0xefff, MRA_RAM },
-	{ 0xf000, 0xf7ff, MRA_RAM },
-	{ 0xf800, 0xf800, sound_response_r },
-	{ 0xf801, 0xf801, sound_status_r },
-MEMORY_END
-
-
-static MEMORY_WRITE_START( main_writemem )
-	{ 0x0000, 0xbfff, MWA_ROM },
-	{ 0xc100, 0xc1ff, victory_video_control_w },
-	{ 0xc200, 0xc3ff, victory_paletteram_w, &paletteram },
-	{ 0xc400, 0xc7ff, victory_videoram_w, &videoram },
-	{ 0xc800, 0xdfff, victory_charram_w, &victory_charram },
-	{ 0xe000, 0xefff, MWA_RAM },
-	{ 0xf000, 0xf7ff, MWA_RAM, &generic_nvram, &generic_nvram_size },
-	{ 0xf800, 0xf800, sound_command_w },
-MEMORY_END
-
-
-static PORT_READ_START( main_readport )
-	{ 0x00, 0x03, input_port_0_r },
-	{ 0x04, 0x07, input_port_1_r },
-	{ 0x08, 0x08, input_port_2_r },
-	{ 0x0a, 0x0a, input_port_3_r },
-	{ 0x0c, 0x0c, input_port_4_r },
-	{ 0x0e, 0x0e, input_port_5_r },
-PORT_END
-
-
-static PORT_WRITE_START( main_writeport )
-	{ 0x10, 0x13, lamp_control_w },
-PORT_END
-
-
-
-/*************************************
- *
- *	Sound CPU memory handlers
- *
- *************************************/
-
-static MEMORY_READ_START( sound_readmem )
-	{ 0x0000, 0x01ff, MRA_RAM },
-	{ 0x1000, 0x1fff, exidy_shriot_r },
-	{ 0x2000, 0x200f, pia_0_r },
-	{ 0x3000, 0x3fff, exidy_sh8253_r },
-	{ 0x5000, 0x5fff, exidy_sh6840_r },
-	{ 0xc000, 0xffff, MRA_ROM },
-MEMORY_END
-
-
-static MEMORY_WRITE_START( sound_writemem )
-	{ 0x0000, 0x01ff, MWA_RAM },
-	{ 0x1000, 0x1fff, exidy_shriot_w },
-	{ 0x2000, 0x200f, pia_0_w },
-	{ 0x3000, 0x3fff, exidy_sh8253_w },
-	{ 0x5000, 0x5fff, exidy_sh6840_w },
-	{ 0x6000, 0x6fff, exidy_sfxctrl_w },
-	{ 0xc000, 0xffff, MWA_ROM },
-MEMORY_END
-
-
-
-/*************************************
- *
- *	Port definitions
- *
- *************************************/
-
-INPUT_PORTS_START( victory )
-	PORT_START	/* $00-$03 = SW2 */
-	PORT_DIPNAME( 0x07, 0x00, "????" )
-	PORT_DIPSETTING(    0x00, "0" )
-	PORT_DIPSETTING(    0x01, "1" )
-	PORT_DIPSETTING(    0x02, "2" )
-	PORT_DIPSETTING(    0x03, "3" )
-	PORT_DIPSETTING(    0x04, "4" )
-	PORT_DIPSETTING(    0x05, "5" )
-	PORT_DIPSETTING(    0x06, "6" )
-	PORT_DIPSETTING(    0x07, "7" )
-	PORT_BIT( 0x78, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_DIPNAME( 0x80, 0x00, "Refresh" )
-	PORT_DIPSETTING(    0x00, "60 Hz" )
-	PORT_DIPSETTING(    0x80, "50 Hz" )
-
-	PORT_START	/* $04-$07 = SW1 */
-	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_START	/* $08-$09 = PIO K8 port A */
-	PORT_ANALOG( 0xff, 0x80, IPT_DIAL | IPF_REVERSE, 25, 10, 0x00, 0xff )
-
-	PORT_START	/* $0A-$0B = PIO K8 port B */
-	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )
-
-	PORT_START	/* $0C-$0D = PIO L8 port A */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON4 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START	/* $0E-$0F = PIO L8 port B */
-	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
-INPUT_PORTS_END
-
-
-
-/*************************************
- *
- *	Sound definitions
- *
- *************************************/
-
-static struct CustomSound_interface custom_interface =
-{
-    victory_sh_start,
-    0,
-	0
-};
-
-
-static struct TMS5220interface tms5220_interface =
-{
-	640000,
-	100,
-	0
-};
-
-
-
-/*************************************
- *
- *	Machine driver
- *
- *************************************/
-
-static MACHINE_DRIVER_START( victory )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_MEMORY(main_readmem,main_writemem)
-	MDRV_CPU_PORTS(main_readport,main_writeport)
-	MDRV_CPU_VBLANK_INT(victory_vblank_interrupt,1)
-
-	MDRV_CPU_ADD(M6502,3579545/4)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
-	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	
-	MDRV_NVRAM_HANDLER(generic_0fill)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
-	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0, 255, 0, 255)
-	MDRV_PALETTE_LENGTH(64)
-
-	MDRV_VIDEO_START(victory)
-	MDRV_VIDEO_EOF(victory)
-	MDRV_VIDEO_UPDATE(victory)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(CUSTOM, custom_interface)
-	MDRV_SOUND_ADD(TMS5220, tms5220_interface)
-MACHINE_DRIVER_END
-
-
-
-/*************************************
- *
- *	ROM definitions
- *
- *************************************/
-
-ROM_START( victory )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "vic3.j2",  0x0000, 0x1000, 0x4b614440 )
-	ROM_LOAD( "vic3.k2",  0x1000, 0x1000, 0x9f9eb12b )
-	ROM_LOAD( "vic3.kl2", 0x2000, 0x1000, 0xa0db4bf9 )
-	ROM_LOAD( "vic3.l2",  0x3000, 0x1000, 0x69855b46 )
-	ROM_LOAD( "vic3.m2",  0x4000, 0x1000, 0x1ddbe9d4 )
-	ROM_LOAD( "vic3.n2",  0x5000, 0x1000, 0xdbb53f1f )
-	ROM_LOAD( "vic3.p2",  0x6000, 0x1000, 0x9959e1c4 )
-	ROM_LOAD( "vic3.t2",  0x7000, 0x1000, 0x8f1b997a )
-	ROM_LOAD( "vic3.j1",  0x8000, 0x1000, 0x27e9e87b )
-	ROM_LOAD( "vic3.k1",  0x9000, 0x1000, 0x418d9b80 )
-	ROM_LOAD( "vic3.kl1", 0xa000, 0x1000, 0x2b7e626f )
-	ROM_LOAD( "vic3.l1",  0xb000, 0x1000, 0x7bb8e1f5 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "vic1.7bc", 0xc000, 0x1000, 0xd4927560 )
-	ROM_LOAD( "vic1.7c",  0xd000, 0x1000, 0x059efab5 )
-	ROM_LOAD( "vic1.7d",  0xe000, 0x1000, 0x82c4767c )
-	ROM_LOAD( "vic1.7e",  0xf000, 0x1000, 0xa19be034 )
-
-	ROM_REGION( 0x1e0, REGION_PROMS, 0 )
-	ROM_LOAD( "hsc17l",   0x0000, 0x0100, 0xb2c75dee )
-	ROM_LOAD( "hsc13e",   0x0100, 0x0020, 0xa107c4f5 )
-	ROM_LOAD( "hsc16a",   0x0120, 0x0020, 0x5f06ad26 )
-	ROM_LOAD( "hsc19b",   0x0140, 0x0020, 0x86165f1e )
-	ROM_LOAD( "hsc19c",   0x0160, 0x0020, 0xfd27a57a )
-	ROM_LOAD( "hsc19d",   0x0180, 0x0020, 0x09c4dbf6 )
-	ROM_LOAD( "hsc19e",   0x01a0, 0x0020, 0xce1464f4 )
-	ROM_LOAD( "3j",       0x01c0, 0x0020, 0x5fb6b158 )
-ROM_END
-
-
-ROM_START( victorba )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "j2.rom",  0x0000, 0x1000, 0xdd788e93 )
-	ROM_LOAD( "k2.rom",  0x1000, 0x1000, 0xf47bf046 )
-	ROM_LOAD( "kl2.rom", 0x2000, 0x1000, 0xbaef885e )
-	ROM_LOAD( "l2.rom",  0x3000, 0x1000, 0x739e4799 )
-	ROM_LOAD( "m2.rom",  0x4000, 0x1000, 0xa88185e6 )
-	ROM_LOAD( "n2.rom",  0x5000, 0x1000, 0x6724eb01 )
-	ROM_LOAD( "p2.rom",  0x6000, 0x1000, 0x2cf34ad7 )
-	ROM_LOAD( "t2.rom",  0x7000, 0x1000, 0x89bb0359 )
-	ROM_LOAD( "j1.rom",  0x8000, 0x1000, 0x5e415084 )
-	ROM_LOAD( "k1.rom",  0x9000, 0x1000, 0x3f327dff )
-	ROM_LOAD( "kl1.rom", 0xa000, 0x1000, 0x6c82ebca )
-	ROM_LOAD( "l1.rom",  0xb000, 0x1000, 0x03b89d8a )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "vic1.7bc", 0xc000, 0x1000, 0xd4927560 )
-	ROM_LOAD( "vic1.7c",  0xd000, 0x1000, 0x059efab5 )
-	ROM_LOAD( "vic1.7d",  0xe000, 0x1000, 0x82c4767c )
-	ROM_LOAD( "vic1.7e",  0xf000, 0x1000, 0xa19be034 )
-
-	ROM_REGION( 0x1e0, REGION_PROMS, 0 )
-	ROM_LOAD( "hsc17l",   0x0000, 0x0100, 0xb2c75dee )
-	ROM_LOAD( "hsc13e",   0x0100, 0x0020, 0xa107c4f5 )
-	ROM_LOAD( "hsc16a",   0x0120, 0x0020, 0x5f06ad26 )
-	ROM_LOAD( "hsc19b",   0x0140, 0x0020, 0x86165f1e )
-	ROM_LOAD( "hsc19c",   0x0160, 0x0020, 0xfd27a57a )
-	ROM_LOAD( "hsc19d",   0x0180, 0x0020, 0x09c4dbf6 )
-	ROM_LOAD( "hsc19e",   0x01a0, 0x0020, 0xce1464f4 )
-	ROM_LOAD( "3j",       0x01c0, 0x0020, 0x5fb6b158 )
-ROM_END
-
-
-
-/*************************************
- *
- *	Game drivers
- *
- *************************************/
-
-GAME( 1982, victory,  0,        victory, victory, 0,     ROT0, "Exidy", "Victory" )
-GAME( 1982, victorba, victory,  victory, victory, 0,     ROT0, "Exidy", "Victor Banana" )
+	
+	#define LOG_SOUND		0
+	
+	
+	static UINT8 sound_response;
+	static UINT8 sound_response_ack_clk;
+	
+	
+	/* sound driver data & functions */
+	int victory_sh_start(const struct MachineSound *msound);
+	
+	
+	
+	/* video driver data & functions */
+	extern UINT8 *victory_charram;
+	
+	VIDEO_START( victory );
+	VIDEO_EOF( victory );
+	VIDEO_UPDATE( victory );
+	INTERRUPT_GEN( victory_vblank_interrupt );
+	
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound CPU control
+	 *
+	 *************************************/
+	
+	public static ReadHandlerPtr sound_response_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		if (LOG_SOUND) logerror("%04X:!!!! Sound response read = %02X\n", activecpu_get_previouspc(), sound_response);
+		pia_0_cb1_w(0, 0);
+		return sound_response;
+	} };
+	
+	
+	public static ReadHandlerPtr sound_status_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		if (LOG_SOUND) logerror("%04X:!!!! Sound status read = %02X\n", activecpu_get_previouspc(), (pia_0_ca1_r(0) << 7) | (pia_0_cb1_r(0) << 6));
+		return (pia_0_ca1_r(0) << 7) | (pia_0_cb1_r(0) << 6);
+	} };
+	
+	
+	static void delayed_command_w(int data)
+	{
+		pia_0_porta_w(0, data);
+		pia_0_ca1_w(0, 0);
+		if (LOG_SOUND) logerror("%04X:!!!! Sound command = %02X\n", activecpu_get_previouspc(), data);
+	}
+	
+	public static WriteHandlerPtr sound_command_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		timer_set(TIME_NOW, data, delayed_command_w);
+	} };
+	
+	
+	public static WriteHandlerPtr victory_sound_response_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		sound_response = data;
+		if (LOG_SOUND) logerror("%04X:!!!! Sound response = %02X\n", activecpu_get_previouspc(), data);
+	} };
+	
+	
+	public static WriteHandlerPtr victory_sound_irq_clear_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		if (LOG_SOUND) logerror("%04X:!!!! Sound IRQ clear = %02X\n", activecpu_get_previouspc(), data);
+		if (data == 0) pia_0_ca1_w(0, 1);
+	} };
+	
+	
+	public static WriteHandlerPtr victory_main_ack_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		if (LOG_SOUND) logerror("%04X:!!!! Sound ack = %02X\n", activecpu_get_previouspc(), data);
+		if (sound_response_ack_clk && !data)
+			pia_0_cb1_w(0, 1);
+		sound_response_ack_clk = data;
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Misc I/O
+	 *
+	 *************************************/
+	
+	public static WriteHandlerPtr lamp_control_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		set_led_status(0,data & 0x80);
+		set_led_status(1,data & 0x40);
+		set_led_status(2,data & 0x20);
+		set_led_status(3,data & 0x10);
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Main CPU memory handlers
+	 *
+	 *************************************/
+	
+	public static Memory_ReadAddress main_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0xbfff, MRA_ROM ),
+		new Memory_ReadAddress( 0xc000, 0xc0ff, victory_video_control_r ),
+		new Memory_ReadAddress( 0xc400, 0xc7ff, MRA_RAM ),
+		new Memory_ReadAddress( 0xc800, 0xdfff, MRA_RAM ),
+		new Memory_ReadAddress( 0xe000, 0xefff, MRA_RAM ),
+		new Memory_ReadAddress( 0xf000, 0xf7ff, MRA_RAM ),
+		new Memory_ReadAddress( 0xf800, 0xf800, sound_response_r ),
+		new Memory_ReadAddress( 0xf801, 0xf801, sound_status_r ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress main_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0xbfff, MWA_ROM ),
+		new Memory_WriteAddress( 0xc100, 0xc1ff, victory_video_control_w ),
+		new Memory_WriteAddress( 0xc200, 0xc3ff, victory_paletteram_w, paletteram ),
+		new Memory_WriteAddress( 0xc400, 0xc7ff, victory_videoram_w, videoram ),
+		new Memory_WriteAddress( 0xc800, 0xdfff, victory_charram_w, victory_charram ),
+		new Memory_WriteAddress( 0xe000, 0xefff, MWA_RAM ),
+		new Memory_WriteAddress( 0xf000, 0xf7ff, MWA_RAM, generic_nvram, generic_nvram_size ),
+		new Memory_WriteAddress( 0xf800, 0xf800, sound_command_w ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static IO_ReadPort main_readport[]={
+		new IO_ReadPort(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_ReadPort( 0x00, 0x03, input_port_0_r ),
+		new IO_ReadPort( 0x04, 0x07, input_port_1_r ),
+		new IO_ReadPort( 0x08, 0x08, input_port_2_r ),
+		new IO_ReadPort( 0x0a, 0x0a, input_port_3_r ),
+		new IO_ReadPort( 0x0c, 0x0c, input_port_4_r ),
+		new IO_ReadPort( 0x0e, 0x0e, input_port_5_r ),
+		new IO_ReadPort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static IO_WritePort main_writeport[]={
+		new IO_WritePort(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_WritePort( 0x10, 0x13, lamp_control_w ),
+		new IO_WritePort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound CPU memory handlers
+	 *
+	 *************************************/
+	
+	public static Memory_ReadAddress sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x01ff, MRA_RAM ),
+		new Memory_ReadAddress( 0x1000, 0x1fff, exidy_shriot_r ),
+		new Memory_ReadAddress( 0x2000, 0x200f, pia_0_r ),
+		new Memory_ReadAddress( 0x3000, 0x3fff, exidy_sh8253_r ),
+		new Memory_ReadAddress( 0x5000, 0x5fff, exidy_sh6840_r ),
+		new Memory_ReadAddress( 0xc000, 0xffff, MRA_ROM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x01ff, MWA_RAM ),
+		new Memory_WriteAddress( 0x1000, 0x1fff, exidy_shriot_w ),
+		new Memory_WriteAddress( 0x2000, 0x200f, pia_0_w ),
+		new Memory_WriteAddress( 0x3000, 0x3fff, exidy_sh8253_w ),
+		new Memory_WriteAddress( 0x5000, 0x5fff, exidy_sh6840_w ),
+		new Memory_WriteAddress( 0x6000, 0x6fff, exidy_sfxctrl_w ),
+		new Memory_WriteAddress( 0xc000, 0xffff, MWA_ROM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Port definitions
+	 *
+	 *************************************/
+	
+	static InputPortPtr input_ports_victory = new InputPortPtr(){ public void handler() { 
+		PORT_START(); 	/* $00-$03 = SW2 */
+		PORT_DIPNAME( 0x07, 0x00, "????" );
+		PORT_DIPSETTING(    0x00, "0" );
+		PORT_DIPSETTING(    0x01, "1" );
+		PORT_DIPSETTING(    0x02, "2" );
+		PORT_DIPSETTING(    0x03, "3" );
+		PORT_DIPSETTING(    0x04, "4" );
+		PORT_DIPSETTING(    0x05, "5" );
+		PORT_DIPSETTING(    0x06, "6" );
+		PORT_DIPSETTING(    0x07, "7" );
+		PORT_BIT( 0x78, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_DIPNAME( 0x80, 0x00, "Refresh" );
+		PORT_DIPSETTING(    0x00, "60 Hz" );
+		PORT_DIPSETTING(    0x80, "50 Hz" );
+	
+		PORT_START(); 	/* $04-$07 = SW1 */
+		PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED );
+	
+		PORT_START(); 	/* $08-$09 = PIO K8 port A */
+		PORT_ANALOG( 0xff, 0x80, IPT_DIAL | IPF_REVERSE, 25, 10, 0x00, 0xff );
+	
+		PORT_START(); 	/* $0A-$0B = PIO K8 port B */
+		PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNUSED );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 );
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 );
+	
+		PORT_START(); 	/* $0C-$0D = PIO L8 port A */
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON4 );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE1 );
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+		PORT_START(); 	/* $0E-$0F = PIO L8 port B */
+		PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound definitions
+	 *
+	 *************************************/
+	
+	static CustomSound_interface custom_interface = new CustomSound_interface
+	(
+	    victory_sh_start,
+	    0,
+		0
+	);
+	
+	
+	static struct TMS5220interface tms5220_interface =
+	{
+		640000,
+		100,
+		0
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Machine driver
+	 *
+	 *************************************/
+	
+	static MACHINE_DRIVER_START( victory )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(Z80, 4000000)
+		MDRV_CPU_MEMORY(main_readmem,main_writemem)
+		MDRV_CPU_PORTS(main_readport,main_writeport)
+		MDRV_CPU_VBLANK_INT(victory_vblank_interrupt,1)
+	
+		MDRV_CPU_ADD(M6502,3579545/4)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+		MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+		
+		MDRV_NVRAM_HANDLER(generic_0fill)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+		MDRV_SCREEN_SIZE(256, 256)
+		MDRV_VISIBLE_AREA(0, 255, 0, 255)
+		MDRV_PALETTE_LENGTH(64)
+	
+		MDRV_VIDEO_START(victory)
+		MDRV_VIDEO_EOF(victory)
+		MDRV_VIDEO_UPDATE(victory)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(CUSTOM, custom_interface)
+		MDRV_SOUND_ADD(TMS5220, tms5220_interface)
+	MACHINE_DRIVER_END
+	
+	
+	
+	/*************************************
+	 *
+	 *	ROM definitions
+	 *
+	 *************************************/
+	
+	static RomLoadPtr rom_victory = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );
+		ROM_LOAD( "vic3.j2",  0x0000, 0x1000, 0x4b614440 );
+		ROM_LOAD( "vic3.k2",  0x1000, 0x1000, 0x9f9eb12b );
+		ROM_LOAD( "vic3.kl2", 0x2000, 0x1000, 0xa0db4bf9 );
+		ROM_LOAD( "vic3.l2",  0x3000, 0x1000, 0x69855b46 );
+		ROM_LOAD( "vic3.m2",  0x4000, 0x1000, 0x1ddbe9d4 );
+		ROM_LOAD( "vic3.n2",  0x5000, 0x1000, 0xdbb53f1f );
+		ROM_LOAD( "vic3.p2",  0x6000, 0x1000, 0x9959e1c4 );
+		ROM_LOAD( "vic3.t2",  0x7000, 0x1000, 0x8f1b997a );
+		ROM_LOAD( "vic3.j1",  0x8000, 0x1000, 0x27e9e87b );
+		ROM_LOAD( "vic3.k1",  0x9000, 0x1000, 0x418d9b80 );
+		ROM_LOAD( "vic3.kl1", 0xa000, 0x1000, 0x2b7e626f );
+		ROM_LOAD( "vic3.l1",  0xb000, 0x1000, 0x7bb8e1f5 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "vic1.7bc", 0xc000, 0x1000, 0xd4927560 );
+		ROM_LOAD( "vic1.7c",  0xd000, 0x1000, 0x059efab5 );
+		ROM_LOAD( "vic1.7d",  0xe000, 0x1000, 0x82c4767c );
+		ROM_LOAD( "vic1.7e",  0xf000, 0x1000, 0xa19be034 );
+	
+		ROM_REGION( 0x1e0, REGION_PROMS, 0 );
+		ROM_LOAD( "hsc17l",   0x0000, 0x0100, 0xb2c75dee );
+		ROM_LOAD( "hsc13e",   0x0100, 0x0020, 0xa107c4f5 );
+		ROM_LOAD( "hsc16a",   0x0120, 0x0020, 0x5f06ad26 );
+		ROM_LOAD( "hsc19b",   0x0140, 0x0020, 0x86165f1e );
+		ROM_LOAD( "hsc19c",   0x0160, 0x0020, 0xfd27a57a );
+		ROM_LOAD( "hsc19d",   0x0180, 0x0020, 0x09c4dbf6 );
+		ROM_LOAD( "hsc19e",   0x01a0, 0x0020, 0xce1464f4 );
+		ROM_LOAD( "3j",       0x01c0, 0x0020, 0x5fb6b158 );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_victorba = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );
+		ROM_LOAD( "j2.rom",  0x0000, 0x1000, 0xdd788e93 );
+		ROM_LOAD( "k2.rom",  0x1000, 0x1000, 0xf47bf046 );
+		ROM_LOAD( "kl2.rom", 0x2000, 0x1000, 0xbaef885e );
+		ROM_LOAD( "l2.rom",  0x3000, 0x1000, 0x739e4799 );
+		ROM_LOAD( "m2.rom",  0x4000, 0x1000, 0xa88185e6 );
+		ROM_LOAD( "n2.rom",  0x5000, 0x1000, 0x6724eb01 );
+		ROM_LOAD( "p2.rom",  0x6000, 0x1000, 0x2cf34ad7 );
+		ROM_LOAD( "t2.rom",  0x7000, 0x1000, 0x89bb0359 );
+		ROM_LOAD( "j1.rom",  0x8000, 0x1000, 0x5e415084 );
+		ROM_LOAD( "k1.rom",  0x9000, 0x1000, 0x3f327dff );
+		ROM_LOAD( "kl1.rom", 0xa000, 0x1000, 0x6c82ebca );
+		ROM_LOAD( "l1.rom",  0xb000, 0x1000, 0x03b89d8a );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "vic1.7bc", 0xc000, 0x1000, 0xd4927560 );
+		ROM_LOAD( "vic1.7c",  0xd000, 0x1000, 0x059efab5 );
+		ROM_LOAD( "vic1.7d",  0xe000, 0x1000, 0x82c4767c );
+		ROM_LOAD( "vic1.7e",  0xf000, 0x1000, 0xa19be034 );
+	
+		ROM_REGION( 0x1e0, REGION_PROMS, 0 );
+		ROM_LOAD( "hsc17l",   0x0000, 0x0100, 0xb2c75dee );
+		ROM_LOAD( "hsc13e",   0x0100, 0x0020, 0xa107c4f5 );
+		ROM_LOAD( "hsc16a",   0x0120, 0x0020, 0x5f06ad26 );
+		ROM_LOAD( "hsc19b",   0x0140, 0x0020, 0x86165f1e );
+		ROM_LOAD( "hsc19c",   0x0160, 0x0020, 0xfd27a57a );
+		ROM_LOAD( "hsc19d",   0x0180, 0x0020, 0x09c4dbf6 );
+		ROM_LOAD( "hsc19e",   0x01a0, 0x0020, 0xce1464f4 );
+		ROM_LOAD( "3j",       0x01c0, 0x0020, 0x5fb6b158 );
+	ROM_END(); }}; 
+	
+	
+	
+	/*************************************
+	 *
+	 *	Game drivers
+	 *
+	 *************************************/
+	
+	public static GameDriver driver_victory	   = new GameDriver("1982"	,"victory"	,"victory.java"	,rom_victory,null	,machine_driver_victory	,input_ports_victory	,null	,ROT0	,	"Exidy", "Victory" )
+	public static GameDriver driver_victorba	   = new GameDriver("1982"	,"victorba"	,"victory.java"	,rom_victorba,driver_victory	,machine_driver_victory	,input_ports_victory	,null	,ROT0	,	"Exidy", "Victor Banana" )
+}

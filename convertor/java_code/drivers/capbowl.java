@@ -87,354 +87,368 @@
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
-#include "machine/ticket.h"
-#include "cpu/m6809/m6809.h"
-#include "capbowl.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-
-
-/*************************************
- *
- *	NVRAM
- *
- *************************************/
-
-static NVRAM_HANDLER( capbowl )
+public class capbowl
 {
-	if (read_or_write)
-		mame_fwrite(file,generic_nvram,generic_nvram_size);
-	else
+	
+	
+	
+	/*************************************
+	 *
+	 *	NVRAM
+	 *
+	 *************************************/
+	
+	static NVRAM_HANDLER( capbowl )
 	{
-		if (file)
-			mame_fread(file,generic_nvram,generic_nvram_size);
+		if (read_or_write)
+			mame_fwrite(file,generic_nvram,generic_nvram_size);
 		else
 		{
-			/* invalidate nvram to make the game initialize it.
-			   A 0xff fill will cause the game to malfunction, so we use a
-			   0x01 fill which seems OK */
-			memset(generic_nvram,0x01,generic_nvram_size);
+			if (file)
+				mame_fread(file,generic_nvram,generic_nvram_size);
+			else
+			{
+				/* invalidate nvram to make the game initialize it.
+				   A 0xff fill will cause the game to malfunction, so we use a
+				   0x01 fill which seems OK */
+				memset(generic_nvram,0x01,generic_nvram_size);
+			}
 		}
 	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound commands
+	 *
+	 *************************************/
+	
+	public static WriteHandlerPtr capbowl_sndcmd_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		cpu_set_irq_line(1, M6809_IRQ_LINE, HOLD_LINE);
+		soundlatch_w(offset, data);
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Handler called by the 2203 emulator
+	 *	when the internal timers cause an IRQ
+	 *
+	 *************************************/
+	
+	static void firqhandler(int irq)
+	{
+		cpu_set_irq_line(1, 1, irq ? ASSERT_LINE : CLEAR_LINE);
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	NMI is to trigger the self test.
+	 *	We use a fake input port to tie
+	 *	that event to a keypress
+	 *
+	 *************************************/
+	
+	static INTERRUPT_GEN( capbowl_interrupt )
+	{
+		if (readinputport(4) & 1)	/* get status of the F2 key */
+			cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);	/* trigger self test */
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Trackball input handlers
+	 *
+	 *************************************/
+	
+	static int track[2];
+	
+	public static ReadHandlerPtr track_0_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return (input_port_0_r(offset) & 0xf0) | ((input_port_2_r(offset) - track[0]) & 0x0f);
+	} };
+	
+	public static ReadHandlerPtr track_1_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return (input_port_1_r(offset) & 0xf0) | ((input_port_3_r(offset) - track[1]) & 0x0f);
+	} };
+	
+	public static WriteHandlerPtr track_reset_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		/* reset the trackball counters */
+		track[0] = input_port_2_r(offset);
+		track[1] = input_port_3_r(offset);
+	
+		watchdog_reset_w(offset,data);
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Main CPU memory handlers
+	 *
+	 *************************************/
+	
+	public static Memory_ReadAddress capbowl_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x3fff, MRA_BANK1 ),
+		new Memory_ReadAddress( 0x5000, 0x57ff, MRA_RAM ),
+		new Memory_ReadAddress( 0x5800, 0x5fff, capbowl_tms34061_r ),
+		new Memory_ReadAddress( 0x7000, 0x7000, track_0_r ),	/* + other inputs */
+		new Memory_ReadAddress( 0x7800, 0x7800, track_1_r ),	/* + other inputs */
+		new Memory_ReadAddress( 0x8000, 0xffff, MRA_ROM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_ReadAddress bowlrama_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x001f, bowlrama_turbo_r ),
+		new Memory_ReadAddress( 0x5000, 0x57ff, MRA_RAM ),
+		new Memory_ReadAddress( 0x5800, 0x5fff, capbowl_tms34061_r ),
+		new Memory_ReadAddress( 0x7000, 0x7000, track_0_r ),	/* + other inputs */
+		new Memory_ReadAddress( 0x7800, 0x7800, track_1_r ),	/* + other inputs */
+		new Memory_ReadAddress( 0x8000, 0xffff, MRA_ROM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x001f, bowlrama_turbo_w ),	/* Bowl-O-Rama only */
+		new Memory_WriteAddress( 0x4000, 0x4000, MWA_RAM, capbowl_rowaddress ),
+		new Memory_WriteAddress( 0x4800, 0x4800, capbowl_rom_select_w ),
+		new Memory_WriteAddress( 0x5000, 0x57ff, MWA_RAM, generic_nvram, generic_nvram_size ),
+		new Memory_WriteAddress( 0x5800, 0x5fff, capbowl_tms34061_w ),
+		new Memory_WriteAddress( 0x6000, 0x6000, capbowl_sndcmd_w ),
+		new Memory_WriteAddress( 0x6800, 0x6800, track_reset_w ),	/* + watchdog */
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound CPU memory handlers
+	 *
+	 *************************************/
+	
+	public static Memory_ReadAddress sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x07ff, MRA_RAM ),
+		new Memory_ReadAddress( 0x1000, 0x1000, YM2203_status_port_0_r ),
+		new Memory_ReadAddress( 0x1001, 0x1001, YM2203_read_port_0_r ),
+		new Memory_ReadAddress( 0x7000, 0x7000, soundlatch_r ),
+		new Memory_ReadAddress( 0x8000, 0xffff, MRA_ROM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x07ff, MWA_RAM),
+		new Memory_WriteAddress( 0x1000, 0x1000, YM2203_control_port_0_w ),
+		new Memory_WriteAddress( 0x1001, 0x1001, YM2203_write_port_0_w ),
+		new Memory_WriteAddress( 0x2000, 0x2000, MWA_NOP ),  /* Not hooked up according to the schematics */
+		new Memory_WriteAddress( 0x6000, 0x6000, DAC_0_data_w ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Port definitions
+	 *
+	 *************************************/
+	
+	static InputPortPtr input_ports_capbowl = new InputPortPtr(){ public void handler() { 
+		PORT_START(); 	/* IN0 */
+		/* low 4 bits are for the trackball */
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL );
+		PORT_DIPNAME( 0x40, 0x40, DEF_STR( "Cabinet") ); /* This version of Bowl-O-Rama */
+		PORT_DIPSETTING(    0x40, DEF_STR( "Upright") );			   /* is Upright only */
+		PORT_DIPSETTING(    0x00, DEF_STR( "Cocktail") );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 );
+	
+		PORT_START(); 	/* IN1 */
+		/* low 4 bits are for the trackball */
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 );
+	
+		PORT_START(); 	/* FAKE */
+		PORT_ANALOG( 0xff, 0x00, IPT_TRACKBALL_Y | IPF_REVERSE, 20, 40, 0, 0 );
+	
+		PORT_START(); 	/* FAKE */
+		PORT_ANALOG( 0xff, 0x00, IPT_TRACKBALL_X, 20, 40, 0, 0 );
+	
+		PORT_START(); 	/* FAKE */
+		/* This fake input port is used to get the status of the F2 key, */
+		/* and activate the test mode, which is triggered by a NMI */
+		PORT_BITX(0x01, IP_ACTIVE_HIGH, IPT_SERVICE, DEF_STR( "Service_Mode") ); KEYCODE_F2, IP_JOY_NONE )
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound definitions
+	 *
+	 *************************************/
+	
+	static struct YM2203interface ym2203_interface =
+	{
+		1,			/* 1 chip */
+		4000000,	/* 4 MHz */
+		{ YM2203_VOL(40,40) },
+		{ ticket_dispenser_r },
+		{ 0 },
+		{ 0 },
+		{ ticket_dispenser_w },  /* Also a status LED. See memory map above */
+		{ firqhandler }
+	};
+	
+	
+	static DACinterface dac_interface = new DACinterface
+	(
+		1,
+		new int[] { 100 }
+	);
+	
+	
+	
+	/*************************************
+	 *
+	 *	Machine driver
+	 *
+	 *************************************/
+	
+	static MACHINE_DRIVER_START( capbowl )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD_TAG("main", M6809, 2000000)
+		MDRV_CPU_MEMORY(capbowl_readmem,writemem)
+		MDRV_CPU_VBLANK_INT(capbowl_interrupt,1)
+		
+		MDRV_CPU_ADD(M6809,2000000)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+		MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+		
+		MDRV_FRAMES_PER_SECOND(57)
+		MDRV_VBLANK_DURATION(5000)
+		
+		MDRV_MACHINE_INIT(capbowl)
+		MDRV_NVRAM_HANDLER(capbowl)
+		
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(360, 256)
+		MDRV_VISIBLE_AREA(0, 359, 0, 244)
+		MDRV_PALETTE_LENGTH(4096)
+		
+		MDRV_VIDEO_START(capbowl)
+		MDRV_VIDEO_UPDATE(capbowl)
+		
+		/* sound hardware */
+		MDRV_SOUND_ADD(YM2203, ym2203_interface)
+		MDRV_SOUND_ADD(DAC,    dac_interface)
+	MACHINE_DRIVER_END
+	
+	
+	static MACHINE_DRIVER_START( bowlrama )
+	
+		/* basic machine hardware */
+		MDRV_IMPORT_FROM(capbowl)
+		
+		MDRV_CPU_MODIFY("main")
+		MDRV_CPU_MEMORY(bowlrama_readmem,writemem)
+		
+		/* video hardware */
+		MDRV_VISIBLE_AREA(0, 359, 0, 239)
+	MACHINE_DRIVER_END
+	
+	
+	
+	/*************************************
+	 *
+	 *	ROM definitions
+	 *
+	 *************************************/
+	
+	static RomLoadPtr rom_capbowl = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x28000, REGION_CPU1, 0 );
+		ROM_LOAD( "u6",           0x08000, 0x8000, 0x14924c96 );
+		ROM_LOAD( "gr0",          0x10000, 0x8000, 0xef53ca7a );
+		ROM_LOAD( "gr1",          0x18000, 0x8000, 0x27ede6ce );
+		ROM_LOAD( "gr2",          0x20000, 0x8000, 0xe49238f4 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "sound",        0x8000, 0x8000, 0x8c9c3b8a );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_capbowl2 = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x28000, REGION_CPU1, 0 );
+		ROM_LOAD( "progrev3.u6",  0x08000, 0x8000, 0x9162934a );
+		ROM_LOAD( "gr0",          0x10000, 0x8000, 0xef53ca7a );
+		ROM_LOAD( "gr1",          0x18000, 0x8000, 0x27ede6ce );
+		ROM_LOAD( "gr2",          0x20000, 0x8000, 0xe49238f4 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "sound",        0x8000, 0x8000, 0x8c9c3b8a );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_clbowl = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x28000, REGION_CPU1, 0 );
+		ROM_LOAD( "u6.cl",        0x08000, 0x8000, 0x91e06bc4 );
+		ROM_LOAD( "gr0.cl",       0x10000, 0x8000, 0x899c8f15 );
+		ROM_LOAD( "gr1.cl",       0x18000, 0x8000, 0x0ac0dc4c );
+		ROM_LOAD( "gr2.cl",       0x20000, 0x8000, 0x251f5da5 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "sound.cl",     0x8000, 0x8000, 0x1eba501e );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_bowlrama = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );
+		ROM_LOAD( "u6",           0x08000, 0x08000, 0x7103ad55 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "u30",          0x8000, 0x8000, 0xf3168834 );
+	
+		ROM_REGION( 0x40000, REGION_GFX1, 0 );
+		ROM_LOAD( "ux7",          0x00000, 0x40000, 0x8727432a );
+	ROM_END(); }}; 
+	
+	
+	
+	/*************************************
+	 *
+	 *	Game drivers
+	 *
+	 *************************************/
+	
+	public static GameDriver driver_capbowl	   = new GameDriver("1988"	,"capbowl"	,"capbowl.java"	,rom_capbowl,null	,machine_driver_capbowl	,input_ports_capbowl	,null	,ROT270	,	"Incredible Technologies", "Capcom Bowling (set 1)" )
+	public static GameDriver driver_capbowl2	   = new GameDriver("1988"	,"capbowl2"	,"capbowl.java"	,rom_capbowl2,driver_capbowl	,machine_driver_capbowl	,input_ports_capbowl	,null	,ROT270	,	"Incredible Technologies", "Capcom Bowling (set 2)" )
+	public static GameDriver driver_clbowl	   = new GameDriver("1989"	,"clbowl"	,"capbowl.java"	,rom_clbowl,driver_capbowl	,machine_driver_capbowl	,input_ports_capbowl	,null	,ROT270	,	"Incredible Technologies", "Coors Light Bowling" )
+	public static GameDriver driver_bowlrama	   = new GameDriver("1991"	,"bowlrama"	,"capbowl.java"	,rom_bowlrama,null	,machine_driver_bowlrama	,input_ports_capbowl	,null	,ROT270	,	"P & P Marketing", "Bowl-O-Rama" )
 }
-
-
-
-/*************************************
- *
- *	Sound commands
- *
- *************************************/
-
-static WRITE_HANDLER( capbowl_sndcmd_w )
-{
-	cpu_set_irq_line(1, M6809_IRQ_LINE, HOLD_LINE);
-	soundlatch_w(offset, data);
-}
-
-
-
-/*************************************
- *
- *	Handler called by the 2203 emulator
- *	when the internal timers cause an IRQ
- *
- *************************************/
-
-static void firqhandler(int irq)
-{
-	cpu_set_irq_line(1, 1, irq ? ASSERT_LINE : CLEAR_LINE);
-}
-
-
-
-/*************************************
- *
- *	NMI is to trigger the self test.
- *	We use a fake input port to tie
- *	that event to a keypress
- *
- *************************************/
-
-static INTERRUPT_GEN( capbowl_interrupt )
-{
-	if (readinputport(4) & 1)	/* get status of the F2 key */
-		cpu_set_irq_line(0, IRQ_LINE_NMI, PULSE_LINE);	/* trigger self test */
-}
-
-
-
-/*************************************
- *
- *	Trackball input handlers
- *
- *************************************/
-
-static int track[2];
-
-static READ_HANDLER( track_0_r )
-{
-	return (input_port_0_r(offset) & 0xf0) | ((input_port_2_r(offset) - track[0]) & 0x0f);
-}
-
-static READ_HANDLER( track_1_r )
-{
-	return (input_port_1_r(offset) & 0xf0) | ((input_port_3_r(offset) - track[1]) & 0x0f);
-}
-
-static WRITE_HANDLER( track_reset_w )
-{
-	/* reset the trackball counters */
-	track[0] = input_port_2_r(offset);
-	track[1] = input_port_3_r(offset);
-
-	watchdog_reset_w(offset,data);
-}
-
-
-
-/*************************************
- *
- *	Main CPU memory handlers
- *
- *************************************/
-
-static MEMORY_READ_START( capbowl_readmem )
-	{ 0x0000, 0x3fff, MRA_BANK1 },
-	{ 0x5000, 0x57ff, MRA_RAM },
-	{ 0x5800, 0x5fff, capbowl_tms34061_r },
-	{ 0x7000, 0x7000, track_0_r },	/* + other inputs */
-	{ 0x7800, 0x7800, track_1_r },	/* + other inputs */
-	{ 0x8000, 0xffff, MRA_ROM },
-MEMORY_END
-
-
-static MEMORY_READ_START( bowlrama_readmem )
-	{ 0x0000, 0x001f, bowlrama_turbo_r },
-	{ 0x5000, 0x57ff, MRA_RAM },
-	{ 0x5800, 0x5fff, capbowl_tms34061_r },
-	{ 0x7000, 0x7000, track_0_r },	/* + other inputs */
-	{ 0x7800, 0x7800, track_1_r },	/* + other inputs */
-	{ 0x8000, 0xffff, MRA_ROM },
-MEMORY_END
-
-
-static MEMORY_WRITE_START( writemem )
-	{ 0x0000, 0x001f, bowlrama_turbo_w },	/* Bowl-O-Rama only */
-	{ 0x4000, 0x4000, MWA_RAM, &capbowl_rowaddress },
-	{ 0x4800, 0x4800, capbowl_rom_select_w },
-	{ 0x5000, 0x57ff, MWA_RAM, &generic_nvram, &generic_nvram_size },
-	{ 0x5800, 0x5fff, capbowl_tms34061_w },
-	{ 0x6000, 0x6000, capbowl_sndcmd_w },
-	{ 0x6800, 0x6800, track_reset_w },	/* + watchdog */
-MEMORY_END
-
-
-
-/*************************************
- *
- *	Sound CPU memory handlers
- *
- *************************************/
-
-static MEMORY_READ_START( sound_readmem )
-	{ 0x0000, 0x07ff, MRA_RAM },
-	{ 0x1000, 0x1000, YM2203_status_port_0_r },
-	{ 0x1001, 0x1001, YM2203_read_port_0_r },
-	{ 0x7000, 0x7000, soundlatch_r },
-	{ 0x8000, 0xffff, MRA_ROM },
-MEMORY_END
-
-
-static MEMORY_WRITE_START( sound_writemem )
-	{ 0x0000, 0x07ff, MWA_RAM},
-	{ 0x1000, 0x1000, YM2203_control_port_0_w },
-	{ 0x1001, 0x1001, YM2203_write_port_0_w },
-	{ 0x2000, 0x2000, MWA_NOP },  /* Not hooked up according to the schematics */
-	{ 0x6000, 0x6000, DAC_0_data_w },
-MEMORY_END
-
-
-
-/*************************************
- *
- *	Port definitions
- *
- *************************************/
-
-INPUT_PORTS_START( capbowl )
-	PORT_START	/* IN0 */
-	/* low 4 bits are for the trackball */
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Cabinet ) ) /* This version of Bowl-O-Rama */
-	PORT_DIPSETTING(    0x40, DEF_STR( Upright ) )			   /* is Upright only */
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
-
-	PORT_START	/* IN1 */
-	/* low 4 bits are for the trackball */
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
-
-	PORT_START	/* FAKE */
-	PORT_ANALOG( 0xff, 0x00, IPT_TRACKBALL_Y | IPF_REVERSE, 20, 40, 0, 0 )
-
-	PORT_START	/* FAKE */
-	PORT_ANALOG( 0xff, 0x00, IPT_TRACKBALL_X, 20, 40, 0, 0 )
-
-	PORT_START	/* FAKE */
-	/* This fake input port is used to get the status of the F2 key, */
-	/* and activate the test mode, which is triggered by a NMI */
-	PORT_BITX(0x01, IP_ACTIVE_HIGH, IPT_SERVICE, DEF_STR( Service_Mode ), KEYCODE_F2, IP_JOY_NONE )
-INPUT_PORTS_END
-
-
-
-/*************************************
- *
- *	Sound definitions
- *
- *************************************/
-
-static struct YM2203interface ym2203_interface =
-{
-	1,			/* 1 chip */
-	4000000,	/* 4 MHz */
-	{ YM2203_VOL(40,40) },
-	{ ticket_dispenser_r },
-	{ 0 },
-	{ 0 },
-	{ ticket_dispenser_w },  /* Also a status LED. See memory map above */
-	{ firqhandler }
-};
-
-
-static struct DACinterface dac_interface =
-{
-	1,
-	{ 100 }
-};
-
-
-
-/*************************************
- *
- *	Machine driver
- *
- *************************************/
-
-static MACHINE_DRIVER_START( capbowl )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6809, 2000000)
-	MDRV_CPU_MEMORY(capbowl_readmem,writemem)
-	MDRV_CPU_VBLANK_INT(capbowl_interrupt,1)
-	
-	MDRV_CPU_ADD(M6809,2000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
-	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
-	
-	MDRV_FRAMES_PER_SECOND(57)
-	MDRV_VBLANK_DURATION(5000)
-	
-	MDRV_MACHINE_INIT(capbowl)
-	MDRV_NVRAM_HANDLER(capbowl)
-	
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(360, 256)
-	MDRV_VISIBLE_AREA(0, 359, 0, 244)
-	MDRV_PALETTE_LENGTH(4096)
-	
-	MDRV_VIDEO_START(capbowl)
-	MDRV_VIDEO_UPDATE(capbowl)
-	
-	/* sound hardware */
-	MDRV_SOUND_ADD(YM2203, ym2203_interface)
-	MDRV_SOUND_ADD(DAC,    dac_interface)
-MACHINE_DRIVER_END
-
-
-static MACHINE_DRIVER_START( bowlrama )
-
-	/* basic machine hardware */
-	MDRV_IMPORT_FROM(capbowl)
-	
-	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_MEMORY(bowlrama_readmem,writemem)
-	
-	/* video hardware */
-	MDRV_VISIBLE_AREA(0, 359, 0, 239)
-MACHINE_DRIVER_END
-
-
-
-/*************************************
- *
- *	ROM definitions
- *
- *************************************/
-
-ROM_START( capbowl )
-	ROM_REGION( 0x28000, REGION_CPU1, 0 )
-	ROM_LOAD( "u6",           0x08000, 0x8000, 0x14924c96 )
-	ROM_LOAD( "gr0",          0x10000, 0x8000, 0xef53ca7a )
-	ROM_LOAD( "gr1",          0x18000, 0x8000, 0x27ede6ce )
-	ROM_LOAD( "gr2",          0x20000, 0x8000, 0xe49238f4 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "sound",        0x8000, 0x8000, 0x8c9c3b8a )
-ROM_END
-
-
-ROM_START( capbowl2 )
-	ROM_REGION( 0x28000, REGION_CPU1, 0 )
-	ROM_LOAD( "progrev3.u6",  0x08000, 0x8000, 0x9162934a )
-	ROM_LOAD( "gr0",          0x10000, 0x8000, 0xef53ca7a )
-	ROM_LOAD( "gr1",          0x18000, 0x8000, 0x27ede6ce )
-	ROM_LOAD( "gr2",          0x20000, 0x8000, 0xe49238f4 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "sound",        0x8000, 0x8000, 0x8c9c3b8a )
-ROM_END
-
-
-ROM_START( clbowl )
-	ROM_REGION( 0x28000, REGION_CPU1, 0 )
-	ROM_LOAD( "u6.cl",        0x08000, 0x8000, 0x91e06bc4 )
-	ROM_LOAD( "gr0.cl",       0x10000, 0x8000, 0x899c8f15 )
-	ROM_LOAD( "gr1.cl",       0x18000, 0x8000, 0x0ac0dc4c )
-	ROM_LOAD( "gr2.cl",       0x20000, 0x8000, 0x251f5da5 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "sound.cl",     0x8000, 0x8000, 0x1eba501e )
-ROM_END
-
-
-ROM_START( bowlrama )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "u6",           0x08000, 0x08000, 0x7103ad55 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "u30",          0x8000, 0x8000, 0xf3168834 )
-
-	ROM_REGION( 0x40000, REGION_GFX1, 0 )
-	ROM_LOAD( "ux7",          0x00000, 0x40000, 0x8727432a )
-ROM_END
-
-
-
-/*************************************
- *
- *	Game drivers
- *
- *************************************/
-
-GAME( 1988, capbowl,  0,       capbowl,  capbowl, 0, ROT270, "Incredible Technologies", "Capcom Bowling (set 1)" )
-GAME( 1988, capbowl2, capbowl, capbowl,  capbowl, 0, ROT270, "Incredible Technologies", "Capcom Bowling (set 2)" )
-GAME( 1989, clbowl,   capbowl, capbowl,  capbowl, 0, ROT270, "Incredible Technologies", "Coors Light Bowling" )
-GAME( 1991, bowlrama, 0,       bowlrama, capbowl, 0, ROT270, "P & P Marketing", "Bowl-O-Rama" )

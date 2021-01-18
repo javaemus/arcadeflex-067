@@ -22,11 +22,7 @@ extern data32_t *jaguar_wave_rom;
 
 /*----------- defined in sndhrdw/jaguar.c -----------*/
 
-void jaguar_dsp_suspend(void);
-void jaguar_dsp_resume(void);
 
-void cojag_sound_init(void);
-void cojag_sound_reset(void);
 
 void jaguar_external_int(int state);
 
@@ -43,11 +39,7 @@ WRITE32_HANDLER( jaguar_serial_w );
 
 extern UINT8 cojag_draw_crosshair;
 
-void jaguar_gpu_suspend(void);
-void jaguar_gpu_resume(void);
 
-void jaguar_gpu_cpu_int(void);
-void jaguar_dsp_cpu_int(void);
 
 READ32_HANDLER( jaguar_blitter_r );
 WRITE32_HANDLER( jaguar_blitter_w );

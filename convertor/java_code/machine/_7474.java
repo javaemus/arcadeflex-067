@@ -37,125 +37,132 @@
 
 *****************************************************************************/
 
-#include "driver.h"
-#include "machine/7474.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package machine;
 
-
-#define MAX_TTL7474  12
-
-struct TTL7474
+public class _7474
 {
-	/* callback */
-	void (*output_cb)(void);
-
-	/* inputs */
-	int clear;			/* pin 1/13 */
-	int preset;			/* pin 4/10 */
-	int clock;			/* pin 3/11 */
-	int d;				/* pin 2/12 */
-
-	/* outputs */
-	int output;			/* pin 5/9 */
-	int output_comp;	/* pin 6/8 */
-
-	/* internal */
-	int last_clock;
-	int last_output;
-	int last_output_comp;
-};
-
-static struct TTL7474 chips[MAX_TTL7474];
-
-
-void TTL7474_update(int which)
-{
-	if (!chips[which].preset && chips[which].clear)			  /* line 1 in truth table */
+	
+	
+	#define MAX_TTL7474  12
+	
+	struct TTL7474
 	{
-		chips[which].output 	 = 1;
-		chips[which].output_comp = 0;
-	}
-	else if (chips[which].preset && !chips[which].clear)	  /* line 2 in truth table */
+		/* callback */
+		void (*output_cb)(void);
+	
+		/* inputs */
+		int clear;			/* pin 1/13 */
+		int preset;			/* pin 4/10 */
+		int clock;			/* pin 3/11 */
+		int d;				/* pin 2/12 */
+	
+		/* outputs */
+		int output;			/* pin 5/9 */
+		int output_comp;	/* pin 6/8 */
+	
+		/* internal */
+		int last_clock;
+		int last_output;
+		int last_output_comp;
+	};
+	
+	static struct TTL7474 chips[MAX_TTL7474];
+	
+	
+	void TTL7474_update(int which)
 	{
-		chips[which].output 	 = 0;
-		chips[which].output_comp = 1;
+		if (!chips[which].preset && chips[which].clear)			  /* line 1 in truth table */
+		{
+			chips[which].output 	 = 1;
+			chips[which].output_comp = 0;
+		}
+		else if (chips[which].preset && !chips[which].clear)	  /* line 2 in truth table */
+		{
+			chips[which].output 	 = 0;
+			chips[which].output_comp = 1;
+		}
+		else if (!chips[which].preset && !chips[which].clear)	  /* line 3 in truth table */
+		{
+			chips[which].output 	 = 1;
+			chips[which].output_comp = 1;
+		}
+		else if (!chips[which].last_clock && chips[which].clock)  /* line 4 in truth table */
+		{
+			chips[which].output 	 =  chips[which].d;
+			chips[which].output_comp = !chips[which].d;
+		}
+	
+		chips[which].last_clock = chips[which].clock;
+	
+	
+		/* call callback if any of the outputs changed */
+		if (  chips[which].output_cb &&
+		    ((chips[which].output      != chips[which].last_output) ||
+		     (chips[which].output_comp != chips[which].last_output_comp)))
+		{
+			chips[which].last_output = chips[which].output;
+			chips[which].last_output_comp = chips[which].output_comp;
+	
+			chips[which].output_cb();
+		}
 	}
-	else if (!chips[which].preset && !chips[which].clear)	  /* line 3 in truth table */
+	
+	
+	void TTL7474_clear_w(int which, int data)
 	{
-		chips[which].output 	 = 1;
-		chips[which].output_comp = 1;
+		chips[which].clear = data ? 1 : 0;
 	}
-	else if (!chips[which].last_clock && chips[which].clock)  /* line 4 in truth table */
+	
+	void TTL7474_preset_w(int which, int data)
 	{
-		chips[which].output 	 =  chips[which].d;
-		chips[which].output_comp = !chips[which].d;
+		chips[which].preset = data ? 1 : 0;
 	}
-
-	chips[which].last_clock = chips[which].clock;
-
-
-	/* call callback if any of the outputs changed */
-	if (  chips[which].output_cb &&
-	    ((chips[which].output      != chips[which].last_output) ||
-	     (chips[which].output_comp != chips[which].last_output_comp)))
+	
+	void TTL7474_clock_w(int which, int data)
 	{
-		chips[which].last_output = chips[which].output;
-		chips[which].last_output_comp = chips[which].output_comp;
-
-		chips[which].output_cb();
+		chips[which].clock = data ? 1 : 0;
 	}
-}
-
-
-void TTL7474_clear_w(int which, int data)
-{
-	chips[which].clear = data ? 1 : 0;
-}
-
-void TTL7474_preset_w(int which, int data)
-{
-	chips[which].preset = data ? 1 : 0;
-}
-
-void TTL7474_clock_w(int which, int data)
-{
-	chips[which].clock = data ? 1 : 0;
-}
-
-void TTL7474_d_w(int which, int data)
-{
-	chips[which].d = data ? 1 : 0;
-}
-
-
-int TTL7474_output_r(int which)
-{
-	return chips[which].output;
-}
-
-int TTL7474_output_comp_r(int which)
-{
-	return chips[which].output_comp;
-}
-
-
-void TTL7474_config(int which, const struct TTL7474_interface *intf)
-{
-	if (which >= MAX_TTL7474)
+	
+	void TTL7474_d_w(int which, int data)
 	{
-		logerror("Only %d 7474's are supported at this time.\n", MAX_TTL7474);
-		return;
+		chips[which].d = data ? 1 : 0;
 	}
-
-
-	chips[which].output_cb = (intf ? intf->output_cb : 0);
-
-	/* all inputs are open first */
-    chips[which].clear = 1;
-    chips[which].preset = 1;
-    chips[which].clock = 1;
-    chips[which].d = 1;
-
-    chips[which].last_clock = 1;
-    chips[which].last_output = -1;
-    chips[which].last_output_comp = -1;
+	
+	
+	int TTL7474_output_r(int which)
+	{
+		return chips[which].output;
+	}
+	
+	int TTL7474_output_comp_r(int which)
+	{
+		return chips[which].output_comp;
+	}
+	
+	
+	void TTL7474_config(int which, const struct TTL7474_interface *intf)
+	{
+		if (which >= MAX_TTL7474)
+		{
+			logerror("Only %d 7474's are supported at this time.\n", MAX_TTL7474);
+			return;
+		}
+	
+	
+		chips[which].output_cb = (intf ? intf->output_cb : 0);
+	
+		/* all inputs are open first */
+	    chips[which].clear = 1;
+	    chips[which].preset = 1;
+	    chips[which].clock = 1;
+	    chips[which].d = 1;
+	
+	    chips[which].last_clock = 1;
+	    chips[which].last_output = -1;
+	    chips[which].last_output_comp = -1;
+	}
 }

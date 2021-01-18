@@ -18,21 +18,10 @@ MACHINE_INIT( turbo );
 MACHINE_INIT( subroc3d );
 MACHINE_INIT( buckrog );
 
-READ_HANDLER( turbo_8279_r );
-WRITE_HANDLER( turbo_8279_w );
 
-READ_HANDLER( turbo_collision_r );
-WRITE_HANDLER( turbo_collision_clear_w );
-WRITE_HANDLER( turbo_coin_and_lamp_w );
 
-void turbo_rom_decode(void);
 
-void turbo_update_tachometer(void);
-void turbo_update_segments(void);
 
-READ_HANDLER( buckrog_cpu2_command_r );
-READ_HANDLER( buckrog_port_2_r );
-READ_HANDLER( buckrog_port_3_r );
 
 
 /*----------- defined in vidhrdw/turbo.c -----------*/
@@ -53,5 +42,3 @@ PALETTE_INIT( buckrog );
 VIDEO_START( buckrog );
 VIDEO_UPDATE( buckrog );
 
-WRITE_HANDLER( buckrog_led_display_w );
-WRITE_HANDLER( buckrog_bitmap_w );

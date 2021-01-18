@@ -78,10 +78,10 @@ INLINE UINT32 POPL(UINT8 src)
 }
 
 /* check zero and sign flag for byte, word and long results */
-#define CHK_XXXB_ZS if (!result) SET_Z; else if ((INT8) result < 0) SET_S
-#define CHK_XXXW_ZS if (!result) SET_Z; else if ((INT16)result < 0) SET_S
-#define CHK_XXXL_ZS if (!result) SET_Z; else if ((INT32)result < 0) SET_S
-#define CHK_XXXQ_ZS if (!result) SET_Z; else if ((INT64)result < 0) SET_S
+#define CHK_XXXB_ZS if (result == 0) SET_Z; else if ((INT8) result < 0) SET_S
+#define CHK_XXXW_ZS if (result == 0) SET_Z; else if ((INT16)result < 0) SET_S
+#define CHK_XXXL_ZS if (result == 0) SET_Z; else if ((INT32)result < 0) SET_S
+#define CHK_XXXQ_ZS if (result == 0) SET_Z; else if ((INT64)result < 0) SET_S
 
 #define CHK_XXXB_ZSP FCW |= z8000_zsp[result]
 
@@ -439,7 +439,7 @@ INLINE void TESTB(UINT8 result)
 INLINE void TESTW(UINT16 dest)
 {
 	CLR_ZS;
-    if (!dest) SET_Z; else if (dest & S16) SET_S;
+    if (dest == 0) SET_Z; else if (dest & S16) SET_S;
 }
 
 /******************************************
@@ -449,7 +449,7 @@ INLINE void TESTW(UINT16 dest)
 INLINE void TESTL(UINT32 dest)
 {
 	CLR_ZS;
-	if (!dest) SET_Z; else if (dest & S32) SET_S;
+	if (dest == 0) SET_Z; else if (dest & S32) SET_S;
 }
 
 /******************************************
@@ -513,7 +513,7 @@ INLINE UINT32 MULTW(UINT16 dest, UINT16 value)
 	UINT32 result = (INT32)(INT16)dest * (INT16)value;
 	CLR_CZSV;
     CHK_XXXL_ZS;
-	if( !value )
+	if (value == 0)
 	{
 		/* multiplication with zero is faster */
         z8000_ICount += (70-18);
@@ -529,7 +529,7 @@ INLINE UINT32 MULTW(UINT16 dest, UINT16 value)
 INLINE UINT64 MULTL(UINT32 dest, UINT32 value)
 {
 	UINT64 result = (INT64)(INT32)dest * (INT32)value;
-    if( !value )
+    if (value == 0)
 	{
 		/* multiplication with zero is faster */
 		z8000_ICount += (282 - 30);
@@ -713,7 +713,7 @@ INLINE UINT8 RRB(UINT8 dest, UINT8 twice)
 	UINT8 result = (dest >> 1) | (dest << 7);
 	CLR_CZSV;
 	if (twice) result = (result >> 1) | (result << 7);
-    if (!result) SET_Z; else if (result & S08) SET_SC;
+    if (result == 0) SET_Z; else if (result & S08) SET_SC;
     if ((result ^ dest) & S08) SET_V;
 	return result;
 }
@@ -727,7 +727,7 @@ INLINE UINT16 RRW(UINT16 dest, UINT8 twice)
 	UINT16 result = (dest >> 1) | (dest << 15);
 	CLR_CZSV;
 	if (twice) result = (result >> 1) | (result << 15);
-    if (!result) SET_Z; else if (result & S16) SET_SC;
+    if (result == 0) SET_Z; else if (result & S16) SET_SC;
     if ((result ^ dest) & S16) SET_V;
 	return result;
 }

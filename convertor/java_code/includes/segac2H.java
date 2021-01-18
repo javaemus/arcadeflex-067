@@ -7,9 +7,6 @@
 /*----------- defined in vidhrdw/segac2.c -----------*/
 
 extern UINT8		segac2_vdp_regs[];
-extern int			segac2_bg_palbase;
-extern int			segac2_sp_palbase;
-extern int			segac2_palbank;
 
 VIDEO_START( segac2 );
 VIDEO_EOF( segac2 );

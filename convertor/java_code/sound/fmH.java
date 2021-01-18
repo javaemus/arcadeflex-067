@@ -135,7 +135,6 @@ int YM2203Init(int num, int baseclock, int rate,
 /*
 ** shutdown the YM2203 emulators
 */
-void YM2203Shutdown(void);
 
 /*
 ** reset all chip registers for YM2203 number 'num'
@@ -171,7 +170,6 @@ int YM2203TimerOver(int n, int c);
 int YM2608Init(int num, int baseclock, int rate,
                void **pcmroma,int *pcmsizea,
                FM_TIMERHANDLER TimerHandler,FM_IRQHANDLER IRQHandler);
-void YM2608Shutdown(void);
 void YM2608ResetChip(int num);
 void YM2608UpdateOne(int num, INT16 **buffer, int length);
 
@@ -185,7 +183,6 @@ int YM2608TimerOver(int n, int c );
 int YM2610Init(int num, int baseclock, int rate,
                void **pcmroma,int *pcmasize,void **pcmromb,int *pcmbsize,
                FM_TIMERHANDLER TimerHandler,FM_IRQHANDLER IRQHandler);
-void YM2610Shutdown(void);
 void YM2610ResetChip(int num);
 void YM2610UpdateOne(int num, INT16 **buffer, int length);
 #if BUILD_YM2610B
@@ -200,7 +197,6 @@ int YM2610TimerOver(int n, int c );
 #if BUILD_YM2612
 int YM2612Init(int num, int baseclock, int rate,
                FM_TIMERHANDLER TimerHandler,FM_IRQHANDLER IRQHandler);
-void YM2612Shutdown(void);
 void YM2612ResetChip(int num);
 void YM2612UpdateOne(int num, INT16 **buffer, int length);
 
@@ -213,7 +209,6 @@ int YM2612TimerOver(int n, int c );
 /* -------------------- YM2151(OPM) Interface -------------------- */
 int OPMInit(int num, int baseclock, int rate,
                FM_TIMERHANDLER TimerHandler,FM_IRQHANDLER IRQHandler);
-void OPMShutdown(void);
 void OPMResetChip(int num);
 
 void OPMUpdateOne(int num, INT16 **buffer, int length );

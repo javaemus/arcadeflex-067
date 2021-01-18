@@ -67,281 +67,297 @@ TODO
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
-#include "cpu/z80/z80.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-
-unsigned char *sauro_videoram2;
-unsigned char *sauro_colorram2;
-
-VIDEO_UPDATE( sauro );
-
-WRITE_HANDLER( sauro_scroll1_w );
-WRITE_HANDLER( sauro_scroll2_w );
-
-static WRITE_HANDLER( sauro_sound_command_w )
+public class sauro
 {
-	data |= 0x80;
-	soundlatch_w(offset,data);
+	
+	
+	unsigned char *sauro_videoram2;
+	unsigned char *sauro_colorram2;
+	
+	VIDEO_UPDATE( sauro );
+	
+	
+	public static WriteHandlerPtr sauro_sound_command_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		data |= 0x80;
+		soundlatch_w(offset,data);
+	} };
+	
+	public static ReadHandlerPtr sauro_sound_command_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		int ret	= soundlatch_r(offset);
+		soundlatch_clear_w(offset,0);
+		return ret;
+	} };
+	
+	public static WriteHandlerPtr flip_screen_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		flip_screen_set(data);
+	} };
+	
+	
+	public static Memory_ReadAddress readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+	        new Memory_ReadAddress( 0x0000, 0xdfff, MRA_ROM ),
+			new Memory_ReadAddress( 0xe000, 0xebff, MRA_RAM ),
+			new Memory_ReadAddress( 0xf000, 0xffff, MRA_RAM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+	        new Memory_WriteAddress( 0x0000, 0xdfff, MWA_ROM ),
+			new Memory_WriteAddress( 0xe000, 0xe7ff, MWA_RAM ),
+			new Memory_WriteAddress( 0xe800, 0xebff, MWA_RAM, spriteram, spriteram_size ),
+			new Memory_WriteAddress( 0xf000, 0xf3ff, videoram_w, videoram, videoram_size ),
+			new Memory_WriteAddress( 0xf400, 0xf7ff, colorram_w, colorram ),
+			new Memory_WriteAddress( 0xf800, 0xfbff, MWA_RAM, sauro_videoram2 ),
+			new Memory_WriteAddress( 0xfc00, 0xffff, MWA_RAM, sauro_colorram2 ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static IO_ReadPort readport[]={
+		new IO_ReadPort(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+			new IO_ReadPort( 0x00, 0x00, input_port_2_r ),
+			new IO_ReadPort( 0x20, 0x20, input_port_3_r ),
+			new IO_ReadPort( 0x40, 0x40, input_port_0_r ),
+			new IO_ReadPort( 0x60, 0x60, input_port_1_r ),
+		new IO_ReadPort(MEMPORT_MARKER, 0)
+	};
+	
+	public static IO_WritePort writeport[]={
+		new IO_WritePort(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+			new IO_WritePort( 0xa0, 0xa0, sauro_scroll1_w, ),
+			new IO_WritePort( 0xa1, 0xa1, sauro_scroll2_w, ),
+			new IO_WritePort( 0x80, 0x80, sauro_sound_command_w, ),
+			new IO_WritePort( 0xc0, 0xc0, flip_screen_w, ),
+			new IO_WritePort( 0xc1, 0xce, MWA_NOP, ),
+			new IO_WritePort( 0xe0, 0xe0, watchdog_reset_w ),
+		new IO_WritePort(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_ReadAddress sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+	        new Memory_ReadAddress( 0x0000, 0x7fff, MRA_ROM ),
+			new Memory_ReadAddress( 0x8000, 0x87ff, MRA_RAM ),
+			new Memory_ReadAddress( 0xe000, 0xe000, sauro_sound_command_r ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x8000, 0x87ff, MWA_RAM ),
+		new Memory_WriteAddress( 0xc000, 0xc000, YM3812_control_port_0_w ),
+		new Memory_WriteAddress( 0xc001, 0xc001, YM3812_write_port_0_w ),
+	//	new Memory_WriteAddress( 0xa000, 0xa000, ADPCM_trigger ),
+		new Memory_WriteAddress( 0xe000, 0xe006, MWA_NOP ),
+		new Memory_WriteAddress( 0xe00e, 0xe00f, MWA_NOP ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	static InputPortPtr input_ports_sauro = new InputPortPtr(){ public void handler() { 
+		PORT_START();       /* IN0 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN1 );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN2 );
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY );
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY  );
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY  );
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY  );
+	
+		PORT_START();       /* IN1 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 | IPF_COCKTAIL);
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_START2 );
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_COCKTAIL | IPF_8WAY );
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_COCKTAIL | IPF_8WAY  );
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_COCKTAIL | IPF_8WAY  );
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_COCKTAIL | IPF_8WAY  );
+	
+		PORT_START(); 
+		PORT_SERVICE( 0x01, IP_ACTIVE_HIGH );
+		PORT_DIPNAME( 0x02, 0x02, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x02, DEF_STR( "On") );
+		PORT_DIPNAME( 0x04, 0x04, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING(    0x04, DEF_STR( "Upright") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Cocktail") );
+		PORT_DIPNAME( 0x08, 0x00, DEF_STR( "Free_Play") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x08, DEF_STR( "On") );
+		PORT_DIPNAME( 0x30, 0x20, DEF_STR( "Difficulty") );
+		PORT_DIPSETTING(    0x30, "Very Easy" );
+		PORT_DIPSETTING(    0x20, "Easy" );
+		PORT_DIPSETTING(    0x10, "Hard" );                      /* This crashes test mode!!! */
+		PORT_DIPSETTING(    0x00, "Very Hard" );
+		PORT_DIPNAME( 0x40, 0x40, "Allow Continue" );
+		PORT_DIPSETTING(    0x00, DEF_STR( "No") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "Yes") );
+		PORT_DIPNAME( 0x80, 0x00, "Freeze" );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "On") );
+	
+		PORT_START(); 
+		PORT_DIPNAME( 0x03, 0x03, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(    0x01, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(    0x02, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(    0x03, DEF_STR( "1C_1C") );
+		PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(    0x0c, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(    0x08, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(    0x04, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "1C_5C") );
+		PORT_DIPNAME( 0x30, 0x20, DEF_STR( "Lives") );
+		PORT_DIPSETTING(    0x30, "2" );
+		PORT_DIPSETTING(    0x20, "3" );
+		PORT_DIPSETTING(    0x10, "4" );
+		PORT_DIPSETTING(    0x00, "5" );
+		PORT_DIPNAME( 0x40, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "On") );
+		PORT_DIPNAME( 0x80, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "On") );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	static GfxLayout charlayout = new GfxLayout
+	(
+		8,8,	/* 8*8 chars */
+	    2048,   /* 2048 characters */
+	    4,      /* 4 bits per pixel */
+	    new int[] { 0,1,2,3 },  /* The 4 planes are packed together */
+	    new int[] { 0*4, 1*4, 2*4, 3*4, 4*4, 5*4, 6*4, 7*4},
+	    new int[] { 0*4*8, 1*4*8, 2*4*8, 3*4*8, 4*4*8, 5*4*8, 6*4*8, 7*4*8},
+	    8*8*4     /* every char takes 32 consecutive bytes */
+	);
+	
+	static GfxLayout spritelayout = new GfxLayout
+	(
+		16,16,	/* 16*16 sprites */
+	    1024,   /* 1024 sprites */
+	    4,      /* 4 bits per pixel */
+	    new int[] { 0,1,2,3 },  /* The 4 planes are packed together */
+	    new int[] { 1*4, 0*4, 3*4, 2*4, 5*4, 4*4, 7*4, 6*4, 9*4, 8*4, 11*4, 10*4, 13*4, 12*4, 15*4, 14*4},
+	    new int[] { 3*0x8000*8+0*4*16, 2*0x8000*8+0*4*16, 1*0x8000*8+0*4*16, 0*0x8000*8+0*4*16,
+	      3*0x8000*8+1*4*16, 2*0x8000*8+1*4*16, 1*0x8000*8+1*4*16, 0*0x8000*8+1*4*16,
+	      3*0x8000*8+2*4*16, 2*0x8000*8+2*4*16, 1*0x8000*8+2*4*16, 0*0x8000*8+2*4*16,
+	      3*0x8000*8+3*4*16, 2*0x8000*8+3*4*16, 1*0x8000*8+3*4*16, 0*0x8000*8+3*4*16, },
+	    16*16     /* every sprite takes 32 consecutive bytes */
+	);
+	
+	static GfxDecodeInfo gfxdecodeinfo[] =
+	{
+		new GfxDecodeInfo( REGION_GFX1, 0, charlayout  , 0, 64 ),
+		new GfxDecodeInfo( REGION_GFX2, 0, charlayout  , 0, 64 ),
+		new GfxDecodeInfo( REGION_GFX3, 0, spritelayout, 0, 64 ),
+		new GfxDecodeInfo( -1 ) /* end of array */
+	};
+	
+	
+	static INTERRUPT_GEN( sauron_interrupt )
+	{
+		cpu_set_irq_line(1,IRQ_LINE_NMI,PULSE_LINE);
+		cpu_set_irq_line(1,0,HOLD_LINE);
+	}
+	
+	static struct YM3526interface ym3812_interface =
+	{
+		1,			/* 1 chip (no more supported) */
+		3600000,	/* 3.600000 MHz ? */
+		{ 100 } 	/* volume */
+	};
+	
+	
+	static MACHINE_DRIVER_START( sauro )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(Z80, 4000000)        /* 4 MHz??? */
+		MDRV_CPU_MEMORY(readmem,writemem)
+		MDRV_CPU_PORTS(readport,writeport)
+		MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	
+		MDRV_CPU_ADD(Z80, 4000000)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)        /* 4 MHz??? */
+		MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+		MDRV_CPU_VBLANK_INT(sauron_interrupt,8) /* ?? */
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(5000)  /* frames per second, vblank duration (otherwise sprites lag) */
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(32*8, 32*8)
+		MDRV_VISIBLE_AREA(1*8, 31*8-1, 2*8, 30*8-1)
+		MDRV_GFXDECODE(gfxdecodeinfo)
+		MDRV_PALETTE_LENGTH(1024)
+	
+		MDRV_PALETTE_INIT(RRRR_GGGG_BBBB)
+		MDRV_VIDEO_START(generic)
+		MDRV_VIDEO_UPDATE(sauro)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(YM3812, ym3812_interface)
+	MACHINE_DRIVER_END
+	
+	
+	/***************************************************************************
+	
+	  Game driver(s)
+	
+	***************************************************************************/
+	
+	static RomLoadPtr rom_sauro = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );         /* 64k for code */
+		ROM_LOAD( "sauro-2.bin",     0x00000, 0x8000, 0x19f8de25 );
+		ROM_LOAD( "sauro-1.bin",     0x08000, 0x8000, 0x0f8b876f );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );         /* 64k for sound CPU */
+		ROM_LOAD( "sauro-3.bin",     0x00000, 0x8000, 0x0d501e1b );
+	
+		ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "sauro-4.bin",     0x00000, 0x8000, 0x9b617cda );
+		ROM_LOAD( "sauro-5.bin",     0x08000, 0x8000, 0xa6e2640d );
+	
+		ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE );
+		ROM_LOAD( "sauro-6.bin",     0x00000, 0x8000, 0x4b77cb0f );
+		ROM_LOAD( "sauro-7.bin",     0x08000, 0x8000, 0x187da060 );
+	
+		ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE );
+		ROM_LOAD( "sauro-8.bin",     0x00000, 0x8000, 0xe08b5d5e );
+		ROM_LOAD( "sauro-9.bin",     0x08000, 0x8000, 0x7c707195 );
+		ROM_LOAD( "sauro-10.bin",    0x10000, 0x8000, 0xc93380d1 );
+		ROM_LOAD( "sauro-11.bin",    0x18000, 0x8000, 0xf47982a8 );
+	
+		ROM_REGION( 0x0c00, REGION_PROMS, 0 );
+		ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, 0xd52c4cd0 ); /* Red component */
+		ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, 0xc3e96d5d ); /* Green component */
+		ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, 0xbdfcf00c ); /* Blue component */
+	ROM_END(); }}; 
+	
+	
+	
+	static DRIVER_INIT( sauro )
+	{
+		/* This game doesn't like all memory to be initialized to zero, it won't
+		   initialize the high scores */
+	
+		unsigned char *RAM = memory_region(REGION_CPU1);
+	
+		memset(&RAM[0xe000], 0, 0x100);
+		RAM[0xe000] = 1;
+	}
+	
+	
+	public static GameDriver driver_sauro	   = new GameDriver("1987"	,"sauro"	,"sauro.java"	,rom_sauro,null	,machine_driver_sauro	,input_ports_sauro	,init_sauro	,ROT0	,	"Tecfri", "Sauro", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND )
 }
-
-static READ_HANDLER( sauro_sound_command_r )
-{
-	int ret	= soundlatch_r(offset);
-	soundlatch_clear_w(offset,0);
-	return ret;
-}
-
-static WRITE_HANDLER( flip_screen_w )
-{
-	flip_screen_set(data);
-}
-
-
-static MEMORY_READ_START( readmem )
-        { 0x0000, 0xdfff, MRA_ROM },
-		{ 0xe000, 0xebff, MRA_RAM },
-		{ 0xf000, 0xffff, MRA_RAM },
-MEMORY_END
-
-static MEMORY_WRITE_START( writemem )
-        { 0x0000, 0xdfff, MWA_ROM },
-		{ 0xe000, 0xe7ff, MWA_RAM },
-		{ 0xe800, 0xebff, MWA_RAM, &spriteram, &spriteram_size },
-		{ 0xf000, 0xf3ff, videoram_w, &videoram, &videoram_size },
-		{ 0xf400, 0xf7ff, colorram_w, &colorram },
-		{ 0xf800, 0xfbff, MWA_RAM, &sauro_videoram2 },
-		{ 0xfc00, 0xffff, MWA_RAM, &sauro_colorram2 },
-MEMORY_END
-
-static PORT_READ_START( readport )
-		{ 0x00, 0x00, input_port_2_r },
-		{ 0x20, 0x20, input_port_3_r },
-		{ 0x40, 0x40, input_port_0_r },
-		{ 0x60, 0x60, input_port_1_r },
-PORT_END
-
-static PORT_WRITE_START( writeport )
-		{ 0xa0, 0xa0, sauro_scroll1_w, },
-		{ 0xa1, 0xa1, sauro_scroll2_w, },
-		{ 0x80, 0x80, sauro_sound_command_w, },
-		{ 0xc0, 0xc0, flip_screen_w, },
-		{ 0xc1, 0xce, MWA_NOP, },
-		{ 0xe0, 0xe0, watchdog_reset_w },
-PORT_END
-
-static MEMORY_READ_START( sound_readmem )
-        { 0x0000, 0x7fff, MRA_ROM },
-		{ 0x8000, 0x87ff, MRA_RAM },
-		{ 0xe000, 0xe000, sauro_sound_command_r },
-MEMORY_END
-
-static MEMORY_WRITE_START( sound_writemem )
-	{ 0x8000, 0x87ff, MWA_RAM },
-	{ 0xc000, 0xc000, YM3812_control_port_0_w },
-	{ 0xc001, 0xc001, YM3812_write_port_0_w },
-//	{ 0xa000, 0xa000, ADPCM_trigger },
-	{ 0xe000, 0xe006, MWA_NOP },
-	{ 0xe00e, 0xe00f, MWA_NOP },
-MEMORY_END
-
-
-INPUT_PORTS_START( sauro )
-	PORT_START      /* IN0 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN2 )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY  )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY  )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY  )
-
-	PORT_START      /* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 | IPF_COCKTAIL)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_START2 )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_COCKTAIL | IPF_8WAY )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_COCKTAIL | IPF_8WAY  )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_COCKTAIL | IPF_8WAY  )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_COCKTAIL | IPF_8WAY  )
-
-	PORT_START
-	PORT_SERVICE( 0x01, IP_ACTIVE_HIGH )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Free_Play ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x20, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x30, "Very Easy" )
-	PORT_DIPSETTING(    0x20, "Easy" )
-	PORT_DIPSETTING(    0x10, "Hard" )	                      /* This crashes test mode!!! */
-	PORT_DIPSETTING(    0x00, "Very Hard" )
-	PORT_DIPNAME( 0x40, 0x40, "Allow Continue" )
-	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x80, 0x00, "Freeze" )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
-
-	PORT_START
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_5C ) )
-	PORT_DIPNAME( 0x30, 0x20, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x30, "2" )
-	PORT_DIPSETTING(    0x20, "3" )
-	PORT_DIPSETTING(    0x10, "4" )
-	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
-INPUT_PORTS_END
-
-
-static struct GfxLayout charlayout =
-{
-	8,8,	/* 8*8 chars */
-    2048,   /* 2048 characters */
-    4,      /* 4 bits per pixel */
-    { 0,1,2,3 },  /* The 4 planes are packed together */
-    { 0*4, 1*4, 2*4, 3*4, 4*4, 5*4, 6*4, 7*4},
-    { 0*4*8, 1*4*8, 2*4*8, 3*4*8, 4*4*8, 5*4*8, 6*4*8, 7*4*8},
-    8*8*4     /* every char takes 32 consecutive bytes */
-};
-
-static struct GfxLayout spritelayout =
-{
-	16,16,	/* 16*16 sprites */
-    1024,   /* 1024 sprites */
-    4,      /* 4 bits per pixel */
-    { 0,1,2,3 },  /* The 4 planes are packed together */
-    { 1*4, 0*4, 3*4, 2*4, 5*4, 4*4, 7*4, 6*4, 9*4, 8*4, 11*4, 10*4, 13*4, 12*4, 15*4, 14*4},
-    { 3*0x8000*8+0*4*16, 2*0x8000*8+0*4*16, 1*0x8000*8+0*4*16, 0*0x8000*8+0*4*16,
-      3*0x8000*8+1*4*16, 2*0x8000*8+1*4*16, 1*0x8000*8+1*4*16, 0*0x8000*8+1*4*16,
-      3*0x8000*8+2*4*16, 2*0x8000*8+2*4*16, 1*0x8000*8+2*4*16, 0*0x8000*8+2*4*16,
-      3*0x8000*8+3*4*16, 2*0x8000*8+3*4*16, 1*0x8000*8+3*4*16, 0*0x8000*8+3*4*16, },
-    16*16     /* every sprite takes 32 consecutive bytes */
-};
-
-static struct GfxDecodeInfo gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &charlayout  , 0, 64 },
-	{ REGION_GFX2, 0, &charlayout  , 0, 64 },
-	{ REGION_GFX3, 0, &spritelayout, 0, 64 },
-	{ -1 } /* end of array */
-};
-
-
-static INTERRUPT_GEN( sauron_interrupt )
-{
-	cpu_set_irq_line(1,IRQ_LINE_NMI,PULSE_LINE);
-	cpu_set_irq_line(1,0,HOLD_LINE);
-}
-
-static struct YM3526interface ym3812_interface =
-{
-	1,			/* 1 chip (no more supported) */
-	3600000,	/* 3.600000 MHz ? */
-	{ 100 } 	/* volume */
-};
-
-
-static MACHINE_DRIVER_START( sauro )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)        /* 4 MHz??? */
-	MDRV_CPU_MEMORY(readmem,writemem)
-	MDRV_CPU_PORTS(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)        /* 4 MHz??? */
-	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(sauron_interrupt,8) /* ?? */
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(5000)  /* frames per second, vblank duration (otherwise sprites lag) */
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(1*8, 31*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(1024)
-
-	MDRV_PALETTE_INIT(RRRR_GGGG_BBBB)
-	MDRV_VIDEO_START(generic)
-	MDRV_VIDEO_UPDATE(sauro)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(YM3812, ym3812_interface)
-MACHINE_DRIVER_END
-
-
-/***************************************************************************
-
-  Game driver(s)
-
-***************************************************************************/
-
-ROM_START( sauro )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )          /* 64k for code */
-	ROM_LOAD( "sauro-2.bin",     0x00000, 0x8000, 0x19f8de25 )
-	ROM_LOAD( "sauro-1.bin",     0x08000, 0x8000, 0x0f8b876f )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )          /* 64k for sound CPU */
-	ROM_LOAD( "sauro-3.bin",     0x00000, 0x8000, 0x0d501e1b )
-
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "sauro-4.bin",     0x00000, 0x8000, 0x9b617cda )
-	ROM_LOAD( "sauro-5.bin",     0x08000, 0x8000, 0xa6e2640d )
-
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "sauro-6.bin",     0x00000, 0x8000, 0x4b77cb0f )
-	ROM_LOAD( "sauro-7.bin",     0x08000, 0x8000, 0x187da060 )
-
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )
-	ROM_LOAD( "sauro-8.bin",     0x00000, 0x8000, 0xe08b5d5e )
-	ROM_LOAD( "sauro-9.bin",     0x08000, 0x8000, 0x7c707195 )
-	ROM_LOAD( "sauro-10.bin",    0x10000, 0x8000, 0xc93380d1 )
-	ROM_LOAD( "sauro-11.bin",    0x18000, 0x8000, 0xf47982a8 )
-
-	ROM_REGION( 0x0c00, REGION_PROMS, 0 )
-	ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, 0xd52c4cd0 )  /* Red component */
-	ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, 0xc3e96d5d )  /* Green component */
-	ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, 0xbdfcf00c )  /* Blue component */
-ROM_END
-
-
-
-static DRIVER_INIT( sauro )
-{
-	/* This game doesn't like all memory to be initialized to zero, it won't
-	   initialize the high scores */
-
-	unsigned char *RAM = memory_region(REGION_CPU1);
-
-	memset(&RAM[0xe000], 0, 0x100);
-	RAM[0xe000] = 1;
-}
-
-
-GAMEX( 1987, sauro, 0, sauro, sauro, sauro, ROT0, "Tecfri", "Sauro", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND )

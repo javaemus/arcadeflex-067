@@ -7,9 +7,6 @@ extern "C" {
 
 void set_RC_filter(int channel,int R1,int R2,int R3,int C);
 
-int streams_sh_start(void);
-void streams_sh_stop(void);
-void streams_sh_update(void);
 
 int stream_init(const char *name,int default_mixing_level,
 		int sample_rate,

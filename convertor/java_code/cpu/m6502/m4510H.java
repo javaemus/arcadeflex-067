@@ -22,51 +22,44 @@
 #ifndef _M4510_H
 #define _M4510_H
 
-#include "cpuintrf.h"
-#include "osd_cpu.h"
-#include "m6502.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package cpu.m6502;
 
-#ifdef RUNTIME_LOADER
-# ifdef __cplusplus
-	extern "C" void m4510_runtime_loader_init(void);
-# else
-	extern void m4510_runtime_loader_init(void);
-# endif
-#endif
-
-
-enum {
-	M4510_PC=1, M4510_S, M4510_P, M4510_A, M4510_X, M4510_Y,
-	M4510_Z, M4510_B, M4510_EA, M4510_ZP,
-	M4510_NMI_STATE, M4510_IRQ_STATE,
-	M4510_MEM_LOW,M4510_MEM_HIGH,
-	M4510_MEM0, M4510_MEM1, M4510_MEM2, M4510_MEM3,
-	M4510_MEM4, M4510_MEM5, M4510_MEM6, M4510_MEM7
-};
-
-#define M4510_IRQ_LINE					M6502_IRQ_LINE
-
-extern int m4510_ICount;				/* cycle count */
-
-extern void m4510_init(void);
-extern void m4510_reset(void *param);
-extern void m4510_exit(void);
-extern int	m4510_execute(int cycles);
-extern unsigned m4510_get_context (void *dst);
-extern void m4510_set_context (void *src);
-extern unsigned m4510_get_reg (int regnum);
-extern void m4510_set_reg (int regnum, unsigned val);
-extern void m4510_set_irq_line(int irqline, int state);
-extern void m4510_set_irq_callback(int (*callback)(int irqline));
-extern void m4510_state_save(void *file);
-extern void m4510_state_load(void *file);
-extern const char *m4510_info(void *context, int regnum);
-extern unsigned m4510_dasm(char *buffer, unsigned pc);
-
-#ifdef MAME_DEBUG
-extern unsigned Dasm4510( char *dst, unsigned pc );
-#endif
-
-#endif
-
-
+public class m4510H
+{
+	
+	#ifdef RUNTIME_LOADER
+	# ifdef __cplusplus
+		extern "C" # else
+		# endif
+	#endif
+	
+	
+	enum {
+		M4510_PC=1, M4510_S, M4510_P, M4510_A, M4510_X, M4510_Y,
+		M4510_Z, M4510_B, M4510_EA, M4510_ZP,
+		M4510_NMI_STATE, M4510_IRQ_STATE,
+		M4510_MEM_LOW,M4510_MEM_HIGH,
+		M4510_MEM0, M4510_MEM1, M4510_MEM2, M4510_MEM3,
+		M4510_MEM4, M4510_MEM5, M4510_MEM6, M4510_MEM7
+	};
+	
+	#define M4510_IRQ_LINE					M6502_IRQ_LINE
+	
+	
+	extern unsigned m4510_get_context (void *dst);
+	extern unsigned m4510_get_reg (int regnum);
+	extern const char *m4510_info(void *context, int regnum);
+	extern unsigned m4510_dasm(char *buffer, unsigned pc);
+	
+	#ifdef MAME_DEBUG
+	extern unsigned Dasm4510( char *dst, unsigned pc );
+	#endif
+	
+	#endif
+	
+	
+}

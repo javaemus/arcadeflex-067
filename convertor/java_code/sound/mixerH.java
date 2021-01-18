@@ -69,9 +69,6 @@
 #define MIXER_GET_PAN(mixing_level)    (((mixing_level) >> 8) & 0x03)
 #define MIXER_GET_GAIN(mixing_level)   (((mixing_level) >> 10) & 0x03)
 
-int mixer_sh_start(void);
-void mixer_sh_stop(void);
-void mixer_sh_update(void);
 int mixer_allocate_channel(int default_mixing_level);
 int mixer_allocate_channels(int channels,const int *default_mixing_levels);
 void mixer_set_name(int channel,const char *name);
@@ -94,7 +91,6 @@ void mixer_set_sample_frequency(int channel,int freq);
 void mixer_sound_enable_global_w(int enable);
 
 void mixer_play_streamed_sample_16(int channel,INT16 *data,int len,int freq);
-int mixer_samples_this_frame(void);
 int mixer_need_samples_this_frame(int channel,int freq);
 void mixer_set_lowpass_frequency(int ch, int freq);
 

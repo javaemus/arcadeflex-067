@@ -173,384 +173,391 @@
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
-#include "machine/mathbox.h"
-#include "vidhrdw/avgdvg.h"
-#include "vidhrdw/vector.h"
-#include "machine/atari_vg.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-
-
-/*************************************
- *
- *	Input ports
- *
- *************************************/
-
-static READ_HANDLER( tempest_IN0_r )
+public class tempest
 {
-	int res = readinputport(0);
-
-	if (avgdvg_done())
-		res |= 0x40;
-
-	/* Emulate the 3kHz source on bit 7 (divide 1.5MHz by 512) */
-	if (activecpu_gettotalcycles() & 0x100)
-		res |= 0x80;
-
-	return res;
+	
+	
+	
+	/*************************************
+	 *
+	 *	Input ports
+	 *
+	 *************************************/
+	
+	public static ReadHandlerPtr tempest_IN0_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		int res = readinputport(0);
+	
+		if (avgdvg_done())
+			res |= 0x40;
+	
+		/* Emulate the 3kHz source on bit 7 (divide 1.5MHz by 512) */
+		if (activecpu_gettotalcycles() & 0x100)
+			res |= 0x80;
+	
+		return res;
+	} };
+	
+	
+	public static ReadHandlerPtr input_port_1_bit_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return (readinputport(1) & (1 << offset)) ? 0 : 228;
+	} };
+	
+	
+	public static ReadHandlerPtr input_port_2_bit_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return (readinputport(2) & (1 << offset)) ? 0 : 228;
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Output ports
+	 *
+	 *************************************/
+	
+	public static WriteHandlerPtr tempest_led_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		set_led_status(0, ~data & 0x02);
+		set_led_status(1, ~data & 0x01);
+		/* FLIP is bit 0x04 */
+	} };
+	
+	
+	public static WriteHandlerPtr tempest_coin_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		coin_counter_w(0, (data & 0x01));
+		coin_counter_w(1, (data & 0x02));
+		coin_counter_w(2, (data & 0x04));
+		vector_set_flip_x(data & 0x08);
+		vector_set_flip_y(data & 0x10);
+		vector_set_swap_xy(1);	/* vertical game */
+	} };
+	
+	
+	
+	/*************************************
+	 *
+	 *	Main CPU memory handlers
+	 *
+	 *************************************/
+	
+	public static Memory_ReadAddress readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x07ff, MRA_RAM ),
+		new Memory_ReadAddress( 0x0c00, 0x0c00, tempest_IN0_r ),	/* IN0 */
+		new Memory_ReadAddress( 0x0d00, 0x0d00, input_port_3_r ),	/* DSW1 */
+		new Memory_ReadAddress( 0x0e00, 0x0e00, input_port_4_r ),	/* DSW2 */
+		new Memory_ReadAddress( 0x2000, 0x2fff, MRA_RAM ),
+		new Memory_ReadAddress( 0x3000, 0x3fff, MRA_ROM ),
+		new Memory_ReadAddress( 0x6040, 0x6040, mb_status_r ),
+		new Memory_ReadAddress( 0x6050, 0x6050, atari_vg_earom_r ),
+		new Memory_ReadAddress( 0x6060, 0x6060, mb_lo_r ),
+		new Memory_ReadAddress( 0x6070, 0x6070, mb_hi_r ),
+		new Memory_ReadAddress( 0x60c0, 0x60cf, pokey1_r ),
+		new Memory_ReadAddress( 0x60d0, 0x60df, pokey2_r ),
+		new Memory_ReadAddress( 0x9000, 0xdfff, MRA_ROM ),
+		new Memory_ReadAddress( 0xf000, 0xffff, MRA_ROM ),	/* for the reset / interrupt vectors */
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x07ff, MWA_RAM ),
+		new Memory_WriteAddress( 0x0800, 0x080f, tempest_colorram_w ),
+		new Memory_WriteAddress( 0x2000, 0x2fff, MWA_RAM, vectorram, vectorram_size ),
+		new Memory_WriteAddress( 0x3000, 0x3fff, MWA_ROM ),
+		new Memory_WriteAddress( 0x4000, 0x4000, tempest_coin_w ),
+		new Memory_WriteAddress( 0x4800, 0x4800, avgdvg_go_w ),
+		new Memory_WriteAddress( 0x5000, 0x5000, watchdog_reset_w ),
+		new Memory_WriteAddress( 0x5800, 0x5800, avgdvg_reset_w ),
+		new Memory_WriteAddress( 0x6000, 0x603f, atari_vg_earom_w ),
+		new Memory_WriteAddress( 0x6040, 0x6040, atari_vg_earom_ctrl_w ),
+		new Memory_WriteAddress( 0x6080, 0x609f, mb_go_w ),
+		new Memory_WriteAddress( 0x60c0, 0x60cf, pokey1_w ),
+		new Memory_WriteAddress( 0x60d0, 0x60df, pokey2_w ),
+		new Memory_WriteAddress( 0x60e0, 0x60e0, tempest_led_w ),
+		new Memory_WriteAddress( 0x9000, 0xdfff, MWA_ROM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	/*************************************
+	 *
+	 *	Port definitions
+	 *
+	 *************************************/
+	
+	static InputPortPtr input_ports_tempest = new InputPortPtr(){ public void handler() { 
+		PORT_START(); 	/* IN0 */
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_TILT );
+		PORT_SERVICE( 0x10, IP_ACTIVE_LOW );
+		PORT_BITX( 0x20, IP_ACTIVE_LOW, IPT_SERVICE, "Diagnostic Step", KEYCODE_F1, IP_JOY_NONE );
+		/* bit 6 is the VG HALT bit. We set it to "low" */
+		/* per default (busy vector processor). */
+	 	/* handled by tempest_IN0_r() */
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+		/* bit 7 is tied to a 3kHz (?) clock */
+	 	/* handled by tempest_IN0_r() */
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+	
+		PORT_START(); 	/* IN1/DSW0 */
+		/* This is the Tempest spinner input. It only uses 4 bits. */
+		PORT_ANALOG( 0x0f, 0x00, IPT_DIAL, 25, 20, 0, 0);
+		/* The next one is reponsible for cocktail mode.
+		 * According to the documentation, this is not a switch, although
+		 * it may have been planned to put it on the Math Box PCB, D/E2 )
+		 */
+		PORT_DIPNAME( 0x10, 0x10, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING(    0x10, DEF_STR( "Upright") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Cocktail") );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+		PORT_START(); 	/* IN2 */
+		PORT_DIPNAME(  0x03, 0x03, DEF_STR( "Difficulty") );
+		PORT_DIPSETTING(     0x02, "Easy" );
+		PORT_DIPSETTING(     0x03, "Medium1" );
+		PORT_DIPSETTING(     0x00, "Medium2" );
+		PORT_DIPSETTING(     0x01, "Hard" );
+		PORT_DIPNAME(  0x04, 0x04, "Rating" );
+		PORT_DIPSETTING(     0x04, "1, 3, 5, 7, 9" );
+		PORT_DIPSETTING(     0x00, "tied to high score" );
+		PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_BUTTON2 );
+		PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_START1 );
+		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_START2 );
+		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+		PORT_START(); 	/* DSW1 - (N13 on analog vector generator PCB */
+		PORT_DIPNAME( 0x03, 0x00, DEF_STR( "Coinage") );
+		PORT_DIPSETTING(    0x01, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(    0x03, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(    0x02, DEF_STR( "Free_Play") );
+		PORT_DIPNAME( 0x0c, 0x00, "Right Coin" );
+		PORT_DIPSETTING(    0x00, "*1" );
+		PORT_DIPSETTING(    0x04, "*4" );
+		PORT_DIPSETTING(    0x08, "*5" );
+		PORT_DIPSETTING(    0x0c, "*6" );
+		PORT_DIPNAME( 0x10, 0x00, "Left Coin" );
+		PORT_DIPSETTING(    0x00, "*1" );
+		PORT_DIPSETTING(    0x10, "*2" );
+		PORT_DIPNAME( 0xe0, 0x00, "Bonus Coins" );
+		PORT_DIPSETTING(    0x00, "None" );
+		PORT_DIPSETTING(    0x80, "1 each 5" );
+		PORT_DIPSETTING(    0x40, "1 each 4 (+Demo); )
+		PORT_DIPSETTING(    0xa0, "1 each 3" );
+		PORT_DIPSETTING(    0x60, "2 each 4 (+Demo); )
+		PORT_DIPSETTING(    0x20, "1 each 2" );
+		PORT_DIPSETTING(    0xc0, "Freeze Mode" );
+		PORT_DIPSETTING(    0xe0, "Freeze Mode" );
+	
+		PORT_START(); 	/* DSW2 - (L12 on analog vector generator PCB */
+		PORT_DIPNAME( 0x01, 0x00, "Minimum" );
+		PORT_DIPSETTING(    0x00, "1 Credit" );
+		PORT_DIPSETTING(    0x01, "2 Credit" );
+		PORT_DIPNAME( 0x06, 0x00, "Language" );
+		PORT_DIPSETTING(    0x00, "English" );
+		PORT_DIPSETTING(    0x02, "French" );
+		PORT_DIPSETTING(    0x04, "German" );
+		PORT_DIPSETTING(    0x06, "Spanish" );
+		PORT_DIPNAME( 0x38, 0x00, DEF_STR( "Bonus_Life") );
+		PORT_DIPSETTING(    0x08, "10000" );
+		PORT_DIPSETTING(    0x00, "20000" );
+		PORT_DIPSETTING(    0x10, "30000" );
+		PORT_DIPSETTING(    0x18, "40000" );
+		PORT_DIPSETTING(    0x20, "50000" );
+		PORT_DIPSETTING(    0x28, "60000" );
+		PORT_DIPSETTING(    0x30, "70000" );
+		PORT_DIPSETTING(    0x38, "None" );
+		PORT_DIPNAME( 0xc0, 0x00, DEF_STR( "Lives") );
+		PORT_DIPSETTING(    0xc0, "2" );
+		PORT_DIPSETTING(    0x00, "3" );
+		PORT_DIPSETTING(    0x40, "4" );
+		PORT_DIPSETTING(    0x80, "5" );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound interfaces
+	 *
+	 *************************************/
+	
+	static POKEYinterface pokey_interface = new POKEYinterface
+	(
+		2,	/* 2 chips */
+		12096000/8,	/* 1.512 MHz */
+		new int[] { 50, 50 },
+		/* The 8 pot handlers */
+		new ReadHandlerPtr[] { input_port_1_bit_r, input_port_2_bit_r },
+		new ReadHandlerPtr[] { input_port_1_bit_r, input_port_2_bit_r },
+		new ReadHandlerPtr[] { input_port_1_bit_r, input_port_2_bit_r },
+		new ReadHandlerPtr[] { input_port_1_bit_r, input_port_2_bit_r },
+		new ReadHandlerPtr[] { input_port_1_bit_r, input_port_2_bit_r },
+		new ReadHandlerPtr[] { input_port_1_bit_r, input_port_2_bit_r },
+		new ReadHandlerPtr[] { input_port_1_bit_r, input_port_2_bit_r },
+		new ReadHandlerPtr[] { input_port_1_bit_r, input_port_2_bit_r },
+		/* The allpot handler */
+		new ReadHandlerPtr[] { 0, 0 },
+	);
+	
+	
+	
+	/*************************************
+	 *
+	 *	Machine drivers
+	 *
+	 *************************************/
+	
+	static MACHINE_DRIVER_START( tempest )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(M6502, 12096000/8)			/* 1.512 MHz */
+		MDRV_CPU_MEMORY(readmem,writemem)
+		MDRV_CPU_VBLANK_INT(irq0_line_hold,4)	/* 4.1ms */
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_NVRAM_HANDLER(atari_vg)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR | VIDEO_RGB_DIRECT)
+		MDRV_SCREEN_SIZE(400, 300)
+		MDRV_VISIBLE_AREA(0, 550, 0, 580)
+		MDRV_PALETTE_LENGTH(256)
+	
+		MDRV_PALETTE_INIT(avg_multi)
+		MDRV_VIDEO_START(avg_tempest)
+		MDRV_VIDEO_UPDATE(vector)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(POKEY, pokey_interface)
+	MACHINE_DRIVER_END
+	
+	
+	
+	/*************************************
+	 *
+	 *	ROM definitions
+	 *
+	 *************************************/
+	
+	static RomLoadPtr rom_tempest = new RomLoadPtr(){ public void handler(){  /* rev 3 */
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );/* 64k for code */
+		ROM_LOAD( "136002.113",   0x9000, 0x0800, 0x65d61fe7 );
+		ROM_LOAD( "136002.114",   0x9800, 0x0800, 0x11077375 );
+		ROM_LOAD( "136002.115",   0xa000, 0x0800, 0xf3e2827a );
+		ROM_LOAD( "136002.316",   0xa800, 0x0800, 0xaeb0f7e9 );
+		ROM_LOAD( "136002.217",   0xb000, 0x0800, 0xef2eb645 );
+		ROM_LOAD( "136002.118",   0xb800, 0x0800, 0xbeb352ab );
+		ROM_LOAD( "136002.119",   0xc000, 0x0800, 0xa4de050f );
+		ROM_LOAD( "136002.120",   0xc800, 0x0800, 0x35619648 );
+		ROM_LOAD( "136002.121",   0xd000, 0x0800, 0x73d38e47 );
+		ROM_LOAD( "136002.222",   0xd800, 0x0800, 0x707bd5c3 );
+		ROM_RELOAD(             0xf800, 0x0800 );/* for reset/interrupt vectors */
+		/* Mathbox ROMs */
+		ROM_LOAD( "136002.123",   0x3000, 0x0800, 0x29f7e937 );
+		ROM_LOAD( "136002.124",   0x3800, 0x0800, 0xc16ec351 );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_tempest1 = new RomLoadPtr(){ public void handler(){  /* rev 1 */
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );/* 64k for code */
+		ROM_LOAD( "136002.113",   0x9000, 0x0800, 0x65d61fe7 );
+		ROM_LOAD( "136002.114",   0x9800, 0x0800, 0x11077375 );
+		ROM_LOAD( "136002.115",   0xa000, 0x0800, 0xf3e2827a );
+		ROM_LOAD( "136002.116",   0xa800, 0x0800, 0x7356896c );
+		ROM_LOAD( "136002.117",   0xb000, 0x0800, 0x55952119 );
+		ROM_LOAD( "136002.118",   0xb800, 0x0800, 0xbeb352ab );
+		ROM_LOAD( "136002.119",   0xc000, 0x0800, 0xa4de050f );
+		ROM_LOAD( "136002.120",   0xc800, 0x0800, 0x35619648 );
+		ROM_LOAD( "136002.121",   0xd000, 0x0800, 0x73d38e47 );
+		ROM_LOAD( "136002.122",   0xd800, 0x0800, 0x796a9918 );
+		ROM_RELOAD(             0xf800, 0x0800 );/* for reset/interrupt vectors */
+		/* Mathbox ROMs */
+		ROM_LOAD( "136002.123",   0x3000, 0x0800, 0x29f7e937 );
+		ROM_LOAD( "136002.124",   0x3800, 0x0800, 0xc16ec351 );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_tempest2 = new RomLoadPtr(){ public void handler(){  /* rev 2 */
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );/* 64k for code */
+		ROM_LOAD( "136002.113",   0x9000, 0x0800, 0x65d61fe7 );
+		ROM_LOAD( "136002.114",   0x9800, 0x0800, 0x11077375 );
+		ROM_LOAD( "136002.115",   0xa000, 0x0800, 0xf3e2827a );
+		ROM_LOAD( "136002.116",   0xa800, 0x0800, 0x7356896c );
+		ROM_LOAD( "136002.217",   0xb000, 0x0800, 0xef2eb645 );
+		ROM_LOAD( "136002.118",   0xb800, 0x0800, 0xbeb352ab );
+		ROM_LOAD( "136002.119",   0xc000, 0x0800, 0xa4de050f );
+		ROM_LOAD( "136002.120",   0xc800, 0x0800, 0x35619648 );
+		ROM_LOAD( "136002.121",   0xd000, 0x0800, 0x73d38e47 );
+		ROM_LOAD( "136002.222",   0xd800, 0x0800, 0x707bd5c3 );
+		ROM_RELOAD(             0xf800, 0x0800 );/* for reset/interrupt vectors */
+		/* Mathbox ROMs */
+		ROM_LOAD( "136002.123",   0x3000, 0x0800, 0x29f7e937 );
+		ROM_LOAD( "136002.124",   0x3800, 0x0800, 0xc16ec351 );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_temptube = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );/* 64k for code */
+		ROM_LOAD( "136002.113",   0x9000, 0x0800, 0x65d61fe7 );
+		ROM_LOAD( "136002.114",   0x9800, 0x0800, 0x11077375 );
+		ROM_LOAD( "136002.115",   0xa000, 0x0800, 0xf3e2827a );
+		ROM_LOAD( "136002.316",   0xa800, 0x0800, 0xaeb0f7e9 );
+		ROM_LOAD( "136002.217",   0xb000, 0x0800, 0xef2eb645 );
+		ROM_LOAD( "tube.118",     0xb800, 0x0800, 0xcefb03f0 );
+		ROM_LOAD( "136002.119",   0xc000, 0x0800, 0xa4de050f );
+		ROM_LOAD( "136002.120",   0xc800, 0x0800, 0x35619648 );
+		ROM_LOAD( "136002.121",   0xd000, 0x0800, 0x73d38e47 );
+		ROM_LOAD( "136002.222",   0xd800, 0x0800, 0x707bd5c3 );
+		ROM_RELOAD(             0xf800, 0x0800 );/* for reset/interrupt vectors */
+		/* Mathbox ROMs */
+		ROM_LOAD( "136002.123",   0x3000, 0x0800, 0x29f7e937 );
+		ROM_LOAD( "136002.124",   0x3800, 0x0800, 0xc16ec351 );
+	ROM_END(); }}; 
+	
+	
+	#if 0 /* identical to rom_tempest, only different rom sizes */
+	static RomLoadPtr rom_tempest3 = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );/* 64k for code */
+		ROM_LOAD( "tempest.x",    0x9000, 0x1000, 0x0 );
+		ROM_LOAD( "tempest.1",    0xa000, 0x1000, 0x0 );
+		ROM_LOAD( "tempest.3",    0xb000, 0x1000, 0x0 );
+		ROM_LOAD( "tempest.5",    0xc000, 0x1000, 0x0 );
+		ROM_LOAD( "tempest.7",    0xd000, 0x1000, 0x0 );
+		ROM_RELOAD(            0xf000, 0x1000 );/* for reset/interrupt vectors */
+		/* Mathbox ROMs */
+		ROM_LOAD( "tempest.np3",  0x3000, 0x1000, 0x0 );
+	ROM_END(); }}; 
+	#endif
+	
+	
+	
+	/*************************************
+	 *
+	 *	Game drivers
+	 *
+	 *************************************/
+	
+	public static GameDriver driver_tempest	   = new GameDriver("1980"	,"tempest"	,"tempest.java"	,rom_tempest,null	,machine_driver_tempest	,input_ports_tempest	,null	,ROT270	,	"Atari", "Tempest (rev 3)" )
+	public static GameDriver driver_tempest1	   = new GameDriver("1980"	,"tempest1"	,"tempest.java"	,rom_tempest1,driver_tempest	,machine_driver_tempest	,input_ports_tempest	,null	,ROT270	,	"Atari", "Tempest (rev 1)" )
+	public static GameDriver driver_tempest2	   = new GameDriver("1980"	,"tempest2"	,"tempest.java"	,rom_tempest2,driver_tempest	,machine_driver_tempest	,input_ports_tempest	,null	,ROT270	,	"Atari", "Tempest (rev 2)" )
+	public static GameDriver driver_temptube	   = new GameDriver("1980"	,"temptube"	,"tempest.java"	,rom_temptube,driver_tempest	,machine_driver_tempest	,input_ports_tempest	,null	,ROT270	,	"hack", "Tempest Tubes" )
 }
-
-
-static READ_HANDLER( input_port_1_bit_r )
-{
-	return (readinputport(1) & (1 << offset)) ? 0 : 228;
-}
-
-
-static READ_HANDLER( input_port_2_bit_r )
-{
-	return (readinputport(2) & (1 << offset)) ? 0 : 228;
-}
-
-
-
-/*************************************
- *
- *	Output ports
- *
- *************************************/
-
-static WRITE_HANDLER( tempest_led_w )
-{
-	set_led_status(0, ~data & 0x02);
-	set_led_status(1, ~data & 0x01);
-	/* FLIP is bit 0x04 */
-}
-
-
-static WRITE_HANDLER( tempest_coin_w )
-{
-	coin_counter_w(0, (data & 0x01));
-	coin_counter_w(1, (data & 0x02));
-	coin_counter_w(2, (data & 0x04));
-	vector_set_flip_x(data & 0x08);
-	vector_set_flip_y(data & 0x10);
-	vector_set_swap_xy(1);	/* vertical game */
-}
-
-
-
-/*************************************
- *
- *	Main CPU memory handlers
- *
- *************************************/
-
-static MEMORY_READ_START( readmem )
-	{ 0x0000, 0x07ff, MRA_RAM },
-	{ 0x0c00, 0x0c00, tempest_IN0_r },	/* IN0 */
-	{ 0x0d00, 0x0d00, input_port_3_r },	/* DSW1 */
-	{ 0x0e00, 0x0e00, input_port_4_r },	/* DSW2 */
-	{ 0x2000, 0x2fff, MRA_RAM },
-	{ 0x3000, 0x3fff, MRA_ROM },
-	{ 0x6040, 0x6040, mb_status_r },
-	{ 0x6050, 0x6050, atari_vg_earom_r },
-	{ 0x6060, 0x6060, mb_lo_r },
-	{ 0x6070, 0x6070, mb_hi_r },
-	{ 0x60c0, 0x60cf, pokey1_r },
-	{ 0x60d0, 0x60df, pokey2_r },
-	{ 0x9000, 0xdfff, MRA_ROM },
-	{ 0xf000, 0xffff, MRA_ROM },	/* for the reset / interrupt vectors */
-MEMORY_END
-
-
-static MEMORY_WRITE_START( writemem )
-	{ 0x0000, 0x07ff, MWA_RAM },
-	{ 0x0800, 0x080f, tempest_colorram_w },
-	{ 0x2000, 0x2fff, MWA_RAM, &vectorram, &vectorram_size },
-	{ 0x3000, 0x3fff, MWA_ROM },
-	{ 0x4000, 0x4000, tempest_coin_w },
-	{ 0x4800, 0x4800, avgdvg_go_w },
-	{ 0x5000, 0x5000, watchdog_reset_w },
-	{ 0x5800, 0x5800, avgdvg_reset_w },
-	{ 0x6000, 0x603f, atari_vg_earom_w },
-	{ 0x6040, 0x6040, atari_vg_earom_ctrl_w },
-	{ 0x6080, 0x609f, mb_go_w },
-	{ 0x60c0, 0x60cf, pokey1_w },
-	{ 0x60d0, 0x60df, pokey2_w },
-	{ 0x60e0, 0x60e0, tempest_led_w },
-	{ 0x9000, 0xdfff, MWA_ROM },
-MEMORY_END
-
-
-
-/*************************************
- *
- *	Port definitions
- *
- *************************************/
-
-INPUT_PORTS_START( tempest )
-	PORT_START	/* IN0 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_TILT )
-	PORT_SERVICE( 0x10, IP_ACTIVE_LOW )
-	PORT_BITX( 0x20, IP_ACTIVE_LOW, IPT_SERVICE, "Diagnostic Step", KEYCODE_F1, IP_JOY_NONE )
-	/* bit 6 is the VG HALT bit. We set it to "low" */
-	/* per default (busy vector processor). */
- 	/* handled by tempest_IN0_r() */
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	/* bit 7 is tied to a 3kHz (?) clock */
- 	/* handled by tempest_IN0_r() */
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-
-	PORT_START	/* IN1/DSW0 */
-	/* This is the Tempest spinner input. It only uses 4 bits. */
-	PORT_ANALOG( 0x0f, 0x00, IPT_DIAL, 25, 20, 0, 0)
-	/* The next one is reponsible for cocktail mode.
-	 * According to the documentation, this is not a switch, although
-	 * it may have been planned to put it on the Math Box PCB, D/E2 )
-	 */
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START	/* IN2 */
-	PORT_DIPNAME(  0x03, 0x03, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(     0x02, "Easy" )
-	PORT_DIPSETTING(     0x03, "Medium1" )
-	PORT_DIPSETTING(     0x00, "Medium2" )
-	PORT_DIPSETTING(     0x01, "Hard" )
-	PORT_DIPNAME(  0x04, 0x04, "Rating" )
-	PORT_DIPSETTING(     0x04, "1, 3, 5, 7, 9" )
-	PORT_DIPSETTING(     0x00, "tied to high score" )
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START	/* DSW1 - (N13 on analog vector generator PCB */
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0c, 0x00, "Right Coin" )
-	PORT_DIPSETTING(    0x00, "*1" )
-	PORT_DIPSETTING(    0x04, "*4" )
-	PORT_DIPSETTING(    0x08, "*5" )
-	PORT_DIPSETTING(    0x0c, "*6" )
-	PORT_DIPNAME( 0x10, 0x00, "Left Coin" )
-	PORT_DIPSETTING(    0x00, "*1" )
-	PORT_DIPSETTING(    0x10, "*2" )
-	PORT_DIPNAME( 0xe0, 0x00, "Bonus Coins" )
-	PORT_DIPSETTING(    0x00, "None" )
-	PORT_DIPSETTING(    0x80, "1 each 5" )
-	PORT_DIPSETTING(    0x40, "1 each 4 (+Demo)" )
-	PORT_DIPSETTING(    0xa0, "1 each 3" )
-	PORT_DIPSETTING(    0x60, "2 each 4 (+Demo)" )
-	PORT_DIPSETTING(    0x20, "1 each 2" )
-	PORT_DIPSETTING(    0xc0, "Freeze Mode" )
-	PORT_DIPSETTING(    0xe0, "Freeze Mode" )
-
-	PORT_START	/* DSW2 - (L12 on analog vector generator PCB */
-	PORT_DIPNAME( 0x01, 0x00, "Minimum" )
-	PORT_DIPSETTING(    0x00, "1 Credit" )
-	PORT_DIPSETTING(    0x01, "2 Credit" )
-	PORT_DIPNAME( 0x06, 0x00, "Language" )
-	PORT_DIPSETTING(    0x00, "English" )
-	PORT_DIPSETTING(    0x02, "French" )
-	PORT_DIPSETTING(    0x04, "German" )
-	PORT_DIPSETTING(    0x06, "Spanish" )
-	PORT_DIPNAME( 0x38, 0x00, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x08, "10000" )
-	PORT_DIPSETTING(    0x00, "20000" )
-	PORT_DIPSETTING(    0x10, "30000" )
-	PORT_DIPSETTING(    0x18, "40000" )
-	PORT_DIPSETTING(    0x20, "50000" )
-	PORT_DIPSETTING(    0x28, "60000" )
-	PORT_DIPSETTING(    0x30, "70000" )
-	PORT_DIPSETTING(    0x38, "None" )
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0xc0, "2" )
-	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPSETTING(    0x40, "4" )
-	PORT_DIPSETTING(    0x80, "5" )
-INPUT_PORTS_END
-
-
-
-/*************************************
- *
- *	Sound interfaces
- *
- *************************************/
-
-static struct POKEYinterface pokey_interface =
-{
-	2,	/* 2 chips */
-	12096000/8,	/* 1.512 MHz */
-	{ 50, 50 },
-	/* The 8 pot handlers */
-	{ input_port_1_bit_r, input_port_2_bit_r },
-	{ input_port_1_bit_r, input_port_2_bit_r },
-	{ input_port_1_bit_r, input_port_2_bit_r },
-	{ input_port_1_bit_r, input_port_2_bit_r },
-	{ input_port_1_bit_r, input_port_2_bit_r },
-	{ input_port_1_bit_r, input_port_2_bit_r },
-	{ input_port_1_bit_r, input_port_2_bit_r },
-	{ input_port_1_bit_r, input_port_2_bit_r },
-	/* The allpot handler */
-	{ 0, 0 },
-};
-
-
-
-/*************************************
- *
- *	Machine drivers
- *
- *************************************/
-
-static MACHINE_DRIVER_START( tempest )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, 12096000/8)			/* 1.512 MHz */
-	MDRV_CPU_MEMORY(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)	/* 4.1ms */
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_NVRAM_HANDLER(atari_vg)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR | VIDEO_RGB_DIRECT)
-	MDRV_SCREEN_SIZE(400, 300)
-	MDRV_VISIBLE_AREA(0, 550, 0, 580)
-	MDRV_PALETTE_LENGTH(256)
-
-	MDRV_PALETTE_INIT(avg_multi)
-	MDRV_VIDEO_START(avg_tempest)
-	MDRV_VIDEO_UPDATE(vector)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(POKEY, pokey_interface)
-MACHINE_DRIVER_END
-
-
-
-/*************************************
- *
- *	ROM definitions
- *
- *************************************/
-
-ROM_START( tempest ) /* rev 3 */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
-	ROM_LOAD( "136002.113",   0x9000, 0x0800, 0x65d61fe7 )
-	ROM_LOAD( "136002.114",   0x9800, 0x0800, 0x11077375 )
-	ROM_LOAD( "136002.115",   0xa000, 0x0800, 0xf3e2827a )
-	ROM_LOAD( "136002.316",   0xa800, 0x0800, 0xaeb0f7e9 )
-	ROM_LOAD( "136002.217",   0xb000, 0x0800, 0xef2eb645 )
-	ROM_LOAD( "136002.118",   0xb800, 0x0800, 0xbeb352ab )
-	ROM_LOAD( "136002.119",   0xc000, 0x0800, 0xa4de050f )
-	ROM_LOAD( "136002.120",   0xc800, 0x0800, 0x35619648 )
-	ROM_LOAD( "136002.121",   0xd000, 0x0800, 0x73d38e47 )
-	ROM_LOAD( "136002.222",   0xd800, 0x0800, 0x707bd5c3 )
-	ROM_RELOAD(             0xf800, 0x0800 ) /* for reset/interrupt vectors */
-	/* Mathbox ROMs */
-	ROM_LOAD( "136002.123",   0x3000, 0x0800, 0x29f7e937 )
-	ROM_LOAD( "136002.124",   0x3800, 0x0800, 0xc16ec351 )
-ROM_END
-
-
-ROM_START( tempest1 ) /* rev 1 */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
-	ROM_LOAD( "136002.113",   0x9000, 0x0800, 0x65d61fe7 )
-	ROM_LOAD( "136002.114",   0x9800, 0x0800, 0x11077375 )
-	ROM_LOAD( "136002.115",   0xa000, 0x0800, 0xf3e2827a )
-	ROM_LOAD( "136002.116",   0xa800, 0x0800, 0x7356896c )
-	ROM_LOAD( "136002.117",   0xb000, 0x0800, 0x55952119 )
-	ROM_LOAD( "136002.118",   0xb800, 0x0800, 0xbeb352ab )
-	ROM_LOAD( "136002.119",   0xc000, 0x0800, 0xa4de050f )
-	ROM_LOAD( "136002.120",   0xc800, 0x0800, 0x35619648 )
-	ROM_LOAD( "136002.121",   0xd000, 0x0800, 0x73d38e47 )
-	ROM_LOAD( "136002.122",   0xd800, 0x0800, 0x796a9918 )
-	ROM_RELOAD(             0xf800, 0x0800 ) /* for reset/interrupt vectors */
-	/* Mathbox ROMs */
-	ROM_LOAD( "136002.123",   0x3000, 0x0800, 0x29f7e937 )
-	ROM_LOAD( "136002.124",   0x3800, 0x0800, 0xc16ec351 )
-ROM_END
-
-
-ROM_START( tempest2 ) /* rev 2 */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
-	ROM_LOAD( "136002.113",   0x9000, 0x0800, 0x65d61fe7 )
-	ROM_LOAD( "136002.114",   0x9800, 0x0800, 0x11077375 )
-	ROM_LOAD( "136002.115",   0xa000, 0x0800, 0xf3e2827a )
-	ROM_LOAD( "136002.116",   0xa800, 0x0800, 0x7356896c )
-	ROM_LOAD( "136002.217",   0xb000, 0x0800, 0xef2eb645 )
-	ROM_LOAD( "136002.118",   0xb800, 0x0800, 0xbeb352ab )
-	ROM_LOAD( "136002.119",   0xc000, 0x0800, 0xa4de050f )
-	ROM_LOAD( "136002.120",   0xc800, 0x0800, 0x35619648 )
-	ROM_LOAD( "136002.121",   0xd000, 0x0800, 0x73d38e47 )
-	ROM_LOAD( "136002.222",   0xd800, 0x0800, 0x707bd5c3 )
-	ROM_RELOAD(             0xf800, 0x0800 ) /* for reset/interrupt vectors */
-	/* Mathbox ROMs */
-	ROM_LOAD( "136002.123",   0x3000, 0x0800, 0x29f7e937 )
-	ROM_LOAD( "136002.124",   0x3800, 0x0800, 0xc16ec351 )
-ROM_END
-
-
-ROM_START( temptube )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
-	ROM_LOAD( "136002.113",   0x9000, 0x0800, 0x65d61fe7 )
-	ROM_LOAD( "136002.114",   0x9800, 0x0800, 0x11077375 )
-	ROM_LOAD( "136002.115",   0xa000, 0x0800, 0xf3e2827a )
-	ROM_LOAD( "136002.316",   0xa800, 0x0800, 0xaeb0f7e9 )
-	ROM_LOAD( "136002.217",   0xb000, 0x0800, 0xef2eb645 )
-	ROM_LOAD( "tube.118",     0xb800, 0x0800, 0xcefb03f0 )
-	ROM_LOAD( "136002.119",   0xc000, 0x0800, 0xa4de050f )
-	ROM_LOAD( "136002.120",   0xc800, 0x0800, 0x35619648 )
-	ROM_LOAD( "136002.121",   0xd000, 0x0800, 0x73d38e47 )
-	ROM_LOAD( "136002.222",   0xd800, 0x0800, 0x707bd5c3 )
-	ROM_RELOAD(             0xf800, 0x0800 ) /* for reset/interrupt vectors */
-	/* Mathbox ROMs */
-	ROM_LOAD( "136002.123",   0x3000, 0x0800, 0x29f7e937 )
-	ROM_LOAD( "136002.124",   0x3800, 0x0800, 0xc16ec351 )
-ROM_END
-
-
-#if 0 /* identical to rom_tempest, only different rom sizes */
-ROM_START( tempest3 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
-	ROM_LOAD( "tempest.x",    0x9000, 0x1000, 0x0 )
-	ROM_LOAD( "tempest.1",    0xa000, 0x1000, 0x0 )
-	ROM_LOAD( "tempest.3",    0xb000, 0x1000, 0x0 )
-	ROM_LOAD( "tempest.5",    0xc000, 0x1000, 0x0 )
-	ROM_LOAD( "tempest.7",    0xd000, 0x1000, 0x0 )
-	ROM_RELOAD(            0xf000, 0x1000 )	/* for reset/interrupt vectors */
-	/* Mathbox ROMs */
-	ROM_LOAD( "tempest.np3",  0x3000, 0x1000, 0x0 )
-ROM_END
-#endif
-
-
-
-/*************************************
- *
- *	Game drivers
- *
- *************************************/
-
-GAME( 1980, tempest,  0,       tempest, tempest, 0, ROT270, "Atari", "Tempest (rev 3)" )
-GAME( 1980, tempest1, tempest, tempest, tempest, 0, ROT270, "Atari", "Tempest (rev 1)" )
-GAME( 1980, tempest2, tempest, tempest, tempest, 0, ROT270, "Atari", "Tempest (rev 2)" )
-GAME( 1980, temptube, tempest, tempest, tempest, 0, ROT270, "hack", "Tempest Tubes" )

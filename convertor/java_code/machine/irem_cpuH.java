@@ -16,4 +16,3 @@ extern const unsigned char shisen2_decryption_table[];
 
 extern const unsigned char test_decryption_table[];
 
-extern void irem_cpu_decrypt(int cpu,const unsigned char *decryption_table);

@@ -3,10 +3,18 @@
 
 /*#define BIGCASE*/
 
-#include "osd_cpu.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package cpu.i86;
 
-typedef UINT8 BOOLEAN;
-
-typedef UINT8 BYTE;
-typedef UINT16 WORD;
-typedef UINT32 DWORD;
+public class hostH
+{
+	
+	typedef UINT8 BOOLEAN;
+	
+	typedef UINT8 BYTE;
+	typedef UINT16 WORD;
+	typedef UINT32 DWORD;
+}

@@ -546,7 +546,7 @@ void z8000_init(void)
 
 	/* allocate the opcode execution and disassembler array */
 	z8000_exec = (Z8000_exec *)malloc(0x10000 * sizeof(Z8000_exec));
-	if( !z8000_exec )
+	if (z8000_exec == 0)
 	{
 		logerror("cannot allocate Z8000 execution table\n");
 		return;
@@ -585,7 +585,7 @@ void z8000_init(void)
 
 void z8000_deinit(void)
 {
-	if( !z8000_exec )
+	if (z8000_exec == 0)
 		return;
 	free( z8000_exec );
 	z8000_exec = 0;

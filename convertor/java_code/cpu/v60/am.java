@@ -26,77 +26,83 @@ UINT32 modWriteValW;
 UINT8 modDim;
 
 // Addressing mode functions and tables
-#include "am1.c" // ReadAM
-#include "am2.c" // ReadAMAddress
-#include "am3.c" // WriteAM
-
 /*
-  Input:
-  modAdd
-	modDim
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package cpu.v60;
 
-  Output:
-	amOut
-	amLength
-*/
-
-UINT32 ReadAM(void)
+public class am
 {
-	modM=modM?1:0;
-	modVal=OpRead8(modAdd);
-	return AMTable1[modM][modVal>>5]();
+	
+	/*
+	  Input:
+	  modAdd
+		modDim
+	
+	  Output:
+		amOut
+		amLength
+	*/
+	
+	UINT32 ReadAM(void)
+	{
+		modM=modM?1:0;
+		modVal=OpRead8(modAdd);
+		return AMTable1[modM][modVal>>5]();
+	}
+	
+	UINT32 BitReadAM(void)
+	{
+		modM=modM?1:0;
+		modVal=OpRead8(modAdd);
+		return BAMTable1[modM][modVal>>5]();
+	}
+	
+	
+	
+	/*
+	  Input:
+	  modAdd
+		modDim
+	
+	  Output:
+		amOut
+		amFlag
+		amLength
+	*/
+	
+	UINT32 ReadAMAddress(void)
+	{
+		modM=modM?1:0;
+		modVal=OpRead8(modAdd);
+		return AMTable2[modM][modVal>>5]();
+	}
+	
+	UINT32 BitReadAMAddress(void)
+	{
+		modM=modM?1:0;
+		modVal=OpRead8(modAdd);
+		return BAMTable2[modM][modVal>>5]();
+	}
+	
+	/*
+	  Input:
+	  modAdd
+		modDim
+		modWriteValB/H/W
+	
+	  Output:
+		amOut
+		amLength
+	*/
+	
+	UINT32 WriteAM(void)
+	{
+		modM=modM?1:0;
+		modVal=OpRead8(modAdd);
+		return AMTable3[modM][modVal>>5]();
+	}
+	
+	
 }
-
-UINT32 BitReadAM(void)
-{
-	modM=modM?1:0;
-	modVal=OpRead8(modAdd);
-	return BAMTable1[modM][modVal>>5]();
-}
-
-
-
-/*
-  Input:
-  modAdd
-	modDim
-
-  Output:
-	amOut
-	amFlag
-	amLength
-*/
-
-UINT32 ReadAMAddress(void)
-{
-	modM=modM?1:0;
-	modVal=OpRead8(modAdd);
-	return AMTable2[modM][modVal>>5]();
-}
-
-UINT32 BitReadAMAddress(void)
-{
-	modM=modM?1:0;
-	modVal=OpRead8(modAdd);
-	return BAMTable2[modM][modVal>>5]();
-}
-
-/*
-  Input:
-  modAdd
-	modDim
-	modWriteValB/H/W
-
-  Output:
-	amOut
-	amLength
-*/
-
-UINT32 WriteAM(void)
-{
-	modM=modM?1:0;
-	modVal=OpRead8(modAdd);
-	return AMTable3[modM][modVal>>5]();
-}
-
-

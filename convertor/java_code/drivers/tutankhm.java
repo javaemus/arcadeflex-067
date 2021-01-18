@@ -177,248 +177,256 @@ Sound board: uses the same board as Pooyan.
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
-#include "cpu/m6809/m6809.h"
-#include "sndhrdw/timeplt.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-
-
-extern unsigned char *tutankhm_scrollx;
-
-WRITE_HANDLER( tutankhm_videoram_w );
-VIDEO_UPDATE( tutankhm );
-
-
-static WRITE_HANDLER( tutankhm_bankselect_w )
+public class tutankhm
 {
-	int bankaddress;
-	unsigned char *RAM = memory_region(REGION_CPU1);
-
-
-	bankaddress = 0x10000 + (data & 0x0f) * 0x1000;
-	cpu_setbank(1,&RAM[bankaddress]);
+	
+	
+	
+	extern unsigned char *tutankhm_scrollx;
+	
+	VIDEO_UPDATE( tutankhm );
+	
+	
+	public static WriteHandlerPtr tutankhm_bankselect_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		int bankaddress;
+		unsigned char *RAM = memory_region(REGION_CPU1);
+	
+	
+		bankaddress = 0x10000 + (data & 0x0f) * 0x1000;
+		cpu_setbank(1,&RAM[bankaddress]);
+	} };
+	
+	public static WriteHandlerPtr tutankhm_coin_counter_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		coin_counter_w(offset ^ 1, data);
+	} };
+	
+	public static WriteHandlerPtr flip_screen_x_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		flip_screen_x_set(data);
+	} };
+	
+	public static WriteHandlerPtr flip_screen_y_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		flip_screen_y_set(data);
+	} };
+	
+	
+	public static Memory_ReadAddress readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x7fff, MRA_RAM ),
+		new Memory_ReadAddress( 0x8120, 0x8120, watchdog_reset_r ),
+		new Memory_ReadAddress( 0x8160, 0x8160, input_port_0_r ),	/* DSW2 (inverted bits) */
+		new Memory_ReadAddress( 0x8180, 0x8180, input_port_1_r ),	/* IN0 I/O: Coin slots, service, 1P/2P buttons */
+		new Memory_ReadAddress( 0x81a0, 0x81a0, input_port_2_r ),	/* IN1: Player 1 I/O */
+		new Memory_ReadAddress( 0x81c0, 0x81c0, input_port_3_r ),	/* IN2: Player 2 I/O */
+		new Memory_ReadAddress( 0x81e0, 0x81e0, input_port_4_r ),	/* DSW1 (inverted bits) */
+		new Memory_ReadAddress( 0x8800, 0x8fff, MRA_RAM ),
+		new Memory_ReadAddress( 0x9000, 0x9fff, MRA_BANK1 ),
+		new Memory_ReadAddress( 0xa000, 0xffff, MRA_ROM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x7fff, tutankhm_videoram_w, videoram, videoram_size ),
+		new Memory_WriteAddress( 0x8000, 0x800f, paletteram_BBGGGRRR_w, paletteram ),
+		new Memory_WriteAddress( 0x8100, 0x8100, MWA_RAM, tutankhm_scrollx ),
+		new Memory_WriteAddress( 0x8200, 0x8200, interrupt_enable_w ),
+		new Memory_WriteAddress( 0x8202, 0x8203, tutankhm_coin_counter_w ),
+		new Memory_WriteAddress( 0x8205, 0x8205, MWA_NOP ),	/* ??? */
+		new Memory_WriteAddress( 0x8206, 0x8206, flip_screen_x_w ),
+		new Memory_WriteAddress( 0x8207, 0x8207, flip_screen_y_w ),
+		new Memory_WriteAddress( 0x8300, 0x8300, tutankhm_bankselect_w ),
+		new Memory_WriteAddress( 0x8600, 0x8600, timeplt_sh_irqtrigger_w ),
+		new Memory_WriteAddress( 0x8700, 0x8700, soundlatch_w ),
+		new Memory_WriteAddress( 0x8800, 0x8fff, MWA_RAM ),
+		new Memory_WriteAddress( 0xa000, 0xffff, MWA_ROM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	static InputPortPtr input_ports_tutankhm = new InputPortPtr(){ public void handler() { 
+		PORT_START();       /* DSW2 */
+		PORT_DIPNAME( 0x03, 0x03, DEF_STR( "Lives") );
+		PORT_DIPSETTING(    0x03, "3" );
+		PORT_DIPSETTING(    0x01, "4" );
+		PORT_DIPSETTING(    0x02, "5" );
+		PORT_BITX( 0,       0x00, IPT_DIPSWITCH_SETTING | IPF_CHEAT, "256", IP_KEY_NONE, IP_JOY_NONE );
+		PORT_DIPNAME( 0x04, 0x00, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Upright") );
+		PORT_DIPSETTING(    0x04, DEF_STR( "Cocktail") );
+		PORT_DIPNAME( 0x08, 0x08, DEF_STR( "Bonus_Life") );
+		PORT_DIPSETTING(    0x08, "30000" );
+		PORT_DIPSETTING(    0x00, "40000" );
+		PORT_DIPNAME( 0x30, 0x30, DEF_STR( "Difficulty") );
+		PORT_DIPSETTING(    0x30, "Easy" );
+		PORT_DIPSETTING(    0x10, "Normal" );
+		PORT_DIPSETTING(    0x20, "Hard" );
+		PORT_DIPSETTING(    0x00, "Hardest" );
+		PORT_DIPNAME( 0x40, 0x40, "Flash Bomb" );
+		PORT_DIPSETTING(    0x40, "1 per Life" );
+		PORT_DIPSETTING(    0x00, "1 per Game" );
+		PORT_DIPNAME( 0x80, 0x00, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+	
+		PORT_START();       /* IN0 */
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START2 );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+		PORT_START();       /* IN1 */
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_4WAY );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_4WAY );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_4WAY );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_4WAY );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+		PORT_START();       /* IN2 */
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_4WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_4WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_4WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_4WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_COCKTAIL );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+		PORT_START();       /* DSW1 */
+		PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(    0x02, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(    0x05, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(    0x08, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(    0x04, DEF_STR( "3C_2C") );
+		PORT_DIPSETTING(    0x01, DEF_STR( "4C_3C") );
+		PORT_DIPSETTING(    0x0f, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(    0x03, DEF_STR( "3C_4C") );
+		PORT_DIPSETTING(    0x07, DEF_STR( "2C_3C") );
+		PORT_DIPSETTING(    0x0e, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(    0x06, DEF_STR( "2C_5C") );
+		PORT_DIPSETTING(    0x0d, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(    0x0c, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(    0x0b, DEF_STR( "1C_5C") );
+		PORT_DIPSETTING(    0x0a, DEF_STR( "1C_6C") );
+		PORT_DIPSETTING(    0x09, DEF_STR( "1C_7C") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Free_Play") );
+		PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(    0x20, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(    0x50, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "3C_2C") );
+		PORT_DIPSETTING(    0x10, DEF_STR( "4C_3C") );
+		PORT_DIPSETTING(    0xf0, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(    0x30, DEF_STR( "3C_4C") );
+		PORT_DIPSETTING(    0x70, DEF_STR( "2C_3C") );
+		PORT_DIPSETTING(    0xe0, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(    0x60, DEF_STR( "2C_5C") );
+		PORT_DIPSETTING(    0xd0, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(    0xc0, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(    0xb0, DEF_STR( "1C_5C") );
+		PORT_DIPSETTING(    0xa0, DEF_STR( "1C_6C") );
+		PORT_DIPSETTING(    0x90, DEF_STR( "1C_7C") );
+		PORT_DIPSETTING(    0x00, "Disabled" );
+	/* 0x00 not commented out since the game makes the usual sound if you insert the coin */
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	static MACHINE_DRIVER_START( tutankhm )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(M6809, 1500000)			/* 1.5 MHz ??? */
+		MDRV_CPU_MEMORY(readmem,writemem)
+		MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	
+		MDRV_CPU_ADD(Z80,14318180/8)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.789772727 MHz */						\
+		MDRV_CPU_MEMORY(timeplt_sound_readmem,timeplt_sound_writemem)
+	
+		MDRV_FRAMES_PER_SECOND(30)
+		MDRV_VBLANK_DURATION(DEFAULT_30HZ_VBLANK_DURATION)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(32*8, 32*8)
+		MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)	/* not sure about the visible area */
+		MDRV_PALETTE_LENGTH(16)
+	
+		MDRV_VIDEO_START(generic)
+		MDRV_VIDEO_UPDATE(tutankhm)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(AY8910, timeplt_ay8910_interface)
+	MACHINE_DRIVER_END
+	
+	
+	static RomLoadPtr rom_tutankhm = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x20000, REGION_CPU1, 0 );     /* 64k for M6809 CPU code + 64k for ROM banks */
+		ROM_LOAD( "h1.bin",       0x0a000, 0x1000, 0xda18679f );/* program ROMs */
+		ROM_LOAD( "h2.bin",       0x0b000, 0x1000, 0xa0f02c85 );
+		ROM_LOAD( "h3.bin",       0x0c000, 0x1000, 0xea03a1ab );
+		ROM_LOAD( "h4.bin",       0x0d000, 0x1000, 0xbd06fad0 );
+		ROM_LOAD( "h5.bin",       0x0e000, 0x1000, 0xbf9fd9b0 );
+		ROM_LOAD( "h6.bin",       0x0f000, 0x1000, 0xfe079c5b );
+		ROM_LOAD( "j1.bin",       0x10000, 0x1000, 0x7eb59b21 );/* graphic ROMs (banked) -- only 9 of 12 are filled */
+		ROM_LOAD( "j2.bin",       0x11000, 0x1000, 0x6615eff3 );
+		ROM_LOAD( "j3.bin",       0x12000, 0x1000, 0xa10d4444 );
+		ROM_LOAD( "j4.bin",       0x13000, 0x1000, 0x58cd143c );
+		ROM_LOAD( "j5.bin",       0x14000, 0x1000, 0xd7e7ae95 );
+		ROM_LOAD( "j6.bin",       0x15000, 0x1000, 0x91f62b82 );
+		ROM_LOAD( "j7.bin",       0x16000, 0x1000, 0xafd0a81f );
+		ROM_LOAD( "j8.bin",       0x17000, 0x1000, 0xdabb609b );
+		ROM_LOAD( "j9.bin",       0x18000, 0x1000, 0x8ea9c6a6 );
+		/* the other banks (1900-1fff) are empty */
+	
+		ROM_REGION(  0x10000 , REGION_CPU2, 0 );/* 64k for Z80 sound CPU code */
+		ROM_LOAD( "11-7a.bin",    0x0000, 0x1000, 0xb52d01fa );
+		ROM_LOAD( "10-8a.bin",    0x1000, 0x1000, 0x9db5c0ce );
+	ROM_END(); }}; 
+	
+	
+	static RomLoadPtr rom_tutankst = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x20000, REGION_CPU1, 0 );     /* 64k for M6809 CPU code + 64k for ROM banks */
+		ROM_LOAD( "h1.bin",       0x0a000, 0x1000, 0xda18679f );/* program ROMs */
+		ROM_LOAD( "h2.bin",       0x0b000, 0x1000, 0xa0f02c85 );
+		ROM_LOAD( "ra1_3h.cpu",   0x0c000, 0x1000, 0x2d62d7b1 );
+		ROM_LOAD( "h4.bin",       0x0d000, 0x1000, 0xbd06fad0 );
+		ROM_LOAD( "h5.bin",       0x0e000, 0x1000, 0xbf9fd9b0 );
+		ROM_LOAD( "ra1_6h.cpu",   0x0f000, 0x1000, 0xc43b3865 );
+		ROM_LOAD( "j1.bin",       0x10000, 0x1000, 0x7eb59b21 );/* graphic ROMs (banked) -- only 9 of 12 are filled */
+		ROM_LOAD( "j2.bin",       0x11000, 0x1000, 0x6615eff3 );
+		ROM_LOAD( "j3.bin",       0x12000, 0x1000, 0xa10d4444 );
+		ROM_LOAD( "j4.bin",       0x13000, 0x1000, 0x58cd143c );
+		ROM_LOAD( "j5.bin",       0x14000, 0x1000, 0xd7e7ae95 );
+		ROM_LOAD( "j6.bin",       0x15000, 0x1000, 0x91f62b82 );
+		ROM_LOAD( "j7.bin",       0x16000, 0x1000, 0xafd0a81f );
+		ROM_LOAD( "j8.bin",       0x17000, 0x1000, 0xdabb609b );
+		ROM_LOAD( "j9.bin",       0x18000, 0x1000, 0x8ea9c6a6 );
+		/* the other banks (1900-1fff) are empty */
+	
+		ROM_REGION(  0x10000 , REGION_CPU2, 0 );/* 64k for Z80 sound CPU code */
+		ROM_LOAD( "11-7a.bin",    0x0000, 0x1000, 0xb52d01fa );
+		ROM_LOAD( "10-8a.bin",    0x1000, 0x1000, 0x9db5c0ce );
+	ROM_END(); }}; 
+	
+	
+	
+	public static GameDriver driver_tutankhm	   = new GameDriver("1982"	,"tutankhm"	,"tutankhm.java"	,rom_tutankhm,null	,machine_driver_tutankhm	,input_ports_tutankhm	,null	,ROT90	,	"Konami", "Tutankham" )
+	public static GameDriver driver_tutankst	   = new GameDriver("1982"	,"tutankst"	,"tutankhm.java"	,rom_tutankst,driver_tutankhm	,machine_driver_tutankhm	,input_ports_tutankhm	,null	,ROT90	,	"[Konami] (Stern license)", "Tutankham (Stern)" )
 }
-
-static WRITE_HANDLER( tutankhm_coin_counter_w )
-{
-	coin_counter_w(offset ^ 1, data);
-}
-
-static WRITE_HANDLER( flip_screen_x_w )
-{
-	flip_screen_x_set(data);
-}
-
-static WRITE_HANDLER( flip_screen_y_w )
-{
-	flip_screen_y_set(data);
-}
-
-
-static MEMORY_READ_START( readmem )
-	{ 0x0000, 0x7fff, MRA_RAM },
-	{ 0x8120, 0x8120, watchdog_reset_r },
-	{ 0x8160, 0x8160, input_port_0_r },	/* DSW2 (inverted bits) */
-	{ 0x8180, 0x8180, input_port_1_r },	/* IN0 I/O: Coin slots, service, 1P/2P buttons */
-	{ 0x81a0, 0x81a0, input_port_2_r },	/* IN1: Player 1 I/O */
-	{ 0x81c0, 0x81c0, input_port_3_r },	/* IN2: Player 2 I/O */
-	{ 0x81e0, 0x81e0, input_port_4_r },	/* DSW1 (inverted bits) */
-	{ 0x8800, 0x8fff, MRA_RAM },
-	{ 0x9000, 0x9fff, MRA_BANK1 },
-	{ 0xa000, 0xffff, MRA_ROM },
-MEMORY_END
-
-static MEMORY_WRITE_START( writemem )
-	{ 0x0000, 0x7fff, tutankhm_videoram_w, &videoram, &videoram_size },
-	{ 0x8000, 0x800f, paletteram_BBGGGRRR_w, &paletteram },
-	{ 0x8100, 0x8100, MWA_RAM, &tutankhm_scrollx },
-	{ 0x8200, 0x8200, interrupt_enable_w },
-	{ 0x8202, 0x8203, tutankhm_coin_counter_w },
-	{ 0x8205, 0x8205, MWA_NOP },	/* ??? */
-	{ 0x8206, 0x8206, flip_screen_x_w },
-	{ 0x8207, 0x8207, flip_screen_y_w },
-	{ 0x8300, 0x8300, tutankhm_bankselect_w },
-	{ 0x8600, 0x8600, timeplt_sh_irqtrigger_w },
-	{ 0x8700, 0x8700, soundlatch_w },
-	{ 0x8800, 0x8fff, MWA_RAM },
-	{ 0xa000, 0xffff, MWA_ROM },
-MEMORY_END
-
-
-INPUT_PORTS_START( tutankhm )
-	PORT_START      /* DSW2 */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x03, "3" )
-	PORT_DIPSETTING(    0x01, "4" )
-	PORT_DIPSETTING(    0x02, "5" )
-	PORT_BITX( 0,       0x00, IPT_DIPSWITCH_SETTING | IPF_CHEAT, "256", IP_KEY_NONE, IP_JOY_NONE )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x08, "30000" )
-	PORT_DIPSETTING(    0x00, "40000" )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x30, "Easy" )
-	PORT_DIPSETTING(    0x10, "Normal" )
-	PORT_DIPSETTING(    0x20, "Hard" )
-	PORT_DIPSETTING(    0x00, "Hardest" )
-	PORT_DIPNAME( 0x40, 0x40, "Flash Bomb" )
-	PORT_DIPSETTING(    0x40, "1 per Life" )
-	PORT_DIPSETTING(    0x00, "1 per Game" )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-
-	PORT_START      /* IN0 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START      /* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_4WAY )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_4WAY )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_4WAY )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_4WAY )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START      /* IN2 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 | IPF_COCKTAIL )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START      /* DSW1 */
-	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 3C_2C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 4C_3C ) )
-	PORT_DIPSETTING(    0x0f, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 3C_4C ) )
-	PORT_DIPSETTING(    0x07, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x0e, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 2C_5C ) )
-	PORT_DIPSETTING(    0x0d, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0x0b, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(    0x0a, DEF_STR( 1C_6C ) )
-	PORT_DIPSETTING(    0x09, DEF_STR( 1C_7C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x50, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 3C_2C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 4C_3C ) )
-	PORT_DIPSETTING(    0xf0, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 3C_4C ) )
-	PORT_DIPSETTING(    0x70, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0xe0, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x60, DEF_STR( 2C_5C ) )
-	PORT_DIPSETTING(    0xd0, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_6C ) )
-	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
-	PORT_DIPSETTING(    0x00, "Disabled" )
-/* 0x00 not commented out since the game makes the usual sound if you insert the coin */
-INPUT_PORTS_END
-
-
-
-static MACHINE_DRIVER_START( tutankhm )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, 1500000)			/* 1.5 MHz ??? */
-	MDRV_CPU_MEMORY(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_CPU_ADD(Z80,14318180/8)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)	/* 1.789772727 MHz */						\
-	MDRV_CPU_MEMORY(timeplt_sound_readmem,timeplt_sound_writemem)
-
-	MDRV_FRAMES_PER_SECOND(30)
-	MDRV_VBLANK_DURATION(DEFAULT_30HZ_VBLANK_DURATION)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)	/* not sure about the visible area */
-	MDRV_PALETTE_LENGTH(16)
-
-	MDRV_VIDEO_START(generic)
-	MDRV_VIDEO_UPDATE(tutankhm)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(AY8910, timeplt_ay8910_interface)
-MACHINE_DRIVER_END
-
-
-ROM_START( tutankhm )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )      /* 64k for M6809 CPU code + 64k for ROM banks */
-	ROM_LOAD( "h1.bin",       0x0a000, 0x1000, 0xda18679f ) /* program ROMs */
-	ROM_LOAD( "h2.bin",       0x0b000, 0x1000, 0xa0f02c85 )
-	ROM_LOAD( "h3.bin",       0x0c000, 0x1000, 0xea03a1ab )
-	ROM_LOAD( "h4.bin",       0x0d000, 0x1000, 0xbd06fad0 )
-	ROM_LOAD( "h5.bin",       0x0e000, 0x1000, 0xbf9fd9b0 )
-	ROM_LOAD( "h6.bin",       0x0f000, 0x1000, 0xfe079c5b )
-	ROM_LOAD( "j1.bin",       0x10000, 0x1000, 0x7eb59b21 ) /* graphic ROMs (banked) -- only 9 of 12 are filled */
-	ROM_LOAD( "j2.bin",       0x11000, 0x1000, 0x6615eff3 )
-	ROM_LOAD( "j3.bin",       0x12000, 0x1000, 0xa10d4444 )
-	ROM_LOAD( "j4.bin",       0x13000, 0x1000, 0x58cd143c )
-	ROM_LOAD( "j5.bin",       0x14000, 0x1000, 0xd7e7ae95 )
-	ROM_LOAD( "j6.bin",       0x15000, 0x1000, 0x91f62b82 )
-	ROM_LOAD( "j7.bin",       0x16000, 0x1000, 0xafd0a81f )
-	ROM_LOAD( "j8.bin",       0x17000, 0x1000, 0xdabb609b )
-	ROM_LOAD( "j9.bin",       0x18000, 0x1000, 0x8ea9c6a6 )
-	/* the other banks (1900-1fff) are empty */
-
-	ROM_REGION(  0x10000 , REGION_CPU2, 0 ) /* 64k for Z80 sound CPU code */
-	ROM_LOAD( "11-7a.bin",    0x0000, 0x1000, 0xb52d01fa )
-	ROM_LOAD( "10-8a.bin",    0x1000, 0x1000, 0x9db5c0ce )
-ROM_END
-
-
-ROM_START( tutankst )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )      /* 64k for M6809 CPU code + 64k for ROM banks */
-	ROM_LOAD( "h1.bin",       0x0a000, 0x1000, 0xda18679f ) /* program ROMs */
-	ROM_LOAD( "h2.bin",       0x0b000, 0x1000, 0xa0f02c85 )
-	ROM_LOAD( "ra1_3h.cpu",   0x0c000, 0x1000, 0x2d62d7b1 )
-	ROM_LOAD( "h4.bin",       0x0d000, 0x1000, 0xbd06fad0 )
-	ROM_LOAD( "h5.bin",       0x0e000, 0x1000, 0xbf9fd9b0 )
-	ROM_LOAD( "ra1_6h.cpu",   0x0f000, 0x1000, 0xc43b3865 )
-	ROM_LOAD( "j1.bin",       0x10000, 0x1000, 0x7eb59b21 ) /* graphic ROMs (banked) -- only 9 of 12 are filled */
-	ROM_LOAD( "j2.bin",       0x11000, 0x1000, 0x6615eff3 )
-	ROM_LOAD( "j3.bin",       0x12000, 0x1000, 0xa10d4444 )
-	ROM_LOAD( "j4.bin",       0x13000, 0x1000, 0x58cd143c )
-	ROM_LOAD( "j5.bin",       0x14000, 0x1000, 0xd7e7ae95 )
-	ROM_LOAD( "j6.bin",       0x15000, 0x1000, 0x91f62b82 )
-	ROM_LOAD( "j7.bin",       0x16000, 0x1000, 0xafd0a81f )
-	ROM_LOAD( "j8.bin",       0x17000, 0x1000, 0xdabb609b )
-	ROM_LOAD( "j9.bin",       0x18000, 0x1000, 0x8ea9c6a6 )
-	/* the other banks (1900-1fff) are empty */
-
-	ROM_REGION(  0x10000 , REGION_CPU2, 0 ) /* 64k for Z80 sound CPU code */
-	ROM_LOAD( "11-7a.bin",    0x0000, 0x1000, 0xb52d01fa )
-	ROM_LOAD( "10-8a.bin",    0x1000, 0x1000, 0x9db5c0ce )
-ROM_END
-
-
-
-GAME( 1982, tutankhm, 0,        tutankhm, tutankhm, 0, ROT90, "Konami", "Tutankham" )
-GAME( 1982, tutankst, tutankhm, tutankhm, tutankhm, 0, ROT90, "[Konami] (Stern license)", "Tutankham (Stern)" )

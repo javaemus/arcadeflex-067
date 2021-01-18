@@ -11,9 +11,5 @@ struct SN76496interface
 };
 
 int SN76496_sh_start(const struct MachineSound *msound);
-WRITE_HANDLER( SN76496_0_w );
-WRITE_HANDLER( SN76496_1_w );
-WRITE_HANDLER( SN76496_2_w );
-WRITE_HANDLER( SN76496_3_w );
 
 #endif

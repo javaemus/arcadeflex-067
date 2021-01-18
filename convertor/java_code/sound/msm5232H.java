@@ -12,10 +12,6 @@ struct MSM5232interface
 };
 
 int  MSM5232_sh_start (const struct MachineSound *msound);
-void MSM5232_sh_stop  (void);
-void MSM5232_sh_reset (void);
 
-WRITE_HANDLER( MSM5232_0_w );
-WRITE_HANDLER( MSM5232_1_w );
 
 #endif

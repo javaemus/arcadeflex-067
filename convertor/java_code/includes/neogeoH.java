@@ -8,7 +8,6 @@
 
 extern unsigned int neogeo_frame_counter;
 extern unsigned int neogeo_frame_counter_speed;
-extern int neogeo_has_trackball;
 
 
 /*----------- defined in machine/neogeo.c -----------*/
@@ -16,11 +15,6 @@ extern int neogeo_has_trackball;
 extern data16_t *neogeo_ram16;
 extern data16_t *neogeo_sram16;
 
-extern int mcd_action;
-extern int mcd_number;
-extern int memcard_status;
-extern int memcard_number;
-extern int memcard_manager;
 extern UINT8 *neogeo_memcard;
 
 MACHINE_INIT( neogeo );
@@ -36,14 +30,11 @@ NVRAM_HANDLER( neogeo );
 READ16_HANDLER( neogeo_memcard16_r );
 WRITE16_HANDLER( neogeo_memcard16_w );
 int neogeo_memcard_load(int);
-void neogeo_memcard_save(void);
-void neogeo_memcard_eject(void);
 int neogeo_memcard_create(int);
 
 
 /*----------- defined in machine/neocrypt.c -----------*/
 
-extern int neogeo_fix_bank_type;
 
 void kof99_neogeo_gfx_decrypt(int extra_xor);
 void kof2000_neogeo_gfx_decrypt(int extra_xor);

@@ -5,7 +5,6 @@
 
 /* Variables defined in vidhrdw */
 
-extern int cave_spritetype;
 
 extern data16_t *cave_videoregs;
 

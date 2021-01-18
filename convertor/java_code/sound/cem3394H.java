@@ -27,7 +27,6 @@ enum
 };
 
 int cem3394_sh_start(const struct MachineSound *msound);
-void cem3394_sh_stop(void);
 
 /* set the voltage going to a particular parameter */
 void cem3394_set_voltage(int chip, int input, double voltage);

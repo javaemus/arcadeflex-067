@@ -33,119 +33,126 @@
 
 *****************************************************************************/
 
-#include "driver.h"
-#include "machine/74153.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package machine;
 
-
-#define MAX_TTL74153 4
-
-struct TTL74153
+public class _74153
 {
-	/* callback */
-	void (*output_cb)(void);
-
-	/* inputs */
-	int a;					/* pin 14 */
-	int b;					/* pin 2 */
-	int input_lines[2][4];	/* pins 3-6,10-13 */
-	int enable[2];			/* pins 1,9 */
-
-	/* output */
-	int output[2];			/* pins 7,9 */
-
-	/* internals */
-	int last_output[2];
-};
-
-static struct TTL74153 chips[MAX_TTL74153];
-
-
-void TTL74153_update(int which)
-{
-	int sel;
-	int section;
-
-
-	sel = (chips[which].b << 1) | chips[which].a;
-
-
-	/* process both sections */
-	for (section = 0; section < 2; section++)
+	
+	
+	#define MAX_TTL74153 4
+	
+	struct TTL74153
 	{
-		if (chips[which].enable[section])
-			chips[which].output[section] = 0;	// row 1 in truth table
-		else
-			chips[which].output[section] = chips[which].input_lines[section][sel];
-	}
-
-
-	/* call callback if either of the outputs changed */
-	if (  chips[which].output_cb &&
-		((chips[which].output[0] != chips[which].last_output[0]) ||
-		 (chips[which].output[1] != chips[which].last_output[1])))
+		/* callback */
+		void (*output_cb)(void);
+	
+		/* inputs */
+		int a;					/* pin 14 */
+		int b;					/* pin 2 */
+		int input_lines[2][4];	/* pins 3-6,10-13 */
+		int enable[2];			/* pins 1,9 */
+	
+		/* output */
+		int output[2];			/* pins 7,9 */
+	
+		/* internals */
+		int last_output[2];
+	};
+	
+	static struct TTL74153 chips[MAX_TTL74153];
+	
+	
+	void TTL74153_update(int which)
 	{
-		chips[which].last_output[0] = chips[which].output[0];
-		chips[which].last_output[1] = chips[which].output[1];
-
-		chips[which].output_cb();
+		int sel;
+		int section;
+	
+	
+		sel = (chips[which].b << 1) | chips[which].a;
+	
+	
+		/* process both sections */
+		for (section = 0; section < 2; section++)
+		{
+			if (chips[which].enable[section])
+				chips[which].output[section] = 0;	// row 1 in truth table
+			else
+				chips[which].output[section] = chips[which].input_lines[section][sel];
+		}
+	
+	
+		/* call callback if either of the outputs changed */
+		if (  chips[which].output_cb &&
+			((chips[which].output[0] != chips[which].last_output[0]) ||
+			 (chips[which].output[1] != chips[which].last_output[1])))
+		{
+			chips[which].last_output[0] = chips[which].output[0];
+			chips[which].last_output[1] = chips[which].output[1];
+	
+			chips[which].output_cb();
+		}
 	}
-}
-
-
-void TTL74153_a_w(int which, int data)
-{
-	chips[which].a = data ? 1 : 0;
-}
-
-
-void TTL74153_b_w(int which, int data)
-{
-	chips[which].b = data ? 1 : 0;
-}
-
-
-void TTL74153_input_line_w(int which, int section, int input_line, int data)
-{
-	chips[which].input_lines[section][input_line] = data ? 1 : 0;
-}
-
-
-void TTL74153_enable_w(int which, int section, int data)
-{
-	chips[which].enable[section] = data ? 1 : 0;
-}
-
-
-int TTL74153_output_r(int which, int section)
-{
-	return chips[which].output[section];
-}
-
-
-
-void TTL74153_config(int which, const struct TTL74153_interface *intf)
-{
-	if (which >= MAX_TTL74153)
+	
+	
+	void TTL74153_a_w(int which, int data)
 	{
-		logerror("Only %d 74153's are supported at this time.\n", MAX_TTL74153);
-		return;
+		chips[which].a = data ? 1 : 0;
 	}
-
-
-	chips[which].output_cb = (intf ? intf->output_cb : 0);
-	chips[which].a = 1;
-	chips[which].b = 1;
-	chips[which].enable[0] = 1;
-	chips[which].enable[1] = 1;
-	chips[which].input_lines[0][0] = 1;
-	chips[which].input_lines[0][1] = 1;
-	chips[which].input_lines[0][2] = 1;
-	chips[which].input_lines[0][3] = 1;
-	chips[which].input_lines[1][0] = 1;
-	chips[which].input_lines[1][1] = 1;
-	chips[which].input_lines[1][2] = 1;
-	chips[which].input_lines[1][3] = 1;
-
-	chips[which].last_output[0] = -1;
-	chips[which].last_output[1] = -1;
+	
+	
+	void TTL74153_b_w(int which, int data)
+	{
+		chips[which].b = data ? 1 : 0;
+	}
+	
+	
+	void TTL74153_input_line_w(int which, int section, int input_line, int data)
+	{
+		chips[which].input_lines[section][input_line] = data ? 1 : 0;
+	}
+	
+	
+	void TTL74153_enable_w(int which, int section, int data)
+	{
+		chips[which].enable[section] = data ? 1 : 0;
+	}
+	
+	
+	int TTL74153_output_r(int which, int section)
+	{
+		return chips[which].output[section];
+	}
+	
+	
+	
+	void TTL74153_config(int which, const struct TTL74153_interface *intf)
+	{
+		if (which >= MAX_TTL74153)
+		{
+			logerror("Only %d 74153's are supported at this time.\n", MAX_TTL74153);
+			return;
+		}
+	
+	
+		chips[which].output_cb = (intf ? intf->output_cb : 0);
+		chips[which].a = 1;
+		chips[which].b = 1;
+		chips[which].enable[0] = 1;
+		chips[which].enable[1] = 1;
+		chips[which].input_lines[0][0] = 1;
+		chips[which].input_lines[0][1] = 1;
+		chips[which].input_lines[0][2] = 1;
+		chips[which].input_lines[0][3] = 1;
+		chips[which].input_lines[1][0] = 1;
+		chips[which].input_lines[1][1] = 1;
+		chips[which].input_lines[1][2] = 1;
+		chips[which].input_lines[1][3] = 1;
+	
+		chips[which].last_output[0] = -1;
+		chips[which].last_output[1] = -1;
+	}
 }

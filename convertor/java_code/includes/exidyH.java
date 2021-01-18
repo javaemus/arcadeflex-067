@@ -8,16 +8,7 @@
 
 int exidy_sh_start(const struct MachineSound *msound);
 
-WRITE_HANDLER( exidy_shriot_w );
-WRITE_HANDLER( exidy_sfxctrl_w );
-WRITE_HANDLER( exidy_sh8253_w );
-WRITE_HANDLER( exidy_sh6840_w );
-READ_HANDLER( exidy_shriot_r );
-READ_HANDLER( exidy_sh8253_r );
-READ_HANDLER( exidy_sh6840_r );
 
-WRITE_HANDLER( mtrap_voiceio_w );
-READ_HANDLER( mtrap_voiceio_r );
 
 
 /*----------- defined in sndhrdw/targ.c -----------*/
@@ -25,9 +16,7 @@ READ_HANDLER( mtrap_voiceio_r );
 extern UINT8 targ_spec_flag;
 
 int targ_sh_start(const struct MachineSound *msound);
-void targ_sh_stop(void);
 
-WRITE_HANDLER( targ_sh_w );
 
 
 /*----------- defined in vidhrdw/exidy.c -----------*/
@@ -62,7 +51,4 @@ VIDEO_UPDATE( exidy );
 
 INTERRUPT_GEN( exidy_vblank_interrupt );
 
-WRITE_HANDLER( exidy_characterram_w );
-WRITE_HANDLER( exidy_color_w );
 
-READ_HANDLER( exidy_interrupt_r );

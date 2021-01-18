@@ -55,275 +55,285 @@ Known issues:
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
-#include "cpu/m6502/m6502.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-extern unsigned char *tankbatt_bulletsram;
-extern size_t tankbatt_bulletsram_size;
-
-static int tankbatt_nmi_enable; /* No need to init this - the game will set it on reset */
-static int tankbatt_sound_enable;
-
-PALETTE_INIT( tankbatt );
-VIDEO_UPDATE( tankbatt );
-
-WRITE_HANDLER( tankbatt_led_w )
+public class tankbatt
 {
-	set_led_status(offset,data & 1);
-}
-
-READ_HANDLER( tankbatt_in0_r )
-{
-	int val;
-
-	val = readinputport(0);
-	return ((val << (7-offset)) & 0x80);
-}
-
-READ_HANDLER( tankbatt_in1_r )
-{
-	int val;
-
-	val = readinputport(1);
-	return ((val << (7-offset)) & 0x80);
-}
-
-READ_HANDLER( tankbatt_dsw_r )
-{
-	int val;
-
-	val = readinputport(2);
-	return ((val << (7-offset)) & 0x80);
-}
-
-WRITE_HANDLER( tankbatt_interrupt_enable_w )
-{
-	tankbatt_nmi_enable = !data;
-	tankbatt_sound_enable = !data;
-	if (data != 0)
+	
+	extern unsigned char *tankbatt_bulletsram;
+	extern size_t tankbatt_bulletsram_size;
+	
+	static int tankbatt_nmi_enable; /* No need to init this - the game will set it on reset */
+	static int tankbatt_sound_enable;
+	
+	PALETTE_INIT( tankbatt );
+	VIDEO_UPDATE( tankbatt );
+	
+	public static WriteHandlerPtr tankbatt_led_w = new WriteHandlerPtr() {public void handler(int offset, int data)
 	{
-		cpu_set_irq_line(0, 0, CLEAR_LINE);
-		cpu_set_nmi_line(0, CLEAR_LINE);
-	}
-	/* hack - turn off the engine noise if the normal game nmi's are disabled */
-	if (data) sample_stop (2);
-//	interrupt_enable_w (offset, !data);
-}
-
-WRITE_HANDLER( tankbatt_demo_interrupt_enable_w )
-{
-	tankbatt_nmi_enable = data;
-	if (data != 0)
+		set_led_status(offset,data & 1);
+	} };
+	
+	public static ReadHandlerPtr tankbatt_in0_r  = new ReadHandlerPtr() { public int handler(int offset)
 	{
-		cpu_set_irq_line(0, 0, CLEAR_LINE);
-		cpu_set_nmi_line(0, CLEAR_LINE);
-	}
-//	interrupt_enable_w (offset, data);
-}
-
-WRITE_HANDLER( tankbatt_sh_expl_w )
-{
-	if (tankbatt_sound_enable)
-		sample_start (1, 3, 0);
-}
-
-WRITE_HANDLER( tankbatt_sh_engine_w )
-{
-	if (tankbatt_sound_enable)
+		int val;
+	
+		val = readinputport(0);
+		return ((val << (7-offset)) & 0x80);
+	} };
+	
+	public static ReadHandlerPtr tankbatt_in1_r  = new ReadHandlerPtr() { public int handler(int offset)
 	{
-		if (data)
-			sample_start (2, 2, 1);
-		else
-			sample_start (2, 1, 1);
+		int val;
+	
+		val = readinputport(1);
+		return ((val << (7-offset)) & 0x80);
+	} };
+	
+	public static ReadHandlerPtr tankbatt_dsw_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		int val;
+	
+		val = readinputport(2);
+		return ((val << (7-offset)) & 0x80);
+	} };
+	
+	public static WriteHandlerPtr tankbatt_interrupt_enable_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		tankbatt_nmi_enable = !data;
+		tankbatt_sound_enable = !data;
+		if (data != 0)
+		{
+			cpu_set_irq_line(0, 0, CLEAR_LINE);
+			cpu_set_nmi_line(0, CLEAR_LINE);
+		}
+		/* hack - turn off the engine noise if the normal game nmi's are disabled */
+		if (data) sample_stop (2);
+	//	interrupt_enable_w (offset, !data);
+	} };
+	
+	public static WriteHandlerPtr tankbatt_demo_interrupt_enable_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		tankbatt_nmi_enable = data;
+		if (data != 0)
+		{
+			cpu_set_irq_line(0, 0, CLEAR_LINE);
+			cpu_set_nmi_line(0, CLEAR_LINE);
+		}
+	//	interrupt_enable_w (offset, data);
+	} };
+	
+	public static WriteHandlerPtr tankbatt_sh_expl_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		if (tankbatt_sound_enable)
+			sample_start (1, 3, 0);
+	} };
+	
+	public static WriteHandlerPtr tankbatt_sh_engine_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		if (tankbatt_sound_enable)
+		{
+			if (data)
+				sample_start (2, 2, 1);
+			else
+				sample_start (2, 1, 1);
+		}
+		else sample_stop (2);
+	} };
+	
+	public static WriteHandlerPtr tankbatt_sh_fire_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		if (tankbatt_sound_enable)
+			sample_start (0, 0, 0);
+	} };
+	
+	public static Memory_ReadAddress readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x01ff, MRA_RAM ),
+		new Memory_ReadAddress( 0x0c00, 0x0c07, tankbatt_in0_r ),
+		new Memory_ReadAddress( 0x0c08, 0x0c0f, tankbatt_in1_r ),
+		new Memory_ReadAddress( 0x0c18, 0x0c1f, tankbatt_dsw_r ),
+		new Memory_ReadAddress( 0x0200, 0x0bff, MRA_RAM ),
+		new Memory_ReadAddress( 0x6000, 0x7fff, MRA_ROM ),
+		new Memory_ReadAddress( 0xf800, 0xffff, MRA_ROM ),	/* for the reset / interrupt vectors */
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0010, 0x01ff, MWA_RAM ),
+		new Memory_WriteAddress( 0x0800, 0x0bff, videoram_w, videoram, videoram_size ),
+		new Memory_WriteAddress( 0x0000, 0x000f, MWA_RAM, tankbatt_bulletsram, tankbatt_bulletsram_size ),
+		new Memory_WriteAddress( 0x0c18, 0x0c18, MWA_NOP ), /* watchdog ?? */
+		new Memory_WriteAddress( 0x0c00, 0x0c01, tankbatt_led_w ),
+		new Memory_WriteAddress( 0x0c0a, 0x0c0a, tankbatt_interrupt_enable_w ),
+		new Memory_WriteAddress( 0x0c0b, 0x0c0b, tankbatt_sh_engine_w ),
+		new Memory_WriteAddress( 0x0c0c, 0x0c0c, tankbatt_sh_fire_w ),
+		new Memory_WriteAddress( 0x0c0d, 0x0c0d, tankbatt_sh_expl_w ),
+		new Memory_WriteAddress( 0x0c0f, 0x0c0f, tankbatt_demo_interrupt_enable_w ),
+		new Memory_WriteAddress( 0x0200, 0x07ff, MWA_RAM ),
+		new Memory_WriteAddress( 0x2000, 0x3fff, MWA_ROM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	INTERRUPT_GEN( tankbatt_interrupt )
+	{
+		if ((readinputport (0) & 0x60) == 0) cpu_set_irq_line(0,0,HOLD_LINE);
+		else if (tankbatt_nmi_enable) cpu_set_irq_line(0,IRQ_LINE_NMI,PULSE_LINE);
 	}
-	else sample_stop (2);
+	
+	static InputPortPtr input_ports_tankbatt = new InputPortPtr(){ public void handler() { 
+		PORT_START(); 	/* IN0 */
+		PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_4WAY );
+		PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_4WAY );
+		PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_4WAY );
+		PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_4WAY );
+		PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_BIT_IMPULSE( 0x60, IP_ACTIVE_LOW, IPT_COIN1, 2 );
+		PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_TILT );
+	
+		PORT_START(); 	/* IN1 */
+		PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_4WAY | IPF_COCKTAIL );
+		PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_4WAY | IPF_COCKTAIL );
+		PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_4WAY | IPF_COCKTAIL );
+		PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_4WAY | IPF_COCKTAIL );
+		PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL );
+		PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_START1 );
+		PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_START2 );
+		PORT_SERVICE( 0x80, IP_ACTIVE_LOW );
+	
+		PORT_START(); 	/* DSW */
+		PORT_DIPNAME( 0x01, 0x01, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING(    0x01, DEF_STR( "Upright") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Cocktail") );
+	 	PORT_DIPNAME( 0x06, 0x06, DEF_STR( "Coinage") );
+		PORT_DIPSETTING(    0x04, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(    0x06, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(    0x02, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Free_Play") );
+		PORT_DIPNAME( 0x18, 0x08, DEF_STR( "Bonus_Life") );
+		PORT_DIPSETTING(    0x00, "10000" );
+		PORT_DIPSETTING(    0x10, "15000" );
+		PORT_DIPSETTING(    0x08, "20000" );
+		PORT_DIPSETTING(    0x18, "None" );
+		PORT_DIPNAME( 0x20, 0x00, DEF_STR( "Lives") );
+		PORT_DIPSETTING(    0x20, "2" );
+		PORT_DIPSETTING(    0x00, "3" );
+		PORT_DIPNAME( 0x40, 0x40, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x80, 0x80, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	static GfxLayout charlayout = new GfxLayout
+	(
+		8,8,	/* 8*8 characters */
+		256,	/* 256 characters */
+		1,	/* 1 bit per pixel */
+		new int[] { 0 },	/* only one bitplane */
+		new int[] { 0, 1, 2, 3, 4, 5, 6, 7 },
+		new int[] { 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+		8*8	/* every char takes 8 consecutive bytes */
+	);
+	
+	static GfxLayout bulletlayout = new GfxLayout
+	(
+		/* there is no gfx ROM for this one, it is generated by the hardware */
+		3,3,	/* 3*3 box */
+		1,	/* just one */
+		1,	/* 1 bit per pixel */
+		new int[] { 8*8 },
+		new int[] { 2, 2, 2 },   /* I "know" that this bit of the */
+		new int[] { 2, 2, 2 },   /* graphics ROMs is 1 */
+		0	/* no use */
+	);
+	
+	
+	static GfxDecodeInfo gfxdecodeinfo[] =
+	{
+		new GfxDecodeInfo( REGION_GFX1, 0, charlayout,   0, 64 ),
+		new GfxDecodeInfo( REGION_GFX1, 0, bulletlayout, 0, 64 ),
+		new GfxDecodeInfo( -1 ) /* end of array */
+	};
+	
+	
+	
+	static const char *tankbatt_sample_names[] =
+	{
+		"*tankbatt",
+		"fire.wav",
+		"engine1.wav",
+		"engine2.wav",
+		"explode1.wav",
+	    0	/* end of array */
+	};
+	
+	static struct Samplesinterface samples_interface =
+	{
+		3,	/* 3 channels */
+		25,	/* volume */
+		tankbatt_sample_names
+	};
+	
+	
+	
+	static MACHINE_DRIVER_START( tankbatt )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(M6502, 1000000)	/* 1 MHz ???? */
+		MDRV_CPU_MEMORY(readmem,writemem)
+		MDRV_CPU_VBLANK_INT(tankbatt_interrupt,1)
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(32*8, 32*8)
+		MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+		MDRV_GFXDECODE(gfxdecodeinfo)
+		MDRV_PALETTE_LENGTH(65)
+		MDRV_COLORTABLE_LENGTH(128)
+	
+		MDRV_PALETTE_INIT(tankbatt)
+		MDRV_VIDEO_START(generic)
+		MDRV_VIDEO_UPDATE(tankbatt)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(SAMPLES, samples_interface)
+	MACHINE_DRIVER_END
+	
+	
+	
+	/***************************************************************************
+	
+	  Game driver(s)
+	
+	***************************************************************************/
+	
+	static RomLoadPtr rom_tankbatt = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );/* 64k for code */
+		ROM_LOAD( "tb1-1.bin",    0x6000, 0x0800, 0x278a0b8c );
+		ROM_LOAD( "tb1-2.bin",    0x6800, 0x0800, 0xe0923370 );
+		ROM_LOAD( "tb1-3.bin",    0x7000, 0x0800, 0x85005ea4 );
+		ROM_LOAD( "tb1-4.bin",    0x7800, 0x0800, 0x3dfb5bcf );
+		ROM_RELOAD(               0xf800, 0x0800 );/* for the reset and interrupt vectors */
+	
+		ROM_REGION( 0x0800, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "tb1-5.bin",    0x0000, 0x0800, 0xaabd4fb1 );
+	
+		ROM_REGION( 0x0100, REGION_PROMS, 0 );
+		ROM_LOAD( "tankbatt.clr", 0x0000, 0x0100, 0x1150d613 );
+	ROM_END(); }}; 
+	
+	
+	
+	public static GameDriver driver_tankbatt	   = new GameDriver("1980"	,"tankbatt"	,"tankbatt.java"	,rom_tankbatt,null	,machine_driver_tankbatt	,input_ports_tankbatt	,null	,ROT90	,	"Namco", "Tank Battalion" )
 }
-
-WRITE_HANDLER( tankbatt_sh_fire_w )
-{
-	if (tankbatt_sound_enable)
-		sample_start (0, 0, 0);
-}
-
-static MEMORY_READ_START( readmem )
-	{ 0x0000, 0x01ff, MRA_RAM },
-	{ 0x0c00, 0x0c07, tankbatt_in0_r },
-	{ 0x0c08, 0x0c0f, tankbatt_in1_r },
-	{ 0x0c18, 0x0c1f, tankbatt_dsw_r },
-	{ 0x0200, 0x0bff, MRA_RAM },
-	{ 0x6000, 0x7fff, MRA_ROM },
-	{ 0xf800, 0xffff, MRA_ROM },	/* for the reset / interrupt vectors */
-MEMORY_END
-
-static MEMORY_WRITE_START( writemem )
-	{ 0x0010, 0x01ff, MWA_RAM },
-	{ 0x0800, 0x0bff, videoram_w, &videoram, &videoram_size },
-	{ 0x0000, 0x000f, MWA_RAM, &tankbatt_bulletsram, &tankbatt_bulletsram_size },
-	{ 0x0c18, 0x0c18, MWA_NOP }, /* watchdog ?? */
-	{ 0x0c00, 0x0c01, tankbatt_led_w },
-	{ 0x0c0a, 0x0c0a, tankbatt_interrupt_enable_w },
-	{ 0x0c0b, 0x0c0b, tankbatt_sh_engine_w },
-	{ 0x0c0c, 0x0c0c, tankbatt_sh_fire_w },
-	{ 0x0c0d, 0x0c0d, tankbatt_sh_expl_w },
-	{ 0x0c0f, 0x0c0f, tankbatt_demo_interrupt_enable_w },
-	{ 0x0200, 0x07ff, MWA_RAM },
-	{ 0x2000, 0x3fff, MWA_ROM },
-MEMORY_END
-
-INTERRUPT_GEN( tankbatt_interrupt )
-{
-	if ((readinputport (0) & 0x60) == 0) cpu_set_irq_line(0,0,HOLD_LINE);
-	else if (tankbatt_nmi_enable) cpu_set_irq_line(0,IRQ_LINE_NMI,PULSE_LINE);
-}
-
-INPUT_PORTS_START( tankbatt )
-	PORT_START	/* IN0 */
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_4WAY )
-	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_4WAY )
-	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_4WAY )
-	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_4WAY )
-	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT_IMPULSE( 0x60, IP_ACTIVE_LOW, IPT_COIN1, 2 )
-	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_TILT )
-
-	PORT_START	/* IN1 */
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_4WAY | IPF_COCKTAIL )
-	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
-	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
-
-	PORT_START	/* DSW */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
- 	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x18, 0x08, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x00, "10000" )
-	PORT_DIPSETTING(    0x10, "15000" )
-	PORT_DIPSETTING(    0x08, "20000" )
-	PORT_DIPSETTING(    0x18, "None" )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x20, "2" )
-	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-INPUT_PORTS_END
-
-
-static struct GfxLayout charlayout =
-{
-	8,8,	/* 8*8 characters */
-	256,	/* 256 characters */
-	1,	/* 1 bit per pixel */
-	{ 0 },	/* only one bitplane */
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8	/* every char takes 8 consecutive bytes */
-};
-
-static struct GfxLayout bulletlayout =
-{
-	/* there is no gfx ROM for this one, it is generated by the hardware */
-	3,3,	/* 3*3 box */
-	1,	/* just one */
-	1,	/* 1 bit per pixel */
-	{ 8*8 },
-	{ 2, 2, 2 },   /* I "know" that this bit of the */
-	{ 2, 2, 2 },   /* graphics ROMs is 1 */
-	0	/* no use */
-};
-
-
-static struct GfxDecodeInfo gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &charlayout,   0, 64 },
-	{ REGION_GFX1, 0, &bulletlayout, 0, 64 },
-	{ -1 } /* end of array */
-};
-
-
-
-static const char *tankbatt_sample_names[] =
-{
-	"*tankbatt",
-	"fire.wav",
-	"engine1.wav",
-	"engine2.wav",
-	"explode1.wav",
-    0	/* end of array */
-};
-
-static struct Samplesinterface samples_interface =
-{
-	3,	/* 3 channels */
-	25,	/* volume */
-	tankbatt_sample_names
-};
-
-
-
-static MACHINE_DRIVER_START( tankbatt )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, 1000000)	/* 1 MHz ???? */
-	MDRV_CPU_MEMORY(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(tankbatt_interrupt,1)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(65)
-	MDRV_COLORTABLE_LENGTH(128)
-
-	MDRV_PALETTE_INIT(tankbatt)
-	MDRV_VIDEO_START(generic)
-	MDRV_VIDEO_UPDATE(tankbatt)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(SAMPLES, samples_interface)
-MACHINE_DRIVER_END
-
-
-
-/***************************************************************************
-
-  Game driver(s)
-
-***************************************************************************/
-
-ROM_START( tankbatt )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
-	ROM_LOAD( "tb1-1.bin",    0x6000, 0x0800, 0x278a0b8c )
-	ROM_LOAD( "tb1-2.bin",    0x6800, 0x0800, 0xe0923370 )
-	ROM_LOAD( "tb1-3.bin",    0x7000, 0x0800, 0x85005ea4 )
-	ROM_LOAD( "tb1-4.bin",    0x7800, 0x0800, 0x3dfb5bcf )
-	ROM_RELOAD(               0xf800, 0x0800 )	/* for the reset and interrupt vectors */
-
-	ROM_REGION( 0x0800, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "tb1-5.bin",    0x0000, 0x0800, 0xaabd4fb1 )
-
-	ROM_REGION( 0x0100, REGION_PROMS, 0 )
-	ROM_LOAD( "tankbatt.clr", 0x0000, 0x0100, 0x1150d613 )
-ROM_END
-
-
-
-GAME( 1980, tankbatt, 0, tankbatt, tankbatt, 0, ROT90, "Namco", "Tank Battalion" )

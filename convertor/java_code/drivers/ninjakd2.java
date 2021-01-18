@@ -221,545 +221,558 @@ The first sprite data is located at fa0b,then fa1b and so on.
 ***************************************************************************/
 
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-WRITE_HANDLER( ninjakd2_bgvideoram_w );
-WRITE_HANDLER( ninjakd2_fgvideoram_w );
-WRITE_HANDLER( ninjakd2_sprite_overdraw_w );
-WRITE_HANDLER( ninjakd2_background_enable_w );
-VIDEO_START( ninjakd2 );
-VIDEO_UPDATE( ninjakd2 );
-
-extern unsigned char 	*ninjakd2_scrolly_ram;
-extern unsigned char 	*ninjakd2_scrollx_ram;
-extern unsigned char 	*ninjakd2_bgenable_ram;
-extern unsigned char 	*ninjakd2_spoverdraw_ram;
-extern unsigned char 	*ninjakd2_background_videoram;
-extern unsigned char 	*ninjakd2_foreground_videoram;
-extern size_t ninjakd2_backgroundram_size;
-extern size_t ninjakd2_foregroundram_size;
-
-static int ninjakd2_bank_latch = 255;
-
-
-
-int ninjakd2_init_samples(const struct MachineSound *msound)
+public class ninjakd2
 {
-	int i,n;
-	unsigned char *source = memory_region(REGION_SOUND1);
-	struct GameSamples *samples;
-	int sample_info [9][2] = { {0x0000,0x0A00},{0x0A00,0x1D00},{0x2700,0x1700},
-	{0x3E00,0x1500},{0x5300,0x0B00},{0x5E00,0x0A00},{0x6800,0x0E00},{0x7600,0x1E00},{0xF000,0x0400} };
-
-	if ((Machine->samples = auto_malloc(sizeof(struct GameSamples) + 9 * sizeof(struct GameSample *))) == NULL)
-		return 1;
-
-	samples = Machine->samples;
-	samples->total = 8;
-
-	for (i=0;i<8;i++)
+	
+	VIDEO_START( ninjakd2 );
+	VIDEO_UPDATE( ninjakd2 );
+	
+	extern unsigned char 	*ninjakd2_scrolly_ram;
+	extern unsigned char 	*ninjakd2_scrollx_ram;
+	extern unsigned char 	*ninjakd2_bgenable_ram;
+	extern unsigned char 	*ninjakd2_spoverdraw_ram;
+	extern unsigned char 	*ninjakd2_background_videoram;
+	extern unsigned char 	*ninjakd2_foreground_videoram;
+	extern size_t ninjakd2_backgroundram_size;
+	extern size_t ninjakd2_foregroundram_size;
+	
+	static int ninjakd2_bank_latch = 255;
+	
+	
+	
+	int ninjakd2_init_samples(const struct MachineSound *msound)
 	{
-		if ((samples->sample[i] = auto_malloc(sizeof(struct GameSample) + (sample_info[i][1]))) == NULL)
+		int i,n;
+		unsigned char *source = memory_region(REGION_SOUND1);
+		struct GameSamples *samples;
+		int sample_info [9][2] = { {0x0000,0x0A00},{0x0A00,0x1D00},{0x2700,0x1700},
+		{0x3E00,0x1500},{0x5300,0x0B00},{0x5E00,0x0A00},{0x6800,0x0E00},{0x7600,0x1E00},{0xF000,0x0400} };
+	
+		if ((Machine->samples = auto_malloc(sizeof(struct GameSamples) + 9 * sizeof(struct GameSample *))) == NULL)
 			return 1;
-
-		samples->sample[i]->length = sample_info[i][1];
-		samples->sample[i]->smpfreq = 16000;	/* 16 kHz */
-		samples->sample[i]->resolution = 8;
-		for (n=0; n<sample_info[i][1]; n++)
-			samples->sample[i]->data[n] = source[sample_info[i][0]+n] ^ 0x80;
+	
+		samples = Machine->samples;
+		samples->total = 8;
+	
+		for (i=0;i<8;i++)
+		{
+			if ((samples->sample[i] = auto_malloc(sizeof(struct GameSample) + (sample_info[i][1]))) == NULL)
+				return 1;
+	
+			samples->sample[i]->length = sample_info[i][1];
+			samples->sample[i]->smpfreq = 16000;	/* 16 kHz */
+			samples->sample[i]->resolution = 8;
+			for (n=0; n<sample_info[i][1]; n++)
+				samples->sample[i]->data[n] = source[sample_info[i][0]+n] ^ 0x80;
+		}
+	
+		/*	The samples are now ready to be used.  They are a 8 bit, 16 kHz samples. 	 */
+	
+		return 0;
 	}
-
-	/*	The samples are now ready to be used.  They are a 8 bit, 16 kHz samples. 	 */
-
-	return 0;
-}
-
-
-INTERRUPT_GEN( ninjakd2_interrupt )
-{
-	cpu_set_irq_line_and_vector(0, 0, HOLD_LINE, 0xd7);	/* RST 10h */
-}
-
-READ_HANDLER( ninjakd2_bankselect_r )
-{
-	return ninjakd2_bank_latch;
-}
-
-WRITE_HANDLER( ninjakd2_bankselect_w )
-{
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	int bankaddress;
-
-	if (data != ninjakd2_bank_latch)
+	
+	
+	INTERRUPT_GEN( ninjakd2_interrupt )
 	{
-		ninjakd2_bank_latch = data;
-
-		bankaddress = 0x10000 + ((data & 0x7) * 0x4000);
-		cpu_setbank(1,&RAM[bankaddress]);	 /* Select 8 banks of 16k */
+		cpu_set_irq_line_and_vector(0, 0, HOLD_LINE, 0xd7);	/* RST 10h */
 	}
+	
+	public static ReadHandlerPtr ninjakd2_bankselect_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return ninjakd2_bank_latch;
+	} };
+	
+	public static WriteHandlerPtr ninjakd2_bankselect_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		unsigned char *RAM = memory_region(REGION_CPU1);
+		int bankaddress;
+	
+		if (data != ninjakd2_bank_latch)
+		{
+			ninjakd2_bank_latch = data;
+	
+			bankaddress = 0x10000 + ((data & 0x7) * 0x4000);
+			cpu_setbank(1,&RAM[bankaddress]);	 /* Select 8 banks of 16k */
+		}
+	} };
+	
+	public static WriteHandlerPtr ninjakd2_pcm_play_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		int i;
+		int sample_no[9] = { 0x00,0x0A,0x27,0x3E,0x53,0x5E,0x68,0x76,0xF0 };
+	
+		for(i=0;i<9;i++)
+		 if (sample_no[i]==data) break;
+	
+		if (i==8)
+			sample_stop(0);
+		else
+			sample_start(0,i,0);
+	} };
+	
+	public static Memory_ReadAddress readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x7fff, MRA_ROM ),
+		new Memory_ReadAddress( 0x8000, 0xbfff, MRA_BANK1 ),
+		new Memory_ReadAddress( 0xc000, 0xc000, input_port_2_r ),
+		new Memory_ReadAddress( 0xc001, 0xc001, input_port_0_r ),
+		new Memory_ReadAddress( 0xc002, 0xc002, input_port_1_r ),
+		new Memory_ReadAddress( 0xc003, 0xc003, input_port_3_r ),
+		new Memory_ReadAddress( 0xc004, 0xc004, input_port_4_r ),
+		new Memory_ReadAddress( 0xc200, 0xc200, MRA_RAM ),
+		new Memory_ReadAddress( 0xc201, 0xc201, MRA_RAM ),		// unknown but used
+		new Memory_ReadAddress( 0xc202, 0xc202, ninjakd2_bankselect_r ),
+		new Memory_ReadAddress( 0xc203, 0xc203, MRA_RAM ),
+		new Memory_ReadAddress( 0xc208, 0xc209, MRA_RAM ),
+		new Memory_ReadAddress( 0xc20a, 0xc20b, MRA_RAM ),
+		new Memory_ReadAddress( 0xc20c, 0xc20c, MRA_RAM ),
+		new Memory_ReadAddress( 0xc800, 0xffff, MRA_RAM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0xbfff, MWA_ROM ),
+		new Memory_WriteAddress( 0xc200, 0xc200, soundlatch_w ),
+		new Memory_WriteAddress( 0xc201, 0xc201, MWA_RAM ),		// unknown but used
+		new Memory_WriteAddress( 0xc202, 0xc202, ninjakd2_bankselect_w ),
+		new Memory_WriteAddress( 0xc203, 0xc203, ninjakd2_sprite_overdraw_w, ninjakd2_spoverdraw_ram ),
+		new Memory_WriteAddress( 0xc208, 0xc209, MWA_RAM, ninjakd2_scrollx_ram ),
+		new Memory_WriteAddress( 0xc20a, 0xc20b, MWA_RAM, ninjakd2_scrolly_ram ),
+		new Memory_WriteAddress( 0xc20c, 0xc20c, ninjakd2_background_enable_w, ninjakd2_bgenable_ram ),
+		new Memory_WriteAddress( 0xc800, 0xcdff, paletteram_RRRRGGGGBBBBxxxx_swap_w, paletteram ),
+		new Memory_WriteAddress( 0xd000, 0xd7ff, ninjakd2_fgvideoram_w, ninjakd2_foreground_videoram, ninjakd2_foregroundram_size ),
+		new Memory_WriteAddress( 0xd800, 0xdfff, ninjakd2_bgvideoram_w, ninjakd2_background_videoram, ninjakd2_backgroundram_size ),
+		new Memory_WriteAddress( 0xe000, 0xf9ff, MWA_RAM ),
+		new Memory_WriteAddress( 0xfa00, 0xffff, MWA_RAM, spriteram, spriteram_size ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_ReadAddress snd_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0xbfff, MRA_ROM ),
+		new Memory_ReadAddress( 0xc000, 0xc7ff, MRA_RAM ),
+		new Memory_ReadAddress( 0xe000, 0xe000, soundlatch_r ),
+		new Memory_ReadAddress( 0xefee, 0xefee, MRA_NOP ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_WriteAddress snd_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0xbfff, MWA_ROM ),
+		new Memory_WriteAddress( 0xc000, 0xc7ff, MWA_RAM ),
+		new Memory_WriteAddress( 0xf000, 0xf000, ninjakd2_pcm_play_w ),	/* PCM SAMPLE OFFSET*256 */
+		new Memory_WriteAddress( 0xeff5, 0xeff6, MWA_NOP ),			/* SAMPLE FREQUENCY ??? */
+		new Memory_WriteAddress( 0xefee, 0xefee, MWA_NOP ),			/* CHIP COMMAND ?? */
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static IO_WritePort snd_writeport[]={
+		new IO_WritePort(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_WritePort( 0x0000, 0x0000, YM2203_control_port_0_w ),
+		new IO_WritePort( 0x0001, 0x0001, YM2203_write_port_0_w ),
+		new IO_WritePort( 0x0080, 0x0080, YM2203_control_port_1_w ),
+		new IO_WritePort( 0x0081, 0x0081, YM2203_write_port_1_w ),
+		new IO_WritePort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	static InputPortPtr input_ports_ninjakd2 = new InputPortPtr(){ public void handler() { 
+	    PORT_START(); 
+	    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT );
+	    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT );
+	    PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN );
+	    PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP );
+	    PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 );
+	    PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 );
+	    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+	    PORT_START();     /* player 2 controls */
+	    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_COCKTAIL );
+	    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_COCKTAIL );
+	    PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_COCKTAIL );
+	    PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_COCKTAIL );
+	    PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL );
+	    PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL );
+	    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	
+	    PORT_START(); 
+	    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 );
+	    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 );
+	    PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	    PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	    PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE );/* keep pressed during boot to enter service mode */
+	    PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN );
+	    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 );
+	    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 );
+	
+	    PORT_START();   /* dsw0 */
+	    PORT_DIPNAME( 0x01, 0x01, DEF_STR( "Unknown") );
+	    PORT_DIPSETTING(    0x01, DEF_STR( "Off") );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+	    PORT_DIPNAME( 0x06, 0x06, DEF_STR( "Bonus_Life") );
+	    PORT_DIPSETTING(    0x04, "20000 50000" );
+	    PORT_DIPSETTING(    0x06, "30000 50000" );
+	    PORT_DIPSETTING(    0x02, "50000 100000" );
+	    PORT_DIPSETTING(    0x00, "None" );
+	    PORT_DIPNAME( 0x08, 0x08, "Allow Continue" );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "No") );
+	    PORT_DIPSETTING(    0x08, DEF_STR( "Yes") ); )
+	    PORT_DIPNAME( 0x10, 0x00, DEF_STR( "Demo_Sounds") );
+	    PORT_DIPSETTING(    0x10, DEF_STR( "Off") );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "On") ); )
+	    PORT_DIPNAME( 0x20, 0x20, DEF_STR( "Difficulty") );
+	    PORT_DIPSETTING(    0x20, "Normal" );
+	    PORT_DIPSETTING(    0x00, "Hard" );
+	    PORT_DIPNAME( 0x40, 0x40, DEF_STR( "Lives") );
+	    PORT_DIPSETTING(    0x40, "3" );
+	    PORT_DIPSETTING(    0x00, "4" );
+	    PORT_DIPNAME( 0x80, 0x00, "Language" );
+	    PORT_DIPSETTING(    0x00, "English" );
+	    PORT_DIPSETTING(    0x80, "Japanese" );
+	
+	    PORT_START();   /* dsw1 */
+		PORT_SERVICE( 0x01, IP_ACTIVE_LOW );
+	    PORT_DIPNAME( 0x02, 0x00, DEF_STR( "Cabinet") );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "Upright") );
+	    PORT_DIPSETTING(    0x02, DEF_STR( "Cocktail") );
+	    PORT_DIPNAME( 0x04, 0x00, "Credit Service" );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+	    PORT_DIPSETTING(    0x04, DEF_STR( "On") );
+	    PORT_DIPNAME( 0x18, 0x18, DEF_STR( "Coin_B") );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "2C_1C") );
+	    PORT_DIPSETTING(    0x18, DEF_STR( "1C_1C") );
+	    PORT_DIPSETTING(    0x10, DEF_STR( "1C_2C") );
+	    PORT_DIPSETTING(    0x08, DEF_STR( "1C_3C") );
+	    PORT_DIPNAME( 0xe0, 0xe0, DEF_STR( "Coin_A") );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "5C_1C") );
+	    PORT_DIPSETTING(    0x20, DEF_STR( "4C_1C") );
+	    PORT_DIPSETTING(    0x40, DEF_STR( "3C_1C") );
+	    PORT_DIPSETTING(    0x60, DEF_STR( "2C_1C") );
+	    PORT_DIPSETTING(    0xe0, DEF_STR( "1C_1C") );
+	    PORT_DIPSETTING(    0xc0, DEF_STR( "1C_2C") );
+	    PORT_DIPSETTING(    0xa0, DEF_STR( "1C_3C") );
+	    PORT_DIPSETTING(    0x80, DEF_STR( "1C_4C") );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	static GfxLayout charlayout = new GfxLayout
+	(
+		8,8,     /* 8*8 characters */
+		1024,    /* 1024 characters */
+		4,       /* 4 bits per pixel */
+		new int[] {0,1,2,3 }, /* the bitplanes are packed in one nibble */
+		new int[] {0, 4, 16384*8+0, 16384*8+4, 8, 12, 16384*8+8, 16384*8+12 },
+		new int[] {16*0, 16*1, 16*2, 16*3, 16*4, 16*5, 16*6, 16*7 },
+		8*16
+	);
+	
+	static GfxLayout spritelayout = new GfxLayout
+	(
+		16,16,   /* 16*16 characters */
+		1024,    /* 1024 sprites */
+		4,       /* 4 bits per pixel */
+		new int[] {0,1,2,3}, /* the bitplanes are packed in one nibble */
+		new int[] {0,  4,  65536*8+0,  65536*8+4,  8, 12,  65536*8+8, 65536*8+12,
+			16*8+0, 16*8+4, 16*8+65536*8+0, 16*8+65536*8+4, 16*8+8, 16*8+12, 16*8+65536*8+8, 16*8+65536*8+12},
+		new int[] {16*0, 16*1, 16*2, 16*3, 16*4, 16*5, 16*6, 16*7,
+			32*8+16*0, 32*8+16*1, 32*8+16*2, 32*8+16*3, 32*8+16*4, 32*8+16*5, 32*8+16*6, 32*8+16*7},
+		8*64
+	);
+	
+	static GfxDecodeInfo gfxdecodeinfo[] =
+	{
+		new GfxDecodeInfo( REGION_GFX1, 0, spritelayout,  0*16, 16 ),
+		new GfxDecodeInfo( REGION_GFX2, 0, spritelayout, 16*16, 16 ),
+		new GfxDecodeInfo( REGION_GFX3, 0, charlayout,   32*16, 16 ),
+		new GfxDecodeInfo( -1 ) /* end of array */
+	};
+	
+	static struct Samplesinterface samples_interface =
+	{
+		1,	/* 1 channel */
+		25	/* volume */
+	};
+	
+	static CustomSound_interface custom_interface = new CustomSound_interface
+	(
+		ninjakd2_init_samples,
+		0,
+		0
+	);
+	
+	/* handler called by the 2203 emulator when the internal timers cause an IRQ */
+	static void irqhandler(int irq)
+	{
+		cpu_set_irq_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	}
+	
+	static struct YM2203interface ym2203_interface =
+	{
+		2, 	 /* 2 chips */
+		1500000, /* 12000000/8 MHz */
+		{ YM2203_VOL(25,25), YM2203_VOL(25,25) },
+		{ 0 },
+		{ 0 },
+		{ 0 },
+		{ 0 },
+		{ irqhandler }
+	};
+	
+	
+	static MACHINE_DRIVER_START( ninjakd2 )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(Z80, 6000000)		/* 12000000/2 ??? */
+		MDRV_CPU_MEMORY(readmem,writemem)	/* very sensitive to these settings */
+		MDRV_CPU_VBLANK_INT(ninjakd2_interrupt,1)
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(10000)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(32*8, 32*8)
+		MDRV_VISIBLE_AREA(0*8, 32*8-1, 4*8, 28*8-1)
+		MDRV_GFXDECODE(gfxdecodeinfo)
+		MDRV_PALETTE_LENGTH(768)
+	
+		MDRV_VIDEO_START(ninjakd2)
+		MDRV_VIDEO_UPDATE(ninjakd2)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(YM2203, ym2203_interface)
+	MACHINE_DRIVER_END
+	
+	
+	static MACHINE_DRIVER_START( ninjak2a )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(Z80, 6000000)		/* 12000000/2 ??? */
+		MDRV_CPU_MEMORY(readmem,writemem)	/* very sensitive to these settings */
+		MDRV_CPU_VBLANK_INT(ninjakd2_interrupt,1)
+	
+		MDRV_CPU_ADD(Z80, 4000000)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)		/* 12000000/3 ??? */
+		MDRV_CPU_MEMORY(snd_readmem,snd_writemem)
+		MDRV_CPU_PORTS(0,snd_writeport)
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(10000)
+		MDRV_INTERLEAVE(10)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(32*8, 32*8)
+		MDRV_VISIBLE_AREA(0*8, 32*8-1, 4*8, 28*8-1)
+		MDRV_GFXDECODE(gfxdecodeinfo)
+		MDRV_PALETTE_LENGTH(768)
+	
+		MDRV_VIDEO_START(ninjakd2)
+		MDRV_VIDEO_UPDATE(ninjakd2)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(YM2203, ym2203_interface)
+		MDRV_SOUND_ADD(SAMPLES, samples_interface)
+		MDRV_SOUND_ADD(CUSTOM, custom_interface)
+	MACHINE_DRIVER_END
+	
+	
+	
+	static RomLoadPtr rom_ninjakd2 = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x30000, REGION_CPU1, 0 );
+		ROM_LOAD( "nk2_01.rom",   0x00000, 0x8000, 0x3cdbb906 );
+		ROM_LOAD( "nk2_02.rom",   0x10000, 0x8000, 0xb5ce9a1a );
+		ROM_LOAD( "nk2_03.rom",   0x18000, 0x8000, 0xad275654 );
+		ROM_LOAD( "nk2_04.rom",   0x20000, 0x8000, 0xe7692a77 );
+		ROM_LOAD( "nk2_05.rom",   0x28000, 0x8000, 0x5dac9426 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );
+		ROM_LOAD( "nk2_06.rom",   0x0000, 0x10000, 0xd3a18a79 ); // sound z80 code encrypted
+	
+		ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_11.rom",   0x00000, 0x4000, 0x41a714b3 );/* background tiles */
+		ROM_CONTINUE(             0x10000, 0x4000);
+		ROM_CONTINUE(             0x04000, 0x4000);
+		ROM_CONTINUE(             0x14000, 0x4000);
+		ROM_LOAD( "nk2_10.rom",   0x08000, 0x4000, 0xc913c4ab );
+		ROM_CONTINUE(             0x18000, 0x4000);
+		ROM_CONTINUE(             0x0c000, 0x4000);
+		ROM_CONTINUE(             0x1c000, 0x4000);
+	
+		ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_08.rom",   0x00000, 0x4000, 0x1b79c50a );/* sprites tiles */
+		ROM_CONTINUE(             0x10000, 0x4000);
+		ROM_CONTINUE(             0x04000, 0x4000);
+		ROM_CONTINUE(             0x14000, 0x4000);
+		ROM_LOAD( "nk2_07.rom",   0x08000, 0x4000, 0x0be5cd13 );
+		ROM_CONTINUE(             0x18000, 0x4000);
+		ROM_CONTINUE(             0x0c000, 0x4000);
+		ROM_CONTINUE(             0x1c000, 0x4000);
+	
+		ROM_REGION( 0x08000, REGION_GFX3, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_12.rom",   0x00000, 0x02000, 0xdb5657a9 );/* foreground tiles */
+		ROM_CONTINUE(             0x04000, 0x02000);
+		ROM_CONTINUE(             0x02000, 0x02000);
+		ROM_CONTINUE(             0x06000, 0x02000);
+	
+		ROM_REGION( 0x10000, REGION_SOUND1, 0 );
+		ROM_LOAD( "nk2_09.rom",   0x0000, 0x10000, 0xc1d2d170 );/* raw pcm samples */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_ninjak2a = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x30000, REGION_CPU1, 0 );
+		ROM_LOAD( "nk2_01.bin",   0x00000, 0x8000, 0xe6adca65 );
+		ROM_LOAD( "nk2_02.bin",   0x10000, 0x8000, 0xd9284bd1 );
+		ROM_LOAD( "nk2_03.rom",   0x18000, 0x8000, 0xad275654 );
+		ROM_LOAD( "nk2_04.rom",   0x20000, 0x8000, 0xe7692a77 );
+		ROM_LOAD( "nk2_05.bin",   0x28000, 0x8000, 0x960725fb );
+	
+		ROM_REGION( 2*0x10000, REGION_CPU2, 0 );/* 64k for code + 64k for decrypted opcodes */
+		ROM_LOAD( "nk2_06.bin",   0x10000, 0x8000, 0x7bfe6c9e );/* decrypted opcodes */
+		ROM_CONTINUE(             0x00000, 0x8000 );			/* decrypted data */
+	
+		ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_11.rom",   0x00000, 0x4000, 0x41a714b3 );/* background tiles */
+		ROM_CONTINUE(             0x10000, 0x4000);
+		ROM_CONTINUE(             0x04000, 0x4000);
+		ROM_CONTINUE(             0x14000, 0x4000);
+		ROM_LOAD( "nk2_10.rom",   0x08000, 0x4000, 0xc913c4ab );
+		ROM_CONTINUE(             0x18000, 0x4000);
+		ROM_CONTINUE(             0x0c000, 0x4000);
+		ROM_CONTINUE(             0x1c000, 0x4000);
+	
+		ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_08.rom",   0x00000, 0x4000, 0x1b79c50a );/* sprites tiles */
+		ROM_CONTINUE(             0x10000, 0x4000);
+		ROM_CONTINUE(             0x04000, 0x4000);
+		ROM_CONTINUE(             0x14000, 0x4000);
+		ROM_LOAD( "nk2_07.rom",   0x08000, 0x4000, 0x0be5cd13 );
+		ROM_CONTINUE(             0x18000, 0x4000);
+		ROM_CONTINUE(             0x0c000, 0x4000);
+		ROM_CONTINUE(             0x1c000, 0x4000);
+	
+		ROM_REGION( 0x08000, REGION_GFX3, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_12.rom",   0x00000, 0x02000, 0xdb5657a9 );/* foreground tiles */
+		ROM_CONTINUE(             0x04000, 0x02000);
+		ROM_CONTINUE(             0x02000, 0x02000);
+		ROM_CONTINUE(             0x06000, 0x02000);
+	
+		ROM_REGION( 0x10000, REGION_SOUND1, 0 );
+		ROM_LOAD( "nk2_09.rom",   0x0000, 0x10000, 0xc1d2d170 );/* raw pcm samples */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_ninjak2b = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x30000, REGION_CPU1, 0 );
+		ROM_LOAD( "1.3s",         0x00000, 0x8000, 0xcb4f4624 );
+		ROM_LOAD( "2.3q",         0x10000, 0x8000, 0x0ad0c100 );
+		ROM_LOAD( "nk2_03.rom",   0x18000, 0x8000, 0xad275654 );
+		ROM_LOAD( "nk2_04.rom",   0x20000, 0x8000, 0xe7692a77 );
+		ROM_LOAD( "nk2_05.rom",   0x28000, 0x8000, 0x5dac9426 );
+	
+		ROM_REGION( 2*0x10000, REGION_CPU2, 0 );/* 64k for code + 64k for decrypted opcodes */
+		ROM_LOAD( "nk2_06.bin",   0x10000, 0x8000, 0x7bfe6c9e );/* decrypted opcodes */
+		ROM_CONTINUE(             0x00000, 0x8000 );			/* decrypted data */
+	
+		ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_11.rom",   0x00000, 0x4000, 0x41a714b3 );/* background tiles */
+		ROM_CONTINUE(             0x10000, 0x4000);
+		ROM_CONTINUE(             0x04000, 0x4000);
+		ROM_CONTINUE(             0x14000, 0x4000);
+		ROM_LOAD( "nk2_10.rom",   0x08000, 0x4000, 0xc913c4ab );
+		ROM_CONTINUE(             0x18000, 0x4000);
+		ROM_CONTINUE(             0x0c000, 0x4000);
+		ROM_CONTINUE(             0x1c000, 0x4000);
+	
+		ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_08.rom",   0x00000, 0x4000, 0x1b79c50a );/* sprites tiles */
+		ROM_CONTINUE(             0x10000, 0x4000);
+		ROM_CONTINUE(             0x04000, 0x4000);
+		ROM_CONTINUE(             0x14000, 0x4000);
+		ROM_LOAD( "nk2_07.rom",   0x08000, 0x4000, 0x0be5cd13 );
+		ROM_CONTINUE(             0x18000, 0x4000);
+		ROM_CONTINUE(             0x0c000, 0x4000);
+		ROM_CONTINUE(             0x1c000, 0x4000);
+	
+		ROM_REGION( 0x08000, REGION_GFX3, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_12.rom",   0x00000, 0x02000, 0xdb5657a9 );/* foreground tiles */
+		ROM_CONTINUE(             0x04000, 0x02000);
+		ROM_CONTINUE(             0x02000, 0x02000);
+		ROM_CONTINUE(             0x06000, 0x02000);
+	
+		ROM_REGION( 0x10000, REGION_SOUND1, 0 );
+		ROM_LOAD( "nk2_09.rom",   0x0000, 0x10000, 0xc1d2d170 );/* raw pcm samples */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_rdaction = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x30000, REGION_CPU1, 0 );
+		ROM_LOAD( "1.3u",  	      0x00000, 0x8000, 0x5c475611 );
+		ROM_LOAD( "2.3s",         0x10000, 0x8000, 0xa1e23bd2 );
+		ROM_LOAD( "nk2_03.rom",   0x18000, 0x8000, 0xad275654 );
+		ROM_LOAD( "nk2_04.rom",   0x20000, 0x8000, 0xe7692a77 );
+		ROM_LOAD( "nk2_05.bin",   0x28000, 0x8000, 0x960725fb );
+	
+		ROM_REGION( 2*0x10000, REGION_CPU2, 0 );/* 64k for code + 64k for decrypted opcodes */
+		ROM_LOAD( "nk2_06.bin",   0x10000, 0x8000, 0x7bfe6c9e );/* decrypted opcodes */
+		ROM_CONTINUE(             0x00000, 0x8000 );			/* decrypted data */
+	
+		ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_11.rom",   0x00000, 0x4000, 0x41a714b3 );/* background tiles */
+		ROM_CONTINUE(             0x10000, 0x4000);
+		ROM_CONTINUE(             0x04000, 0x4000);
+		ROM_CONTINUE(             0x14000, 0x4000);
+		ROM_LOAD( "nk2_10.rom",   0x08000, 0x4000, 0xc913c4ab );
+		ROM_CONTINUE(             0x18000, 0x4000);
+		ROM_CONTINUE(             0x0c000, 0x4000);
+		ROM_CONTINUE(             0x1c000, 0x4000);
+	
+		ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE );
+		ROM_LOAD( "nk2_08.rom",   0x00000, 0x4000, 0x1b79c50a );/* sprites tiles */
+		ROM_CONTINUE(             0x10000, 0x4000);
+		ROM_CONTINUE(             0x04000, 0x4000);
+		ROM_CONTINUE(             0x14000, 0x4000);
+		ROM_LOAD( "nk2_07.rom",   0x08000, 0x4000, 0x0be5cd13 );
+		ROM_CONTINUE(             0x18000, 0x4000);
+		ROM_CONTINUE(             0x0c000, 0x4000);
+		ROM_CONTINUE(             0x1c000, 0x4000);
+	
+		ROM_REGION( 0x08000, REGION_GFX3, ROMREGION_DISPOSE );
+		ROM_LOAD( "12.5n",        0x00000, 0x02000, 0x0936b365 );/* foreground tiles */
+		ROM_CONTINUE(             0x04000, 0x02000);
+		ROM_CONTINUE(             0x02000, 0x02000);
+		ROM_CONTINUE(             0x06000, 0x02000);
+	
+		ROM_REGION( 0x10000, REGION_SOUND1, 0 );
+		ROM_LOAD( "nk2_09.rom",   0x0000, 0x10000, 0xc1d2d170 );/* raw pcm samples */
+	ROM_END(); }}; 
+	
+	
+	
+	DRIVER_INIT( ninjak2a )
+	{
+		unsigned char *rom = memory_region(REGION_CPU2);
+		int diff = memory_region_length(REGION_CPU2) / 2;
+	
+		memory_set_opcode_base(1,rom+diff);
+	}
+	
+	
+	
+	public static GameDriver driver_ninjakd2	   = new GameDriver("1987"	,"ninjakd2"	,"ninjakd2.java"	,rom_ninjakd2,null	,machine_driver_ninjakd2	,input_ports_ninjakd2	,null	,ROT0	,	"UPL", "Ninja-Kid II (set 1)", GAME_NO_SOUND )	/* sound program is encrypted */
+	public static GameDriver driver_ninjak2a	   = new GameDriver("1987"	,"ninjak2a"	,"ninjakd2.java"	,rom_ninjak2a,driver_ninjakd2	,machine_driver_ninjak2a	,input_ports_ninjakd2	,init_ninjak2a	,ROT0	,	"UPL", "Ninja-Kid II (set 2)" )
+	public static GameDriver driver_ninjak2b	   = new GameDriver("1987"	,"ninjak2b"	,"ninjakd2.java"	,rom_ninjak2b,driver_ninjakd2	,machine_driver_ninjak2a	,input_ports_ninjakd2	,init_ninjak2a	,ROT0	,	"UPL", "Ninja-Kid II (set 3)" )
+	public static GameDriver driver_rdaction	   = new GameDriver("1987"	,"rdaction"	,"ninjakd2.java"	,rom_rdaction,driver_ninjakd2	,machine_driver_ninjak2a	,input_ports_ninjakd2	,init_ninjak2a	,ROT0	,	"UPL (World Games license)", "Rad Action" )
 }
-
-WRITE_HANDLER( ninjakd2_pcm_play_w )
-{
-	int i;
-	int sample_no[9] = { 0x00,0x0A,0x27,0x3E,0x53,0x5E,0x68,0x76,0xF0 };
-
-	for(i=0;i<9;i++)
-	 if (sample_no[i]==data) break;
-
-	if (i==8)
-		sample_stop(0);
-	else
-		sample_start(0,i,0);
-}
-
-static MEMORY_READ_START( readmem )
-	{ 0x0000, 0x7fff, MRA_ROM },
-	{ 0x8000, 0xbfff, MRA_BANK1 },
-	{ 0xc000, 0xc000, input_port_2_r },
-	{ 0xc001, 0xc001, input_port_0_r },
-	{ 0xc002, 0xc002, input_port_1_r },
-	{ 0xc003, 0xc003, input_port_3_r },
-	{ 0xc004, 0xc004, input_port_4_r },
-	{ 0xc200, 0xc200, MRA_RAM },
-	{ 0xc201, 0xc201, MRA_RAM },		// unknown but used
-	{ 0xc202, 0xc202, ninjakd2_bankselect_r },
-	{ 0xc203, 0xc203, MRA_RAM },
-	{ 0xc208, 0xc209, MRA_RAM },
-	{ 0xc20a, 0xc20b, MRA_RAM },
-	{ 0xc20c, 0xc20c, MRA_RAM },
-	{ 0xc800, 0xffff, MRA_RAM },
-MEMORY_END
-
-
-static MEMORY_WRITE_START( writemem )
-	{ 0x0000, 0xbfff, MWA_ROM },
-	{ 0xc200, 0xc200, soundlatch_w },
-	{ 0xc201, 0xc201, MWA_RAM },		// unknown but used
-	{ 0xc202, 0xc202, ninjakd2_bankselect_w },
-	{ 0xc203, 0xc203, ninjakd2_sprite_overdraw_w, &ninjakd2_spoverdraw_ram },
-	{ 0xc208, 0xc209, MWA_RAM, &ninjakd2_scrollx_ram },
-	{ 0xc20a, 0xc20b, MWA_RAM, &ninjakd2_scrolly_ram },
-	{ 0xc20c, 0xc20c, ninjakd2_background_enable_w, &ninjakd2_bgenable_ram },
-	{ 0xc800, 0xcdff, paletteram_RRRRGGGGBBBBxxxx_swap_w, &paletteram },
-	{ 0xd000, 0xd7ff, ninjakd2_fgvideoram_w, &ninjakd2_foreground_videoram, &ninjakd2_foregroundram_size },
-	{ 0xd800, 0xdfff, ninjakd2_bgvideoram_w, &ninjakd2_background_videoram, &ninjakd2_backgroundram_size },
-	{ 0xe000, 0xf9ff, MWA_RAM },
-	{ 0xfa00, 0xffff, MWA_RAM, &spriteram, &spriteram_size },
-MEMORY_END
-
-
-static MEMORY_READ_START( snd_readmem )
-	{ 0x0000, 0xbfff, MRA_ROM },
-	{ 0xc000, 0xc7ff, MRA_RAM },
-	{ 0xe000, 0xe000, soundlatch_r },
-	{ 0xefee, 0xefee, MRA_NOP },
-MEMORY_END
-
-
-static MEMORY_WRITE_START( snd_writemem )
-	{ 0x0000, 0xbfff, MWA_ROM },
-	{ 0xc000, 0xc7ff, MWA_RAM },
-	{ 0xf000, 0xf000, ninjakd2_pcm_play_w },	/* PCM SAMPLE OFFSET*256 */
-	{ 0xeff5, 0xeff6, MWA_NOP },			/* SAMPLE FREQUENCY ??? */
-	{ 0xefee, 0xefee, MWA_NOP },			/* CHIP COMMAND ?? */
-MEMORY_END
-
-static PORT_WRITE_START( snd_writeport )
-	{ 0x0000, 0x0000, YM2203_control_port_0_w },
-	{ 0x0001, 0x0001, YM2203_write_port_0_w },
-	{ 0x0080, 0x0080, YM2203_control_port_1_w },
-	{ 0x0081, 0x0081, YM2203_write_port_1_w },
-PORT_END
-
-
-
-INPUT_PORTS_START( ninjakd2 )
-    PORT_START
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
-    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
-    PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
-    PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
-    PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-    PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
-    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-    PORT_START    /* player 2 controls */
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_COCKTAIL )
-    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_COCKTAIL )
-    PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_COCKTAIL )
-    PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_COCKTAIL )
-    PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
-    PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL )
-    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-    PORT_START
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
-    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
-    PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-    PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
-    PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE )	/* keep pressed during boot to enter service mode */
-    PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
-    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
-
-    PORT_START  /* dsw0 */
-    PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-    PORT_DIPNAME( 0x06, 0x06, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x04, "20000 50000" )
-    PORT_DIPSETTING(    0x06, "30000 50000" )
-    PORT_DIPSETTING(    0x02, "50000 100000" )
-    PORT_DIPSETTING(    0x00, "None" )
-    PORT_DIPNAME( 0x08, 0x08, "Allow Continue" )
-    PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-    PORT_DIPSETTING(    0x08, DEF_STR( Yes )  )
-    PORT_DIPNAME( 0x10, 0x00, DEF_STR( Demo_Sounds ) )
-    PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( On )  )
-    PORT_DIPNAME( 0x20, 0x20, DEF_STR( Difficulty ) )
-    PORT_DIPSETTING(    0x20, "Normal" )
-    PORT_DIPSETTING(    0x00, "Hard" )
-    PORT_DIPNAME( 0x40, 0x40, DEF_STR( Lives ) )
-    PORT_DIPSETTING(    0x40, "3" )
-    PORT_DIPSETTING(    0x00, "4" )
-    PORT_DIPNAME( 0x80, 0x00, "Language" )
-    PORT_DIPSETTING(    0x00, "English" )
-    PORT_DIPSETTING(    0x80, "Japanese" )
-
-    PORT_START  /* dsw1 */
-	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
-    PORT_DIPNAME( 0x02, 0x00, DEF_STR( Cabinet ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-    PORT_DIPSETTING(    0x02, DEF_STR( Cocktail ) )
-    PORT_DIPNAME( 0x04, 0x00, "Credit Service" )
-    PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-    PORT_DIPSETTING(    0x04, DEF_STR( On ) )
-    PORT_DIPNAME( 0x18, 0x18, DEF_STR( Coin_B ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
-    PORT_DIPSETTING(    0x18, DEF_STR( 1C_1C ) )
-    PORT_DIPSETTING(    0x10, DEF_STR( 1C_2C ) )
-    PORT_DIPSETTING(    0x08, DEF_STR( 1C_3C ) )
-    PORT_DIPNAME( 0xe0, 0xe0, DEF_STR( Coin_A ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( 5C_1C ) )
-    PORT_DIPSETTING(    0x20, DEF_STR( 4C_1C ) )
-    PORT_DIPSETTING(    0x40, DEF_STR( 3C_1C ) )
-    PORT_DIPSETTING(    0x60, DEF_STR( 2C_1C ) )
-    PORT_DIPSETTING(    0xe0, DEF_STR( 1C_1C ) )
-    PORT_DIPSETTING(    0xc0, DEF_STR( 1C_2C ) )
-    PORT_DIPSETTING(    0xa0, DEF_STR( 1C_3C ) )
-    PORT_DIPSETTING(    0x80, DEF_STR( 1C_4C ) )
-INPUT_PORTS_END
-
-
-
-static struct GfxLayout charlayout =
-{
-	8,8,     /* 8*8 characters */
-	1024,    /* 1024 characters */
-	4,       /* 4 bits per pixel */
-	{0,1,2,3 }, /* the bitplanes are packed in one nibble */
-	{0, 4, 16384*8+0, 16384*8+4, 8, 12, 16384*8+8, 16384*8+12 },
-	{16*0, 16*1, 16*2, 16*3, 16*4, 16*5, 16*6, 16*7 },
-	8*16
-};
-
-static struct GfxLayout spritelayout =
-{
-	16,16,   /* 16*16 characters */
-	1024,    /* 1024 sprites */
-	4,       /* 4 bits per pixel */
-	{0,1,2,3}, /* the bitplanes are packed in one nibble */
-	{0,  4,  65536*8+0,  65536*8+4,  8, 12,  65536*8+8, 65536*8+12,
-		16*8+0, 16*8+4, 16*8+65536*8+0, 16*8+65536*8+4, 16*8+8, 16*8+12, 16*8+65536*8+8, 16*8+65536*8+12},
-	{16*0, 16*1, 16*2, 16*3, 16*4, 16*5, 16*6, 16*7,
-		32*8+16*0, 32*8+16*1, 32*8+16*2, 32*8+16*3, 32*8+16*4, 32*8+16*5, 32*8+16*6, 32*8+16*7},
-	8*64
-};
-
-static struct GfxDecodeInfo gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &spritelayout,  0*16, 16 },
-	{ REGION_GFX2, 0, &spritelayout, 16*16, 16 },
-	{ REGION_GFX3, 0, &charlayout,   32*16, 16 },
-	{ -1 } /* end of array */
-};
-
-static struct Samplesinterface samples_interface =
-{
-	1,	/* 1 channel */
-	25	/* volume */
-};
-
-static struct CustomSound_interface custom_interface =
-{
-	ninjakd2_init_samples,
-	0,
-	0
-};
-
-/* handler called by the 2203 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
-{
-	cpu_set_irq_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
-}
-
-static struct YM2203interface ym2203_interface =
-{
-	2, 	 /* 2 chips */
-	1500000, /* 12000000/8 MHz */
-	{ YM2203_VOL(25,25), YM2203_VOL(25,25) },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ irqhandler }
-};
-
-
-static MACHINE_DRIVER_START( ninjakd2 )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 6000000)		/* 12000000/2 ??? */
-	MDRV_CPU_MEMORY(readmem,writemem)	/* very sensitive to these settings */
-	MDRV_CPU_VBLANK_INT(ninjakd2_interrupt,1)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(10000)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 4*8, 28*8-1)
-	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(768)
-
-	MDRV_VIDEO_START(ninjakd2)
-	MDRV_VIDEO_UPDATE(ninjakd2)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(YM2203, ym2203_interface)
-MACHINE_DRIVER_END
-
-
-static MACHINE_DRIVER_START( ninjak2a )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 6000000)		/* 12000000/2 ??? */
-	MDRV_CPU_MEMORY(readmem,writemem)	/* very sensitive to these settings */
-	MDRV_CPU_VBLANK_INT(ninjakd2_interrupt,1)
-
-	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)		/* 12000000/3 ??? */
-	MDRV_CPU_MEMORY(snd_readmem,snd_writemem)
-	MDRV_CPU_PORTS(0,snd_writeport)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(10000)
-	MDRV_INTERLEAVE(10)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 4*8, 28*8-1)
-	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(768)
-
-	MDRV_VIDEO_START(ninjakd2)
-	MDRV_VIDEO_UPDATE(ninjakd2)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(YM2203, ym2203_interface)
-	MDRV_SOUND_ADD(SAMPLES, samples_interface)
-	MDRV_SOUND_ADD(CUSTOM, custom_interface)
-MACHINE_DRIVER_END
-
-
-
-ROM_START( ninjakd2 )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
-	ROM_LOAD( "nk2_01.rom",   0x00000, 0x8000, 0x3cdbb906 )
-	ROM_LOAD( "nk2_02.rom",   0x10000, 0x8000, 0xb5ce9a1a )
-	ROM_LOAD( "nk2_03.rom",   0x18000, 0x8000, 0xad275654 )
-	ROM_LOAD( "nk2_04.rom",   0x20000, 0x8000, 0xe7692a77 )
-	ROM_LOAD( "nk2_05.rom",   0x28000, 0x8000, 0x5dac9426 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "nk2_06.rom",   0x0000, 0x10000, 0xd3a18a79 )  // sound z80 code encrypted
-
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_11.rom",   0x00000, 0x4000, 0x41a714b3 )	/* background tiles */
-	ROM_CONTINUE(             0x10000, 0x4000)
-	ROM_CONTINUE(             0x04000, 0x4000)
-	ROM_CONTINUE(             0x14000, 0x4000)
-	ROM_LOAD( "nk2_10.rom",   0x08000, 0x4000, 0xc913c4ab )
-	ROM_CONTINUE(             0x18000, 0x4000)
-	ROM_CONTINUE(             0x0c000, 0x4000)
-	ROM_CONTINUE(             0x1c000, 0x4000)
-
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_08.rom",   0x00000, 0x4000, 0x1b79c50a )	/* sprites tiles */
-	ROM_CONTINUE(             0x10000, 0x4000)
-	ROM_CONTINUE(             0x04000, 0x4000)
-	ROM_CONTINUE(             0x14000, 0x4000)
-	ROM_LOAD( "nk2_07.rom",   0x08000, 0x4000, 0x0be5cd13 )
-	ROM_CONTINUE(             0x18000, 0x4000)
-	ROM_CONTINUE(             0x0c000, 0x4000)
-	ROM_CONTINUE(             0x1c000, 0x4000)
-
-	ROM_REGION( 0x08000, REGION_GFX3, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_12.rom",   0x00000, 0x02000, 0xdb5657a9 )	/* foreground tiles */
-	ROM_CONTINUE(             0x04000, 0x02000)
-	ROM_CONTINUE(             0x02000, 0x02000)
-	ROM_CONTINUE(             0x06000, 0x02000)
-
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 )
-	ROM_LOAD( "nk2_09.rom",   0x0000, 0x10000, 0xc1d2d170 )	/* raw pcm samples */
-ROM_END
-
-ROM_START( ninjak2a )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
-	ROM_LOAD( "nk2_01.bin",   0x00000, 0x8000, 0xe6adca65 )
-	ROM_LOAD( "nk2_02.bin",   0x10000, 0x8000, 0xd9284bd1 )
-	ROM_LOAD( "nk2_03.rom",   0x18000, 0x8000, 0xad275654 )
-	ROM_LOAD( "nk2_04.rom",   0x20000, 0x8000, 0xe7692a77 )
-	ROM_LOAD( "nk2_05.bin",   0x28000, 0x8000, 0x960725fb )
-
-	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64k for code + 64k for decrypted opcodes */
-	ROM_LOAD( "nk2_06.bin",   0x10000, 0x8000, 0x7bfe6c9e )	/* decrypted opcodes */
-	ROM_CONTINUE(             0x00000, 0x8000 )				/* decrypted data */
-
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_11.rom",   0x00000, 0x4000, 0x41a714b3 )	/* background tiles */
-	ROM_CONTINUE(             0x10000, 0x4000)
-	ROM_CONTINUE(             0x04000, 0x4000)
-	ROM_CONTINUE(             0x14000, 0x4000)
-	ROM_LOAD( "nk2_10.rom",   0x08000, 0x4000, 0xc913c4ab )
-	ROM_CONTINUE(             0x18000, 0x4000)
-	ROM_CONTINUE(             0x0c000, 0x4000)
-	ROM_CONTINUE(             0x1c000, 0x4000)
-
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_08.rom",   0x00000, 0x4000, 0x1b79c50a )	/* sprites tiles */
-	ROM_CONTINUE(             0x10000, 0x4000)
-	ROM_CONTINUE(             0x04000, 0x4000)
-	ROM_CONTINUE(             0x14000, 0x4000)
-	ROM_LOAD( "nk2_07.rom",   0x08000, 0x4000, 0x0be5cd13 )
-	ROM_CONTINUE(             0x18000, 0x4000)
-	ROM_CONTINUE(             0x0c000, 0x4000)
-	ROM_CONTINUE(             0x1c000, 0x4000)
-
-	ROM_REGION( 0x08000, REGION_GFX3, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_12.rom",   0x00000, 0x02000, 0xdb5657a9 )	/* foreground tiles */
-	ROM_CONTINUE(             0x04000, 0x02000)
-	ROM_CONTINUE(             0x02000, 0x02000)
-	ROM_CONTINUE(             0x06000, 0x02000)
-
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 )
-	ROM_LOAD( "nk2_09.rom",   0x0000, 0x10000, 0xc1d2d170 )	/* raw pcm samples */
-ROM_END
-
-ROM_START( ninjak2b )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
-	ROM_LOAD( "1.3s",         0x00000, 0x8000, 0xcb4f4624 )
-	ROM_LOAD( "2.3q",         0x10000, 0x8000, 0x0ad0c100 )
-	ROM_LOAD( "nk2_03.rom",   0x18000, 0x8000, 0xad275654 )
-	ROM_LOAD( "nk2_04.rom",   0x20000, 0x8000, 0xe7692a77 )
-	ROM_LOAD( "nk2_05.rom",   0x28000, 0x8000, 0x5dac9426 )
-
-	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64k for code + 64k for decrypted opcodes */
-	ROM_LOAD( "nk2_06.bin",   0x10000, 0x8000, 0x7bfe6c9e )	/* decrypted opcodes */
-	ROM_CONTINUE(             0x00000, 0x8000 )				/* decrypted data */
-
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_11.rom",   0x00000, 0x4000, 0x41a714b3 )	/* background tiles */
-	ROM_CONTINUE(             0x10000, 0x4000)
-	ROM_CONTINUE(             0x04000, 0x4000)
-	ROM_CONTINUE(             0x14000, 0x4000)
-	ROM_LOAD( "nk2_10.rom",   0x08000, 0x4000, 0xc913c4ab )
-	ROM_CONTINUE(             0x18000, 0x4000)
-	ROM_CONTINUE(             0x0c000, 0x4000)
-	ROM_CONTINUE(             0x1c000, 0x4000)
-
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_08.rom",   0x00000, 0x4000, 0x1b79c50a )	/* sprites tiles */
-	ROM_CONTINUE(             0x10000, 0x4000)
-	ROM_CONTINUE(             0x04000, 0x4000)
-	ROM_CONTINUE(             0x14000, 0x4000)
-	ROM_LOAD( "nk2_07.rom",   0x08000, 0x4000, 0x0be5cd13 )
-	ROM_CONTINUE(             0x18000, 0x4000)
-	ROM_CONTINUE(             0x0c000, 0x4000)
-	ROM_CONTINUE(             0x1c000, 0x4000)
-
-	ROM_REGION( 0x08000, REGION_GFX3, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_12.rom",   0x00000, 0x02000, 0xdb5657a9 )	/* foreground tiles */
-	ROM_CONTINUE(             0x04000, 0x02000)
-	ROM_CONTINUE(             0x02000, 0x02000)
-	ROM_CONTINUE(             0x06000, 0x02000)
-
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 )
-	ROM_LOAD( "nk2_09.rom",   0x0000, 0x10000, 0xc1d2d170 )	/* raw pcm samples */
-ROM_END
-
-ROM_START( rdaction )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
-	ROM_LOAD( "1.3u",  	      0x00000, 0x8000, 0x5c475611 )
-	ROM_LOAD( "2.3s",         0x10000, 0x8000, 0xa1e23bd2 )
-	ROM_LOAD( "nk2_03.rom",   0x18000, 0x8000, 0xad275654 )
-	ROM_LOAD( "nk2_04.rom",   0x20000, 0x8000, 0xe7692a77 )
-	ROM_LOAD( "nk2_05.bin",   0x28000, 0x8000, 0x960725fb )
-
-	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64k for code + 64k for decrypted opcodes */
-	ROM_LOAD( "nk2_06.bin",   0x10000, 0x8000, 0x7bfe6c9e )	/* decrypted opcodes */
-	ROM_CONTINUE(             0x00000, 0x8000 )				/* decrypted data */
-
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_11.rom",   0x00000, 0x4000, 0x41a714b3 )	/* background tiles */
-	ROM_CONTINUE(             0x10000, 0x4000)
-	ROM_CONTINUE(             0x04000, 0x4000)
-	ROM_CONTINUE(             0x14000, 0x4000)
-	ROM_LOAD( "nk2_10.rom",   0x08000, 0x4000, 0xc913c4ab )
-	ROM_CONTINUE(             0x18000, 0x4000)
-	ROM_CONTINUE(             0x0c000, 0x4000)
-	ROM_CONTINUE(             0x1c000, 0x4000)
-
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "nk2_08.rom",   0x00000, 0x4000, 0x1b79c50a )	/* sprites tiles */
-	ROM_CONTINUE(             0x10000, 0x4000)
-	ROM_CONTINUE(             0x04000, 0x4000)
-	ROM_CONTINUE(             0x14000, 0x4000)
-	ROM_LOAD( "nk2_07.rom",   0x08000, 0x4000, 0x0be5cd13 )
-	ROM_CONTINUE(             0x18000, 0x4000)
-	ROM_CONTINUE(             0x0c000, 0x4000)
-	ROM_CONTINUE(             0x1c000, 0x4000)
-
-	ROM_REGION( 0x08000, REGION_GFX3, ROMREGION_DISPOSE )
-	ROM_LOAD( "12.5n",        0x00000, 0x02000, 0x0936b365 )	/* foreground tiles */
-	ROM_CONTINUE(             0x04000, 0x02000)
-	ROM_CONTINUE(             0x02000, 0x02000)
-	ROM_CONTINUE(             0x06000, 0x02000)
-
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 )
-	ROM_LOAD( "nk2_09.rom",   0x0000, 0x10000, 0xc1d2d170 )	/* raw pcm samples */
-ROM_END
-
-
-
-DRIVER_INIT( ninjak2a )
-{
-	unsigned char *rom = memory_region(REGION_CPU2);
-	int diff = memory_region_length(REGION_CPU2) / 2;
-
-	memory_set_opcode_base(1,rom+diff);
-}
-
-
-
-GAMEX(1987, ninjakd2, 0,        ninjakd2, ninjakd2, 0,        ROT0, "UPL", "Ninja-Kid II (set 1)", GAME_NO_SOUND )	/* sound program is encrypted */
-GAME( 1987, ninjak2a, ninjakd2, ninjak2a, ninjakd2, ninjak2a, ROT0, "UPL", "Ninja-Kid II (set 2)" )
-GAME( 1987, ninjak2b, ninjakd2, ninjak2a, ninjakd2, ninjak2a, ROT0, "UPL", "Ninja-Kid II (set 3)" )
-GAME( 1987, rdaction, ninjakd2, ninjak2a, ninjakd2, ninjak2a, ROT0, "UPL (World Games license)", "Rad Action" )

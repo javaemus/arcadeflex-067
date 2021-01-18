@@ -19,19 +19,27 @@
 */
 #ifndef __MISC_H
 #define __MISC_H
-#include <stdio.h>
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package windows;
 
-/* clock stuff */
-typedef long uclock_t;
-uclock_t uclock(void);
-#define UCLOCKS_PER_SEC 1000000
-
-/* print colum stuff */
-void print_colums(const char *text1, const char *text2);
-void fprint_colums(FILE *f, const char *text1, const char *text2);
-
-int snprintf(char *s, size_t maxlen, const char *fmt, ...);
-
-
-
-#endif /* ifndef __MISC_H */
+public class miscH
+{
+	
+	/* clock stuff */
+	typedef long uclock_t;
+	uclock_t uclock(void);
+	#define UCLOCKS_PER_SEC 1000000
+	
+	/* print colum stuff */
+	void print_colums(const char *text1, const char *text2);
+	void fprint_colums(FILE *f, const char *text1, const char *text2);
+	
+	int snprintf(char *s, size_t maxlen, const char *fmt, ...);
+	
+	
+	
+	#endif /* ifndef __MISC_H */
+}

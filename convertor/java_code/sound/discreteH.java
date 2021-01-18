@@ -1198,9 +1198,6 @@ enum {
 /************************************************************************/
 
 int  discrete_sh_start (const struct MachineSound *msound);
-void discrete_sh_stop (void);
-void discrete_sh_reset (void);
-void discrete_sh_update (void);
 
 int  discrete_sh_adjuster_count(struct discrete_sound_block *dsintf);
 int  discrete_sh_adjuster_get(int arg,struct discrete_sh_adjuster *adjuster);

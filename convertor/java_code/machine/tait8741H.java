@@ -17,19 +17,10 @@ struct TAITO8741interface
 };
 
 int  TAITO8741_start(const struct TAITO8741interface *taito8741intf);
-void TAITO8741_stop(void);
 
 void TAITO8741_reset(int num);
 
 /* write handler */
-WRITE_HANDLER( TAITO8741_0_w );
-WRITE_HANDLER( TAITO8741_1_w );
-WRITE_HANDLER( TAITO8741_2_w );
-WRITE_HANDLER( TAITO8741_3_w );
 /* read handler */
-READ_HANDLER( TAITO8741_0_r );
-READ_HANDLER( TAITO8741_1_r );
-READ_HANDLER( TAITO8741_2_r );
-READ_HANDLER( TAITO8741_3_r );
 
 #endif

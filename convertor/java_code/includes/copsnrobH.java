@@ -6,7 +6,6 @@
 
 /*----------- defined in machine/copsnrob.c -----------*/
 
-READ_HANDLER( copsnrob_gun_position_r );
 
 
 /*----------- defined in vidhrdw/copsnrob.c -----------*/

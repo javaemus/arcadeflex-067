@@ -20,7 +20,6 @@ extern data32_t *deco32_pf1_rowscroll,*deco32_pf2_rowscroll,*deco32_pf3_rowscrol
 extern data32_t *dragngun_sprite_layout_0_ram, *dragngun_sprite_layout_1_ram;
 extern data32_t *dragngun_sprite_lookup_0_ram, *dragngun_sprite_lookup_1_ram;
 extern data16_t *deco32_raster_display_list;
-extern int deco32_raster_display_position;
 
 WRITE32_HANDLER( deco32_pf1_data_w );
 WRITE32_HANDLER( deco32_pf2_data_w );

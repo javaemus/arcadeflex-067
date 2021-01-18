@@ -38,7 +38,6 @@ typedef unsigned char (*OPL_PORTHANDLER_R)(int param);
 #if BUILD_YM3812
 
 int  YM3812Init(int num, int clock, int rate);
-void YM3812Shutdown(void);
 void YM3812ResetChip(int which);
 int  YM3812Write(int which, int a, int v);
 unsigned char YM3812Read(int which, int a);
@@ -63,7 +62,6 @@ void YM3812SetUpdateHandler(int which, OPL_UPDATEHANDLER UpdateHandler, int para
 */
 int  YM3526Init(int num, int clock, int rate);
 /* shutdown the YM3526 emulators*/
-void YM3526Shutdown(void);
 void YM3526ResetChip(int which);
 int  YM3526Write(int which, int a, int v);
 unsigned char YM3526Read(int which, int a);
@@ -86,26 +84,33 @@ void YM3526SetUpdateHandler(int which, OPL_UPDATEHANDLER UpdateHandler, int para
 
 #if BUILD_Y8950
 
-#include "ymdeltat.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package sound;
 
-/* Y8950 port handlers */
-void Y8950SetPortHandler(int which, OPL_PORTHANDLER_W PortHandler_w, OPL_PORTHANDLER_R PortHandler_r, int param);
-void Y8950SetKeyboardHandler(int which, OPL_PORTHANDLER_W KeyboardHandler_w, OPL_PORTHANDLER_R KeyboardHandler_r, int param);
-void Y8950SetDeltaTMemory(int which, void * deltat_rom, int deltat_rom_size );
-
-int  Y8950Init (int num, int clock, int rate);
-void Y8950Shutdown (void);
-void Y8950ResetChip (int which);
-int  Y8950Write (int which, int a, int v);
-unsigned char Y8950Read (int which, int a);
-int  Y8950TimerOver (int which, int c);
-void Y8950UpdateOne (int which, INT16 *buffer, int length);
-
-void Y8950SetTimerHandler (int which, OPL_TIMERHANDLER TimerHandler, int channelOffset);
-void Y8950SetIRQHandler (int which, OPL_IRQHANDLER IRQHandler, int param);
-void Y8950SetUpdateHandler (int which, OPL_UPDATEHANDLER UpdateHandler, int param);
-
-#endif
-
-
-#endif
+public class fmoplH
+{
+	
+	/* Y8950 port handlers */
+	void Y8950SetPortHandler(int which, OPL_PORTHANDLER_W PortHandler_w, OPL_PORTHANDLER_R PortHandler_r, int param);
+	void Y8950SetKeyboardHandler(int which, OPL_PORTHANDLER_W KeyboardHandler_w, OPL_PORTHANDLER_R KeyboardHandler_r, int param);
+	void Y8950SetDeltaTMemory(int which, void * deltat_rom, int deltat_rom_size );
+	
+	int  Y8950Init (int num, int clock, int rate);
+	void Y8950ResetChip (int which);
+	int  Y8950Write (int which, int a, int v);
+	unsigned char Y8950Read (int which, int a);
+	int  Y8950TimerOver (int which, int c);
+	void Y8950UpdateOne (int which, INT16 *buffer, int length);
+	
+	void Y8950SetTimerHandler (int which, OPL_TIMERHANDLER TimerHandler, int channelOffset);
+	void Y8950SetIRQHandler (int which, OPL_IRQHANDLER IRQHandler, int param);
+	void Y8950SetUpdateHandler (int which, OPL_UPDATEHANDLER UpdateHandler, int param);
+	
+	#endif
+	
+	
+	#endif
+}

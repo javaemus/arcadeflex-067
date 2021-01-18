@@ -31,23 +31,13 @@ extern const struct Memory_ReadAddress seibu3_sound_readmem[];
 extern const struct Memory_WriteAddress seibu3_sound_writemem[];
 
 READ16_HANDLER( seibu_main_word_r );
-READ_HANDLER( seibu_main_v30_r );
 WRITE16_HANDLER( seibu_main_word_w );
-WRITE_HANDLER( seibu_main_v30_w );
 
 WRITE16_HANDLER( seibu_main_mustb_w );
 
-WRITE_HANDLER( seibu_irq_clear_w );
-WRITE_HANDLER( seibu_rst10_ack_w );
-WRITE_HANDLER( seibu_rst18_ack_w );
-WRITE_HANDLER( seibu_bank_w );
-WRITE_HANDLER( seibu_coin_w );
 void seibu_ym3812_irqhandler(int linestate);
 void seibu_ym2151_irqhandler(int linestate);
 void seibu_ym2203_irqhandler(int linestate);
-READ_HANDLER( seibu_soundlatch_r );
-READ_HANDLER( seibu_main_data_pending_r );
-WRITE_HANDLER( seibu_main_data_w );
 MACHINE_INIT( seibu_sound_1 );
 MACHINE_INIT( seibu_sound_2 );
 void seibu_sound_decrypt(int cpu_region,int length);
@@ -55,9 +45,9 @@ void seibu_sound_decrypt(int cpu_region,int length);
 /**************************************************************************/
 
 #define SEIBU_COIN_INPUTS											\
-	PORT_START														\
-	PORT_BIT_IMPULSE( 0x01, IP_ACTIVE_HIGH, IPT_COIN1, 4 )			\
-	PORT_BIT_IMPULSE( 0x02, IP_ACTIVE_HIGH, IPT_COIN2, 4 )
+	PORT_START(); 														\
+	PORT_BIT_IMPULSE( 0x01, IP_ACTIVE_HIGH, IPT_COIN1, 4 );		\
+	PORT_BIT_IMPULSE( 0x02, IP_ACTIVE_HIGH, IPT_COIN2, 4 );
 
 #define SEIBU_SOUND_SYSTEM_YM3812_HARDWARE(freq1,freq2,region)		\
 																	\

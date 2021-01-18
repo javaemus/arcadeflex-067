@@ -7,18 +7,24 @@
 #ifndef __WIN32_DDRAW__
 #define __WIN32_DDRAW__
 
-#include "window.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package windows;
 
-
-//============================================================
-//	PROTOTYPES
-//============================================================
-
-int win_ddraw_init(int width, int height, int depth, int attributes, const struct win_effect_data *effect);
-void win_ddraw_kill(void);
-int win_ddraw_draw(struct mame_bitmap *bitmap, const struct rectangle *bounds, void *vector_dirty_pixels, int update);
-void win_ddraw_wait_vsync(void);
-
-
-
-#endif
+public class winddrawH
+{
+	
+	
+	//============================================================
+	//	PROTOTYPES
+	//============================================================
+	
+	int win_ddraw_init(int width, int height, int depth, int attributes, const struct win_effect_data *effect);
+	int win_ddraw_draw(struct mame_bitmap *bitmap, const struct rectangle *bounds, void *vector_dirty_pixels, int update);
+	
+	
+	
+	#endif
+}

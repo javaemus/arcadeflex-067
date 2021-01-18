@@ -6,8 +6,7 @@ extern "C" {
 #endif
 
 #ifdef RUNTIME_LOADER
-	extern void upd7810_runtime_loader_init(void);
-#endif
+	#endif
 
 /*
   all types have internal ram at 0xff00-0xffff
@@ -68,11 +67,8 @@ enum {
 #define UPD7810_INTF2		1
 #define UPD7810_INTFE1      4
 
-extern int upd7810_icount;						/* cycle count */
 
-void upd7810_init (void);				/* Initialize save states */
 void upd7810_reset (void *param);		/* Reset registers to the initial values */
-void upd7810_exit  (void);				/* Shut down CPU core */
 int	upd7810_execute(int cycles);		/* Execute cycles - returns number of cycles actually run */
 unsigned upd7810_get_context (void *dst);/* Get registers, return context size */
 void upd7810_set_context (void *src);	/* Set registers */

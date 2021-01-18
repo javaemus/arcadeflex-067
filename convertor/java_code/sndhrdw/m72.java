@@ -41,158 +41,166 @@ Shisensho II                            1993  Rev 3.34 M81  Yes
 
 ***************************************************************************/
 
-#include "driver.h"
-
-
 /*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package sndhrdw;
 
-  The sound CPU runs in interrup mode 0. IRQ is shared by two sources: the
-  YM2151 (bit 4 of the vector), and the main CPU (bit 5).
-  Since the vector can be changed from different contexts (the YM2151 timer
-  callback, the main CPU context, and the sound CPU context), it's important
-  to accurately arbitrate the changes to avoid out-of-order execution. We do
-  that by handling all vector changes in a single timer callback.
-
-*/
-
-
-enum
+public class m72
 {
-	VECTOR_INIT,
-	YM2151_ASSERT,
-	YM2151_CLEAR,
-	Z80_ASSERT,
-	Z80_CLEAR
-};
-
-static void setvector_callback(int param)
-{
-	static int irqvector;
-
-	switch(param)
+	
+	
+	/*
+	
+	  The sound CPU runs in interrup mode 0. IRQ is shared by two sources: the
+	  YM2151 (bit 4 of the vector), and the main CPU (bit 5).
+	  Since the vector can be changed from different contexts (the YM2151 timer
+	  callback, the main CPU context, and the sound CPU context), it's important
+	  to accurately arbitrate the changes to avoid out-of-order execution. We do
+	  that by handling all vector changes in a single timer callback.
+	
+	*/
+	
+	
+	enum
 	{
-		case VECTOR_INIT:
-			irqvector = 0xff;
-			break;
-
-		case YM2151_ASSERT:
-			irqvector &= 0xef;
-			break;
-
-		case YM2151_CLEAR:
-			irqvector |= 0x10;
-			break;
-
-		case Z80_ASSERT:
-			irqvector &= 0xdf;
-			break;
-
-		case Z80_CLEAR:
-			irqvector |= 0x20;
-			break;
-	}
-
-	if (irqvector == 0)
-		logerror("You didn't call m72_init_sound()\n");
-
-	cpu_irq_line_vector_w(1,0,irqvector);
-	if (irqvector == 0xff)	/* no IRQs pending */
-		cpu_set_irq_line(1,0,CLEAR_LINE);
-	else	/* IRQ pending */
-		cpu_set_irq_line(1,0,ASSERT_LINE);
-}
-
-MACHINE_INIT( m72_sound )
-{
-	setvector_callback(VECTOR_INIT);
-}
-
-void m72_ym2151_irq_handler(int irq)
-{
-	if (irq)
-		timer_set(TIME_NOW,YM2151_ASSERT,setvector_callback);
-	else
-		timer_set(TIME_NOW,YM2151_CLEAR,setvector_callback);
-}
-
-WRITE_HANDLER( m72_sound_command_w )
-{
-	if (offset == 0)
+		VECTOR_INIT,
+		YM2151_ASSERT,
+		YM2151_CLEAR,
+		Z80_ASSERT,
+		Z80_CLEAR
+	};
+	
+	static void setvector_callback(int param)
 	{
-		soundlatch_w(offset,data);
-		timer_set(TIME_NOW,Z80_ASSERT,setvector_callback);
+		static int irqvector;
+	
+		switch(param)
+		{
+			case VECTOR_INIT:
+				irqvector = 0xff;
+				break;
+	
+			case YM2151_ASSERT:
+				irqvector &= 0xef;
+				break;
+	
+			case YM2151_CLEAR:
+				irqvector |= 0x10;
+				break;
+	
+			case Z80_ASSERT:
+				irqvector &= 0xdf;
+				break;
+	
+			case Z80_CLEAR:
+				irqvector |= 0x20;
+				break;
+		}
+	
+		if (irqvector == 0)
+			logerror("You didn't call m72_init_sound()\n");
+	
+		cpu_irq_line_vector_w(1,0,irqvector);
+		if (irqvector == 0xff)	/* no IRQs pending */
+			cpu_set_irq_line(1,0,CLEAR_LINE);
+		else	/* IRQ pending */
+			cpu_set_irq_line(1,0,ASSERT_LINE);
 	}
-}
-
-WRITE_HANDLER( m72_sound_irq_ack_w )
-{
-	timer_set(TIME_NOW,Z80_CLEAR,setvector_callback);
-}
-
-
-
-static int sample_addr;
-
-void m72_set_sample_start(int start)
-{
-	sample_addr = start;
-}
-
-WRITE_HANDLER( vigilant_sample_addr_w )
-{
-	if (offset == 1)
-		sample_addr = (sample_addr & 0x00ff) | ((data << 8) & 0xff00);
-	else
-		sample_addr = (sample_addr & 0xff00) | ((data << 0) & 0x00ff);
-}
-
-WRITE_HANDLER( shisen_sample_addr_w )
-{
-	sample_addr >>= 2;
-
-	if (offset == 1)
-		sample_addr = (sample_addr & 0x00ff) | ((data << 8) & 0xff00);
-	else
-		sample_addr = (sample_addr & 0xff00) | ((data << 0) & 0x00ff);
-
-	sample_addr <<= 2;
-}
-
-WRITE_HANDLER( rtype2_sample_addr_w )
-{
-	sample_addr >>= 5;
-
-	if (offset == 1)
-		sample_addr = (sample_addr & 0x00ff) | ((data << 8) & 0xff00);
-	else
-		sample_addr = (sample_addr & 0xff00) | ((data << 0) & 0x00ff);
-
-	sample_addr <<= 5;
-}
-
-WRITE_HANDLER( poundfor_sample_addr_w )
-{
-	/* poundfor writes both sample start and sample END - a first for Irem...
-	   we don't handle the end written here, 00 marks the sample end as usual. */
-	if (offset > 1) return;
-
-	sample_addr >>= 4;
-
-	if (offset == 1)
-		sample_addr = (sample_addr & 0x00ff) | ((data << 8) & 0xff00);
-	else
-		sample_addr = (sample_addr & 0xff00) | ((data << 0) & 0x00ff);
-
-	sample_addr <<= 4;
-}
-
-READ_HANDLER( m72_sample_r )
-{
-	return memory_region(REGION_SOUND1)[sample_addr];
-}
-
-WRITE_HANDLER( m72_sample_w )
-{
-	DAC_signed_data_w(0,data);
-	sample_addr = (sample_addr + 1) & (memory_region_length(REGION_SOUND1) - 1);
+	
+	MACHINE_INIT( m72_sound )
+	{
+		setvector_callback(VECTOR_INIT);
+	}
+	
+	void m72_ym2151_irq_handler(int irq)
+	{
+		if (irq)
+			timer_set(TIME_NOW,YM2151_ASSERT,setvector_callback);
+		else
+			timer_set(TIME_NOW,YM2151_CLEAR,setvector_callback);
+	}
+	
+	public static WriteHandlerPtr m72_sound_command_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		if (offset == 0)
+		{
+			soundlatch_w(offset,data);
+			timer_set(TIME_NOW,Z80_ASSERT,setvector_callback);
+		}
+	} };
+	
+	public static WriteHandlerPtr m72_sound_irq_ack_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		timer_set(TIME_NOW,Z80_CLEAR,setvector_callback);
+	} };
+	
+	
+	
+	static int sample_addr;
+	
+	void m72_set_sample_start(int start)
+	{
+		sample_addr = start;
+	}
+	
+	public static WriteHandlerPtr vigilant_sample_addr_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		if (offset == 1)
+			sample_addr = (sample_addr & 0x00ff) | ((data << 8) & 0xff00);
+		else
+			sample_addr = (sample_addr & 0xff00) | ((data << 0) & 0x00ff);
+	} };
+	
+	public static WriteHandlerPtr shisen_sample_addr_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		sample_addr >>= 2;
+	
+		if (offset == 1)
+			sample_addr = (sample_addr & 0x00ff) | ((data << 8) & 0xff00);
+		else
+			sample_addr = (sample_addr & 0xff00) | ((data << 0) & 0x00ff);
+	
+		sample_addr <<= 2;
+	} };
+	
+	public static WriteHandlerPtr rtype2_sample_addr_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		sample_addr >>= 5;
+	
+		if (offset == 1)
+			sample_addr = (sample_addr & 0x00ff) | ((data << 8) & 0xff00);
+		else
+			sample_addr = (sample_addr & 0xff00) | ((data << 0) & 0x00ff);
+	
+		sample_addr <<= 5;
+	} };
+	
+	public static WriteHandlerPtr poundfor_sample_addr_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		/* poundfor writes both sample start and sample END - a first for Irem...
+		   we don't handle the end written here, 00 marks the sample end as usual. */
+		if (offset > 1) return;
+	
+		sample_addr >>= 4;
+	
+		if (offset == 1)
+			sample_addr = (sample_addr & 0x00ff) | ((data << 8) & 0xff00);
+		else
+			sample_addr = (sample_addr & 0xff00) | ((data << 0) & 0x00ff);
+	
+		sample_addr <<= 4;
+	} };
+	
+	public static ReadHandlerPtr m72_sample_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return memory_region(REGION_SOUND1)[sample_addr];
+	} };
+	
+	public static WriteHandlerPtr m72_sample_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		DAC_signed_data_w(0,data);
+		sample_addr = (sample_addr + 1) & (memory_region_length(REGION_SOUND1) - 1);
+	} };
 }

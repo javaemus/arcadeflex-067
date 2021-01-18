@@ -24,30 +24,31 @@
 #ifndef NES_APU_H
 #define NES_APU_H
 
-#include "driver.h"
-#define MAX_NESPSG 2
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package sound;
 
-/* AN EXPLANATION
- *
- * The NES APU is actually integrated into the Nintendo processor.
- * You must supply the same number of APUs as you do processors.
- * Also make sure to correspond the memory regions to those used in the
- * processor, as each is shared.
- */
-struct NESinterface
+public class nes_apuH
 {
-   int num;                 /* total number of chips in the machine */
-   int region[MAX_NESPSG];  /* DMC regions */
-   int volume[MAX_NESPSG];
-};
-
-READ_HANDLER( NESPSG_0_r );
-READ_HANDLER( NESPSG_1_r );
-WRITE_HANDLER( NESPSG_0_w );
-WRITE_HANDLER( NESPSG_1_w );
-
-extern int NESPSG_sh_start(const struct MachineSound *);
-extern void NESPSG_sh_stop(void);
-extern void NESPSG_sh_update(void);
-
-#endif
+	#define MAX_NESPSG 2
+	
+	/* AN EXPLANATION
+	 *
+	 * The NES APU is actually integrated into the Nintendo processor.
+	 * You must supply the same number of APUs as you do processors.
+	 * Also make sure to correspond the memory regions to those used in the
+	 * processor, as each is shared.
+	 */
+	struct NESinterface
+	{
+	   int num;                 /* total number of chips in the machine */
+	   int region[MAX_NESPSG];  /* DMC regions */
+	   int volume[MAX_NESPSG];
+	};
+	
+	
+	
+	#endif
+}

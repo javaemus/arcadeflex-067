@@ -2,8 +2,15 @@
 	generate the tms9995 emulator
 */
 
-#include "tms9900.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package cpu.tms9900;
 
-#define TMS99XX_MODEL TMS9995_ID
-
-#include "99xxcore.h"
+public class tms9995
+{
+	
+	#define TMS99XX_MODEL TMS9995_ID
+	
+	}

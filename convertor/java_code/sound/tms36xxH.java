@@ -18,17 +18,11 @@ struct TMS36XXinterface {
 	double speed[MAX_TMS36XX];		/* tune speed (meaningful for the TMS3615 only) */
 };
 
-extern int tms36xx_sh_start(const struct MachineSound *msound);
-extern void tms36xx_sh_stop(void);
-extern void tms36xx_sh_update(void);
 
 /* MM6221AA interface functions */
-extern void mm6221aa_tune_w(int chip, int tune);
 
 /* TMS3615/17 interface functions */
-extern void tms36xx_note_w(int chip, int octave, int note);
 
 /* TMS3617 interface functions */
-extern void tms3617_enable_w(int chip, int enable);
 
 #endif

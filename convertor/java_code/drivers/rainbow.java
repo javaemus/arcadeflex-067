@@ -200,606 +200,618 @@ that can be entered on the copyright screen:
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "state.h"
-#include "vidhrdw/generic.h"
-#include "vidhrdw/taitoic.h"
-#include "sndhrdw/taitosnd.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-VIDEO_START( rainbow );
-VIDEO_START( jumping );
-
-VIDEO_UPDATE( rainbow );
-VIDEO_UPDATE( jumping );
-
-WRITE16_HANDLER( jumping_spritectrl_w );
-WRITE16_HANDLER( rainbow_spritectrl_w );
-WRITE16_HANDLER( rainbow_cchip_ram_w );
-WRITE16_HANDLER( rainbow_cchip_ctrl_w );
-WRITE16_HANDLER( rainbow_cchip_bank_w );
-
-READ16_HANDLER( rainbow_cchip_ram_r );
-READ16_HANDLER( rainbow_cchip_ctrl_r );
-
-void rainbow_cchip_init(int version);
-
-static int jumping_latch = 0;
-
-
-static WRITE16_HANDLER( jumping_sound_w )
+public class rainbow
 {
-	if (ACCESSING_LSB)
+	
+	VIDEO_START( rainbow );
+	VIDEO_START( jumping );
+	
+	VIDEO_UPDATE( rainbow );
+	VIDEO_UPDATE( jumping );
+	
+	WRITE16_HANDLER( jumping_spritectrl_w );
+	WRITE16_HANDLER( rainbow_spritectrl_w );
+	WRITE16_HANDLER( rainbow_cchip_ram_w );
+	WRITE16_HANDLER( rainbow_cchip_ctrl_w );
+	WRITE16_HANDLER( rainbow_cchip_bank_w );
+	
+	READ16_HANDLER( rainbow_cchip_ram_r );
+	READ16_HANDLER( rainbow_cchip_ctrl_r );
+	
+	void rainbow_cchip_init(int version);
+	
+	static int jumping_latch = 0;
+	
+	
+	static WRITE16_HANDLER( jumping_sound_w )
 	{
-		jumping_latch = data & 0xff; /*M68000 writes .b to $400007*/
-		cpu_set_irq_line(1,0,HOLD_LINE);
+		if (ACCESSING_LSB)
+		{
+			jumping_latch = data & 0xff; /*M68000 writes .b to $400007*/
+			cpu_set_irq_line(1,0,HOLD_LINE);
+		}
 	}
+	
+	
+	/***************************************************************************
+	                            MEMORY STRUCTURES
+	***************************************************************************/
+	
+	static MEMORY_READ16_START( rainbow_readmem )
+		{ 0x000000, 0x07ffff, MRA16_ROM },
+		{ 0x10c000, 0x10ffff, MRA16_RAM },	/* main RAM */
+		{ 0x200000, 0x200fff, MRA16_RAM },	/* palette */
+		{ 0x201000, 0x203fff, MRA16_RAM },	/* read in initial checks */
+		{ 0x390000, 0x390003, input_port_0_word_r },
+		{ 0x3b0000, 0x3b0003, input_port_1_word_r },
+		{ 0x3e0000, 0x3e0001, MRA16_NOP },
+		{ 0x3e0002, 0x3e0003, taitosound_comm16_lsb_r },
+		{ 0x800000, 0x8007ff, rainbow_cchip_ram_r },
+		{ 0x800802, 0x800803, rainbow_cchip_ctrl_r },
+		{ 0xc00000, 0xc0ffff, PC080SN_word_0_r },
+		{ 0xd00000, 0xd03fff, PC090OJ_word_0_r },	/* sprite ram + other stuff */
+	MEMORY_END
+	
+	static MEMORY_WRITE16_START( rainbow_writemem )
+		{ 0x000000, 0x07ffff, MWA16_ROM },
+		{ 0x10c000, 0x10ffff, MWA16_RAM },
+		{ 0x200000, 0x200fff, paletteram16_xBBBBBGGGGGRRRRR_word_w, &paletteram16 },
+		{ 0x201000, 0x203fff, MWA16_RAM },	/* written in initial checks */
+		{ 0x3a0000, 0x3a0001, rainbow_spritectrl_w },
+		{ 0x3c0000, 0x3c0003, MWA16_NOP },	/* written very often, watchdog? */
+		{ 0x3e0000, 0x3e0001, taitosound_port16_lsb_w },
+		{ 0x3e0002, 0x3e0003, taitosound_comm16_lsb_w },
+		{ 0x800000, 0x8007ff, rainbow_cchip_ram_w },
+		{ 0x800802, 0x800803, rainbow_cchip_ctrl_w },
+		{ 0x800c00, 0x800c01, rainbow_cchip_bank_w },
+		{ 0xc00000, 0xc0ffff, PC080SN_word_0_w },
+		{ 0xc20000, 0xc20003, PC080SN_yscroll_word_0_w },
+		{ 0xc40000, 0xc40003, PC080SN_xscroll_word_0_w },
+		{ 0xc50000, 0xc50003, PC080SN_ctrl_word_0_w },
+		{ 0xd00000, 0xd03fff, PC090OJ_word_0_w },	/* sprite ram + other stuff */
+	MEMORY_END
+	
+	
+	static MEMORY_READ16_START( jumping_readmem )
+		{ 0x000000, 0x09ffff, MRA16_ROM },
+		{ 0x10c000, 0x10ffff, MRA16_RAM },	/* main RAM */
+		{ 0x200000, 0x200fff, MRA16_RAM },	/* palette */
+		{ 0x201000, 0x203fff, MRA16_RAM },	/* read in initial checks */
+		{ 0x400000, 0x400001, input_port_0_word_r },
+		{ 0x400002, 0x400003, input_port_1_word_r },
+		{ 0x401000, 0x401001, input_port_2_word_r },
+		{ 0x401002, 0x401003, input_port_3_word_r },
+		{ 0x420000, 0x420001, MRA16_NOP },	/* read, but result not used */
+		{ 0x440000, 0x4407ff, MRA16_RAM },
+		{ 0xc00000, 0xc0ffff, PC080SN_word_0_r },
+		{ 0xd00000, 0xd01fff, MRA16_RAM },	/* original spriteram location, needed for Attract Mode */
+	MEMORY_END
+	
+	static MEMORY_WRITE16_START( jumping_writemem )
+		{ 0x000000, 0x09ffff, MWA16_ROM },
+		{ 0x10c000, 0x10ffff, MWA16_RAM },
+		{ 0x200000, 0x200fff, paletteram16_xxxxBBBBGGGGRRRR_word_w , &paletteram16 },
+		{ 0x201000, 0x203fff, MWA16_RAM },	/* written in initial checks */
+		{ 0x3a0000, 0x3a0001, jumping_spritectrl_w },
+		{ 0x3c0000, 0x3c0001, MWA16_NOP },	/* watchdog? */
+		{ 0x400006, 0x400007, jumping_sound_w },
+		{ 0x430000, 0x430003, PC080SN_yscroll_word_0_w },
+		{ 0x440000, 0x4407ff, MWA16_RAM, &spriteram16, &spriteram_size },
+		{ 0x800000, 0x80ffff, MWA16_NOP },	/* original c-chip location (not used) */
+		{ 0xc00000, 0xc0ffff, PC080SN_word_0_w },
+		{ 0xc20000, 0xc20003, MWA16_NOP },	/* seems it is a leftover from rainbow: scroll y written here too */
+		{ 0xc40000, 0xc40003, PC080SN_xscroll_word_0_w },
+		{ 0xd00000, 0xd01fff, MWA16_RAM }, 	/* original spriteram location, needed for Attract Mode */
+	MEMORY_END
+	
+	
+	/**********************************************************
+	                         SOUND
+	
+	              Rainbow uses a YM2151 and YM3012
+	              Jumping uses two YM2203's
+	***********************************************************/
+	
+	public static WriteHandlerPtr bankswitch_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		cpu_setbank(5, memory_region(REGION_CPU2) + ((data - 1) & 3) * 0x4000 + 0x10000);
+	} };
+	
+	public static ReadHandlerPtr jumping_latch_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		return jumping_latch;
+	} };
+	
+	
+	public static Memory_ReadAddress rainbow_s_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x3fff, MRA_ROM ),
+		new Memory_ReadAddress( 0x4000, 0x7fff, MRA_BANK5 ),
+		new Memory_ReadAddress( 0x8000, 0x8fff, MRA_RAM ),
+		new Memory_ReadAddress( 0x9001, 0x9001, YM2151_status_port_0_r ),
+		new Memory_ReadAddress( 0x9002, 0x9100, MRA_RAM ),
+		new Memory_ReadAddress( 0xa001, 0xa001, taitosound_slave_comm_r ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress rainbow_s_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x7fff, MWA_ROM ),
+		new Memory_WriteAddress( 0x8000, 0x8fff, MWA_RAM ),
+		new Memory_WriteAddress( 0x9000, 0x9000, YM2151_register_port_0_w ),
+		new Memory_WriteAddress( 0x9001, 0x9001, YM2151_data_port_0_w ),
+		new Memory_WriteAddress( 0xa000, 0xa000, taitosound_slave_port_w ),
+		new Memory_WriteAddress( 0xa001, 0xa001, taitosound_slave_comm_w ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_ReadAddress jumping_sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x7fff, MRA_ROM ),
+		new Memory_ReadAddress( 0x8000, 0x8fff, MRA_RAM ),
+		new Memory_ReadAddress( 0xb000, 0xb000, YM2203_status_port_0_r ),
+		new Memory_ReadAddress( 0xb400, 0xb400, YM2203_status_port_1_r ),
+		new Memory_ReadAddress( 0xb800, 0xb800, jumping_latch_r ),
+		new Memory_ReadAddress( 0xc000, 0xffff, MRA_ROM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress jumping_sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x7fff, MWA_ROM ),
+		new Memory_WriteAddress( 0x8000, 0x8fff, MWA_RAM ),
+		new Memory_WriteAddress( 0xb000, 0xb000, YM2203_control_port_0_w ),
+		new Memory_WriteAddress( 0xb001, 0xb001, YM2203_write_port_0_w ),
+		new Memory_WriteAddress( 0xb400, 0xb400, YM2203_control_port_1_w ),
+		new Memory_WriteAddress( 0xb401, 0xb401, YM2203_write_port_1_w ),
+		new Memory_WriteAddress( 0xbc00, 0xbc00, MWA_NOP ),	/* looks like a bankswitch, but sound works with or without it */
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	/***********************************************************
+				 INPUT PORTS, DIPs
+	***********************************************************/
+	
+	static InputPortPtr input_ports_rainbow = new InputPortPtr(){ public void handler() { 
+		PORT_START(); 	/* DIP SWITCH A */
+		PORT_DIPNAME( 0x01, 0x00, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Upright") );
+		PORT_DIPSETTING(    0x01, DEF_STR( "Cocktail") );
+		PORT_DIPNAME( 0x02, 0x02, DEF_STR( "Flip_Screen") );
+		PORT_DIPSETTING(    0x02, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+		PORT_SERVICE( 0x04, IP_ACTIVE_LOW );
+		PORT_DIPNAME( 0x08, 0x08, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x08, DEF_STR( "On") );
+		PORT_DIPNAME( 0x30, 0x30, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(    0x10, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(    0x20, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(    0x30, DEF_STR( "1C_1C") );
+		PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(    0xc0, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "1C_6C") );
+	
+		PORT_START(); 	/* DIP SWITCH B */
+		PORT_DIPNAME( 0x03, 0x03, DEF_STR( "Difficulty") );
+		PORT_DIPSETTING(    0x02, "Easy" );
+		PORT_DIPSETTING(    0x03, "Medium" );
+		PORT_DIPSETTING(    0x01, "Hard" );
+		PORT_DIPSETTING(    0x00, "Hardest" );
+		PORT_DIPNAME( 0x04, 0x04, DEF_STR( "Bonus_Life") );
+		PORT_DIPSETTING(    0x00, "None" );
+		PORT_DIPSETTING(    0x04, "100k,1000k" );
+		PORT_DIPNAME( 0x08, 0x08, "Complete Bonus" );
+		PORT_DIPSETTING(    0x00, "100K Points" );
+		PORT_DIPSETTING(    0x08, "1 Up" );
+		PORT_DIPNAME( 0x30, 0x30, DEF_STR( "Lives") );
+		PORT_DIPSETTING(    0x10, "1" );
+		PORT_DIPSETTING(    0x00, "2" );
+		PORT_DIPSETTING(    0x30, "3" );
+		PORT_DIPSETTING(    0x20, "4" );
+		PORT_DIPNAME( 0x40, 0x00, "Language" );
+		PORT_DIPSETTING(    0x00, "English" );
+		PORT_DIPSETTING(    0x40, "Japanese" );
+		PORT_DIPNAME( 0x80, 0x00, "Coin Type" );
+		PORT_DIPSETTING(    0x00, "Type 1" );
+		PORT_DIPSETTING(    0x80, "Type 2" );
+	
+		PORT_START(); 	/* 800007 */
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 );
+	
+		PORT_START();  /* 800009 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 );
+	
+		PORT_START(); 	/* 80000B */
+		PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_TILT );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_2WAY );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 );
+	
+		PORT_START(); 	/* 80000d */
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN );
+		PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_2WAY | IPF_PLAYER2 );
+		PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_PLAYER2 );
+		PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 );
+	INPUT_PORTS_END(); }}; 
+	
+	static InputPortPtr input_ports_jumping = new InputPortPtr(){ public void handler() { 
+		PORT_START(); 	/* DIP SWITCH A */
+		PORT_DIPNAME( 0x01, 0x01, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x01, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x02, 0x02, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x02, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x04, 0x04, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x04, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x08, 0x08, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x08, DEF_STR( "On") );
+		PORT_DIPNAME( 0x30, 0x30, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(    0x10, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(    0x20, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(    0x30, DEF_STR( "1C_1C") );
+		PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(    0xc0, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "1C_6C") );
+	
+		PORT_START(); 	/* DIP SWITCH B */
+		PORT_DIPNAME( 0x03, 0x03, DEF_STR( "Difficulty") );
+		PORT_DIPSETTING(    0x02, "Easy" );
+		PORT_DIPSETTING(    0x03, "Medium" );
+		PORT_DIPSETTING(    0x01, "Hard" );
+		PORT_DIPSETTING(    0x00, "Hardest" );
+		PORT_DIPNAME( 0x04, 0x00, DEF_STR( "Bonus_Life") );
+		PORT_DIPSETTING(    0x04, "100k,1000k" );
+		PORT_DIPSETTING(    0x00, "None" );
+		PORT_DIPNAME( 0x08, 0x00, "Complete Bonus" );
+		PORT_DIPSETTING(    0x08, "1 Up" );
+		PORT_DIPSETTING(    0x00, "None" );
+		PORT_DIPNAME( 0x30, 0x30, DEF_STR( "Lives") );
+		PORT_DIPSETTING(    0x10, "1" );
+		PORT_DIPSETTING(    0x00, "2" );
+		PORT_DIPSETTING(    0x30, "3" );
+		PORT_DIPSETTING(    0x20, "4" );
+		PORT_DIPNAME( 0x40, 0x40, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x80, 0x00, "Coin Type" );
+		PORT_DIPSETTING(    0x00, "Type 1" );
+		PORT_DIPSETTING(    0x80, "Type 2" );
+	
+		PORT_START();   /* 401001 - Coins Etc. */
+		PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 );
+		PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 );
+		PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_START1 );
+		PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 );
+	
+		PORT_START(); 	/* 401003 - Player Controls */
+		PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 );
+		PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY );
+		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_2WAY );
+	INPUT_PORTS_END(); }}; 
+	
+	
+	/**************************************************************
+	                         GFX DECODING
+	**************************************************************/
+	
+	static GfxLayout tilelayout = new GfxLayout
+	(
+		8,8,    /* 8*8 tiles */
+		RGN_FRAC(1,1),
+		4,      /* 4 bits per pixel */
+		new int[] { 0, 1, 2, 3 },
+		new int[] { 8, 12, 0, 4, 24, 28, 16, 20 },
+		new int[] { 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32 },
+		32*8    /* every tile takes 32 consecutive bytes */
+	);
+	
+	static GfxLayout spritelayout = new GfxLayout
+	(
+		16,16,  /* 16*16 sprites */
+		RGN_FRAC(1,1),
+		4,      /* 4 bits per pixel */
+		new int[] { 0, 1, 2, 3 },
+		new int[] { 8, 12, 0, 4, 24, 28, 16, 20, 40, 44, 32, 36, 56, 60, 48, 52 },
+		new int[] { 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64,
+				8*64, 9*64, 10*64, 11*64, 12*64, 13*64, 14*64, 15*64 },
+		128*8   /* every sprite takes 128 consecutive bytes */
+	);
+	
+	static GfxDecodeInfo rainbow_gfxdecodeinfo[] =
+	{
+		new GfxDecodeInfo( REGION_GFX2, 0x000000, spritelayout, 0, 0x80 ),	/* OBJ 16x16 */
+		new GfxDecodeInfo( REGION_GFX1, 0x000000, tilelayout,   0, 0x80 ),	/* SCR 8x8 */
+		new GfxDecodeInfo( -1 )	/* end of array */
+	};
+	
+	
+	static GfxLayout jumping_tilelayout = new GfxLayout
+	(
+		8,8,    /* 8*8 tiles */
+		16384,  /* 16384 tiles */
+		4,      /* 4 bits per pixel */
+		new int[] { 0, 0x20000*8, 0x40000*8, 0x60000*8 },
+		new int[] { 0, 1, 2, 3, 4, 5, 6, 7 },
+		new int[] { 0, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+		8*8     /* every tile takes 8 consecutive bytes */
+	);
+	
+	static GfxLayout jumping_spritelayout = new GfxLayout
+	(
+		16,16,  /* 16*16 sprites */
+		5120,   /* 5120 sprites */
+		4,      /* 4 bits per pixel */
+		new int[] { 0x78000*8,0x50000*8,0x28000*8,0 },
+		new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8*16+0, 8*16+1, 8*16+2, 8*16+3, 8*16+4, 8*16+5, 8*16+6, 8*16+7 },
+		new int[] { 0, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+		32*8    /* every sprite takes 32 consecutive bytes */
+	);
+	
+	static GfxDecodeInfo jumping_gfxdecodeinfo[] =
+	{
+		new GfxDecodeInfo( REGION_GFX2, 0, jumping_spritelayout, 0, 0x80 ),	/* OBJ 16x16 */
+		new GfxDecodeInfo( REGION_GFX1, 0, jumping_tilelayout,   0, 0x80 ),	/* SCR 8x8 */
+		new GfxDecodeInfo( -1 )	/* end of array */
+	};
+	
+	
+	/**************************************************************
+	                   YM2151 & YM2203 (SOUND)
+	**************************************************************/
+	
+	/* handler called by the YM2151 emulator when the internal timers cause an IRQ */
+	
+	static void irqhandler(int irq)
+	{
+		cpu_set_irq_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	}
+	
+	static struct YM2151interface ym2151_interface =
+	{
+		1,          /* 1 chip */
+		4000000,    /* 4 MHz ? */
+		{ YM3012_VOL(50,MIXER_PAN_LEFT,50,MIXER_PAN_RIGHT) },
+		{ irqhandler },
+		{ bankswitch_w }
+	};
+	
+	static struct YM2203interface ym2203_interface =
+	{
+		2,          /* 2 chips */
+		3579545,    /* ?? MHz */
+		{ YM2203_VOL(30,30), YM2203_VOL(30,30) },
+		{ 0 },
+		{ 0 },
+		{ 0 },
+		{ 0 },
+		{ 0 }
+	};
+	
+	
+	/***********************************************************
+	                      MACHINE DRIVERS
+	***********************************************************/
+	
+	static MACHINE_DRIVER_START( rainbow )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(M68000, 8000000)
+		MDRV_CPU_MEMORY(rainbow_readmem,rainbow_writemem)
+		MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	
+		MDRV_CPU_ADD(Z80, 4000000)
+		MDRV_CPU_MEMORY(rainbow_s_readmem,rainbow_s_writemem)
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+		MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(40*8, 32*8)
+		MDRV_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1) /* is Y visible correct ? */
+		MDRV_GFXDECODE(rainbow_gfxdecodeinfo)
+		MDRV_PALETTE_LENGTH(8192)
+	
+		MDRV_VIDEO_START(rainbow)
+		MDRV_VIDEO_UPDATE(rainbow)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(YM2151, ym2151_interface)
+	MACHINE_DRIVER_END
+	
+	
+	static MACHINE_DRIVER_START( jumping )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(M68000, 8000000)
+		MDRV_CPU_MEMORY(jumping_readmem,jumping_writemem)
+		MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	
+		MDRV_CPU_ADD(Z80, 4000000)
+		MDRV_CPU_MEMORY(jumping_sound_readmem,jumping_sound_writemem)
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+		MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough ? */
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(40*8, 32*8)
+		MDRV_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1) /* is Y visible correct ? */
+		MDRV_GFXDECODE(jumping_gfxdecodeinfo)
+		MDRV_PALETTE_LENGTH(8192)
+	
+		MDRV_VIDEO_START(jumping)
+		MDRV_VIDEO_UPDATE(jumping)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(YM2203, ym2203_interface)
+	MACHINE_DRIVER_END
+	
+	
+	/***************************************************************************
+	                                  DRIVERS
+	***************************************************************************/
+	
+	static RomLoadPtr rom_rainbow = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x80000, REGION_CPU1, 0 );
+		ROM_LOAD16_BYTE( "b22-10-1.19",   0x00000, 0x10000, 0xe34a50ca );
+		ROM_LOAD16_BYTE( "b22-11-1.20",   0x00001, 0x10000, 0x6a31a093 );
+		ROM_LOAD16_BYTE( "b22-08-1.21",   0x20000, 0x10000, 0x15d6e17a );
+		ROM_LOAD16_BYTE( "b22-09-1.22",   0x20001, 0x10000, 0x454e66bc );
+		ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, 0x3ebb0fb8 );
+		ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, 0x91625e7f );
+	
+		ROM_REGION( 0x1c000, REGION_CPU2, 0 );
+		ROM_LOAD( "b22-14.43",            0x00000, 0x4000, 0x113c1a5b );
+		ROM_CONTINUE(                     0x10000, 0xc000 );
+	
+		ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "b22-01.2",             0x00000, 0x80000, 0xb76c9168 );/* tiles */
+	
+		ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE );
+		ROM_LOAD( "b22-01.5",             0x00000, 0x80000, 0x1b87ecf0 );/* sprites */
+		ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, 0x67a76dc6 );
+		ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, 0x2fda099f );
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_rainbowo = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x80000, REGION_CPU1, 0 );
+		ROM_LOAD16_BYTE( "b22-10.19",     0x00000, 0x10000, 0x3b013495 );
+		ROM_LOAD16_BYTE( "b22-11.20",     0x00001, 0x10000, 0x80041a3d );
+		ROM_LOAD16_BYTE( "b22-08.21",     0x20000, 0x10000, 0x962fb845 );
+		ROM_LOAD16_BYTE( "b22-09.22",     0x20001, 0x10000, 0xf43efa27 );
+		ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, 0x3ebb0fb8 );
+		ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, 0x91625e7f );
+	
+		ROM_REGION( 0x1c000, REGION_CPU2, 0 );
+		ROM_LOAD( "b22-14.43",            0x00000, 0x4000, 0x113c1a5b );
+		ROM_CONTINUE(                     0x10000, 0xc000 );
+	
+		ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "b22-01.2",             0x00000, 0x80000, 0xb76c9168 );/* tiles */
+	
+		ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE );
+	  	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, 0x1b87ecf0 );/* sprites */
+		ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, 0x67a76dc6 );
+		ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, 0x2fda099f );
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_rainbowe = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x80000, REGION_CPU1, 0 );
+		ROM_LOAD16_BYTE( "b39-01.19",     0x00000, 0x10000, 0x50690880 );
+		ROM_LOAD16_BYTE( "b39-02.20",     0x00001, 0x10000, 0x4dead71f );
+		ROM_LOAD16_BYTE( "b39-03.21",     0x20000, 0x10000, 0x4a4cb785 );
+		ROM_LOAD16_BYTE( "b39-04.22",     0x20001, 0x10000, 0x4caa53bd );
+		ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, 0x3ebb0fb8 );
+		ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, 0x91625e7f );
+	
+		ROM_REGION( 0x1c000, REGION_CPU2, 0 );
+		ROM_LOAD( "b22-14.43",            0x00000, 0x4000, 0x113c1a5b );
+		ROM_CONTINUE(                     0x10000, 0xc000 );
+	
+		ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "b22-01.2",             0x00000, 0x80000, 0xb76c9168 );/* tiles */
+	
+		ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE );
+	  	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, 0x1b87ecf0 );/* sprites */
+		ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, 0x67a76dc6 );
+		ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, 0x2fda099f );
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_jumping = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0xa0000, REGION_CPU1, 0 );
+		ROM_LOAD16_BYTE( "jb1_h4",        0x00000, 0x10000, 0x3fab6b31 );
+		ROM_LOAD16_BYTE( "jb1_h8",        0x00001, 0x10000, 0x8c878827 );
+		ROM_LOAD16_BYTE( "jb1_i4",        0x20000, 0x10000, 0x443492cf );
+		ROM_LOAD16_BYTE( "jb1_i8",        0x20001, 0x10000, 0xed33bae1 );
+		ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, 0x3ebb0fb8 );
+		ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, 0x91625e7f );
+		ROM_LOAD16_BYTE( "jb1_f89",       0x80001, 0x10000, 0x0810d327 );/* c-chip substitute */
+	
+		ROM_REGION( 0x14000, REGION_CPU2, 0 );
+		ROM_LOAD( "jb1_cd67",             0x00000, 0x8000, 0x8527c00e );
+		ROM_CONTINUE(                     0x10000, 0x4000 );
+		ROM_CONTINUE(                     0x0c000, 0x4000 );
+	
+		ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "jb2_ic8",              0x00000, 0x10000, 0x65b76309 );/* tiles */
+		ROM_LOAD( "jb2_ic7",              0x10000, 0x10000, 0x43a94283 );
+		ROM_LOAD( "jb2_ic10",             0x20000, 0x10000, 0xe61933fb );
+		ROM_LOAD( "jb2_ic9",              0x30000, 0x10000, 0xed031eb2 );
+		ROM_LOAD( "jb2_ic12",             0x40000, 0x10000, 0x312700ca );
+		ROM_LOAD( "jb2_ic11",             0x50000, 0x10000, 0xde3b0b88 );
+		ROM_LOAD( "jb2_ic14",             0x60000, 0x10000, 0x9fdc6c8e );
+		ROM_LOAD( "jb2_ic13",             0x70000, 0x10000, 0x06226492 );
+	
+		ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE );
+		ROM_LOAD( "jb2_ic62",             0x00000, 0x10000, 0x8548db6c );/* sprites */
+		ROM_LOAD( "jb2_ic61",             0x10000, 0x10000, 0x37c5923b );
+		ROM_LOAD( "jb2_ic60",             0x20000, 0x08000, 0x662a2f1e );
+		ROM_LOAD( "jb2_ic78",             0x28000, 0x10000, 0x925865e1 );
+		ROM_LOAD( "jb2_ic77",             0x38000, 0x10000, 0xb09695d1 );
+		ROM_LOAD( "jb2_ic76",             0x48000, 0x08000, 0x41937743 );
+		ROM_LOAD( "jb2_ic93",             0x50000, 0x10000, 0xf644eeab );
+		ROM_LOAD( "jb2_ic92",             0x60000, 0x10000, 0x3fbccd33 );
+		ROM_LOAD( "jb2_ic91",             0x70000, 0x08000, 0xd886c014 );
+		ROM_LOAD( "jb2_i121",             0x78000, 0x10000, 0x93df1e4d );
+		ROM_LOAD( "jb2_i120",             0x88000, 0x10000, 0x7c4e893b );
+		ROM_LOAD( "jb2_i119",             0x98000, 0x08000, 0x7e1d58d8 );
+	ROM_END(); }}; 
+	
+	
+	static DRIVER_INIT( rainbow )
+	{
+		rainbow_cchip_init(0);
+	}
+	
+	static DRIVER_INIT( rainbowe )
+	{
+		rainbow_cchip_init(1);
+	}
+	
+	static DRIVER_INIT( jumping )
+	{
+		int i;
+	
+		/* Sprite colour map is reversed - switch to normal */
+	
+		for (i = 0;i < memory_region_length(REGION_GFX2);i++)
+			memory_region(REGION_GFX2)[i] ^= 0xff;
+	
+		state_save_register_int("jumping", 0, "sound", &jumping_latch);
+	}
+	
+	
+	public static GameDriver driver_rainbow	   = new GameDriver("1987"	,"rainbow"	,"rainbow.java"	,rom_rainbow,null	,machine_driver_rainbow	,input_ports_rainbow	,init_rainbow	,ROT0	,	"Taito Corporation", "Rainbow Islands (new version)" )
+	public static GameDriver driver_rainbowo	   = new GameDriver("1987"	,"rainbowo"	,"rainbow.java"	,rom_rainbowo,driver_rainbow	,machine_driver_rainbow	,input_ports_rainbow	,init_rainbow	,ROT0	,	"Taito Corporation", "Rainbow Islands (old version)" )
+	public static GameDriver driver_rainbowe	   = new GameDriver("1988"	,"rainbowe"	,"rainbow.java"	,rom_rainbowe,driver_rainbow	,machine_driver_rainbow	,input_ports_rainbow	,init_rainbowe	,ROT0	,	"Taito Corporation", "Rainbow Islands (Extra)" )
+	public static GameDriver driver_jumping	   = new GameDriver("1989"	,"jumping"	,"rainbow.java"	,rom_jumping,driver_rainbow	,machine_driver_jumping	,input_ports_jumping	,init_jumping	,ROT0	,	"bootleg", "Jumping" )
 }
-
-
-/***************************************************************************
-                            MEMORY STRUCTURES
-***************************************************************************/
-
-static MEMORY_READ16_START( rainbow_readmem )
-	{ 0x000000, 0x07ffff, MRA16_ROM },
-	{ 0x10c000, 0x10ffff, MRA16_RAM },	/* main RAM */
-	{ 0x200000, 0x200fff, MRA16_RAM },	/* palette */
-	{ 0x201000, 0x203fff, MRA16_RAM },	/* read in initial checks */
-	{ 0x390000, 0x390003, input_port_0_word_r },
-	{ 0x3b0000, 0x3b0003, input_port_1_word_r },
-	{ 0x3e0000, 0x3e0001, MRA16_NOP },
-	{ 0x3e0002, 0x3e0003, taitosound_comm16_lsb_r },
-	{ 0x800000, 0x8007ff, rainbow_cchip_ram_r },
-	{ 0x800802, 0x800803, rainbow_cchip_ctrl_r },
-	{ 0xc00000, 0xc0ffff, PC080SN_word_0_r },
-	{ 0xd00000, 0xd03fff, PC090OJ_word_0_r },	/* sprite ram + other stuff */
-MEMORY_END
-
-static MEMORY_WRITE16_START( rainbow_writemem )
-	{ 0x000000, 0x07ffff, MWA16_ROM },
-	{ 0x10c000, 0x10ffff, MWA16_RAM },
-	{ 0x200000, 0x200fff, paletteram16_xBBBBBGGGGGRRRRR_word_w, &paletteram16 },
-	{ 0x201000, 0x203fff, MWA16_RAM },	/* written in initial checks */
-	{ 0x3a0000, 0x3a0001, rainbow_spritectrl_w },
-	{ 0x3c0000, 0x3c0003, MWA16_NOP },	/* written very often, watchdog? */
-	{ 0x3e0000, 0x3e0001, taitosound_port16_lsb_w },
-	{ 0x3e0002, 0x3e0003, taitosound_comm16_lsb_w },
-	{ 0x800000, 0x8007ff, rainbow_cchip_ram_w },
-	{ 0x800802, 0x800803, rainbow_cchip_ctrl_w },
-	{ 0x800c00, 0x800c01, rainbow_cchip_bank_w },
-	{ 0xc00000, 0xc0ffff, PC080SN_word_0_w },
-	{ 0xc20000, 0xc20003, PC080SN_yscroll_word_0_w },
-	{ 0xc40000, 0xc40003, PC080SN_xscroll_word_0_w },
-	{ 0xc50000, 0xc50003, PC080SN_ctrl_word_0_w },
-	{ 0xd00000, 0xd03fff, PC090OJ_word_0_w },	/* sprite ram + other stuff */
-MEMORY_END
-
-
-static MEMORY_READ16_START( jumping_readmem )
-	{ 0x000000, 0x09ffff, MRA16_ROM },
-	{ 0x10c000, 0x10ffff, MRA16_RAM },	/* main RAM */
-	{ 0x200000, 0x200fff, MRA16_RAM },	/* palette */
-	{ 0x201000, 0x203fff, MRA16_RAM },	/* read in initial checks */
-	{ 0x400000, 0x400001, input_port_0_word_r },
-	{ 0x400002, 0x400003, input_port_1_word_r },
-	{ 0x401000, 0x401001, input_port_2_word_r },
-	{ 0x401002, 0x401003, input_port_3_word_r },
-	{ 0x420000, 0x420001, MRA16_NOP },	/* read, but result not used */
-	{ 0x440000, 0x4407ff, MRA16_RAM },
-	{ 0xc00000, 0xc0ffff, PC080SN_word_0_r },
-	{ 0xd00000, 0xd01fff, MRA16_RAM },	/* original spriteram location, needed for Attract Mode */
-MEMORY_END
-
-static MEMORY_WRITE16_START( jumping_writemem )
-	{ 0x000000, 0x09ffff, MWA16_ROM },
-	{ 0x10c000, 0x10ffff, MWA16_RAM },
-	{ 0x200000, 0x200fff, paletteram16_xxxxBBBBGGGGRRRR_word_w , &paletteram16 },
-	{ 0x201000, 0x203fff, MWA16_RAM },	/* written in initial checks */
-	{ 0x3a0000, 0x3a0001, jumping_spritectrl_w },
-	{ 0x3c0000, 0x3c0001, MWA16_NOP },	/* watchdog? */
-	{ 0x400006, 0x400007, jumping_sound_w },
-	{ 0x430000, 0x430003, PC080SN_yscroll_word_0_w },
-	{ 0x440000, 0x4407ff, MWA16_RAM, &spriteram16, &spriteram_size },
-	{ 0x800000, 0x80ffff, MWA16_NOP },	/* original c-chip location (not used) */
-	{ 0xc00000, 0xc0ffff, PC080SN_word_0_w },
-	{ 0xc20000, 0xc20003, MWA16_NOP },	/* seems it is a leftover from rainbow: scroll y written here too */
-	{ 0xc40000, 0xc40003, PC080SN_xscroll_word_0_w },
-	{ 0xd00000, 0xd01fff, MWA16_RAM }, 	/* original spriteram location, needed for Attract Mode */
-MEMORY_END
-
-
-/**********************************************************
-                         SOUND
-
-              Rainbow uses a YM2151 and YM3012
-              Jumping uses two YM2203's
-***********************************************************/
-
-static WRITE_HANDLER( bankswitch_w )
-{
-	cpu_setbank(5, memory_region(REGION_CPU2) + ((data - 1) & 3) * 0x4000 + 0x10000);
-}
-
-static READ_HANDLER( jumping_latch_r )
-{
-	return jumping_latch;
-}
-
-
-static MEMORY_READ_START( rainbow_s_readmem )
-	{ 0x0000, 0x3fff, MRA_ROM },
-	{ 0x4000, 0x7fff, MRA_BANK5 },
-	{ 0x8000, 0x8fff, MRA_RAM },
-	{ 0x9001, 0x9001, YM2151_status_port_0_r },
-	{ 0x9002, 0x9100, MRA_RAM },
-	{ 0xa001, 0xa001, taitosound_slave_comm_r },
-MEMORY_END
-
-static MEMORY_WRITE_START( rainbow_s_writemem )
-	{ 0x0000, 0x7fff, MWA_ROM },
-	{ 0x8000, 0x8fff, MWA_RAM },
-	{ 0x9000, 0x9000, YM2151_register_port_0_w },
-	{ 0x9001, 0x9001, YM2151_data_port_0_w },
-	{ 0xa000, 0xa000, taitosound_slave_port_w },
-	{ 0xa001, 0xa001, taitosound_slave_comm_w },
-MEMORY_END
-
-static MEMORY_READ_START( jumping_sound_readmem )
-	{ 0x0000, 0x7fff, MRA_ROM },
-	{ 0x8000, 0x8fff, MRA_RAM },
-	{ 0xb000, 0xb000, YM2203_status_port_0_r },
-	{ 0xb400, 0xb400, YM2203_status_port_1_r },
-	{ 0xb800, 0xb800, jumping_latch_r },
-	{ 0xc000, 0xffff, MRA_ROM },
-MEMORY_END
-
-static MEMORY_WRITE_START( jumping_sound_writemem )
-	{ 0x0000, 0x7fff, MWA_ROM },
-	{ 0x8000, 0x8fff, MWA_RAM },
-	{ 0xb000, 0xb000, YM2203_control_port_0_w },
-	{ 0xb001, 0xb001, YM2203_write_port_0_w },
-	{ 0xb400, 0xb400, YM2203_control_port_1_w },
-	{ 0xb401, 0xb401, YM2203_write_port_1_w },
-	{ 0xbc00, 0xbc00, MWA_NOP },	/* looks like a bankswitch, but sound works with or without it */
-MEMORY_END
-
-
-/***********************************************************
-			 INPUT PORTS, DIPs
-***********************************************************/
-
-INPUT_PORTS_START( rainbow )
-	PORT_START	/* DIP SWITCH A */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )
-
-	PORT_START	/* DIP SWITCH B */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x02, "Easy" )
-	PORT_DIPSETTING(    0x03, "Medium" )
-	PORT_DIPSETTING(    0x01, "Hard" )
-	PORT_DIPSETTING(    0x00, "Hardest" )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x00, "None" )
-	PORT_DIPSETTING(    0x04, "100k,1000k" )
-	PORT_DIPNAME( 0x08, 0x08, "Complete Bonus" )
-	PORT_DIPSETTING(    0x00, "100K Points" )
-	PORT_DIPSETTING(    0x08, "1 Up" )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x10, "1" )
-	PORT_DIPSETTING(    0x00, "2" )
-	PORT_DIPSETTING(    0x30, "3" )
-	PORT_DIPSETTING(    0x20, "4" )
-	PORT_DIPNAME( 0x40, 0x00, "Language" )
-	PORT_DIPSETTING(    0x00, "English" )
-	PORT_DIPSETTING(    0x40, "Japanese" )
-	PORT_DIPNAME( 0x80, 0x00, "Coin Type" )
-	PORT_DIPSETTING(    0x00, "Type 1" )
-	PORT_DIPSETTING(    0x80, "Type 2" )
-
-	PORT_START	/* 800007 */
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
-
-	PORT_START /* 800009 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
-
-	PORT_START	/* 80000B */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_TILT )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_2WAY )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
-
-	PORT_START	/* 80000d */
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_2WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_PLAYER2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_PLAYER2 )
-INPUT_PORTS_END
-
-INPUT_PORTS_START( jumping )
-	PORT_START	/* DIP SWITCH A */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )
-
-	PORT_START	/* DIP SWITCH B */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x02, "Easy" )
-	PORT_DIPSETTING(    0x03, "Medium" )
-	PORT_DIPSETTING(    0x01, "Hard" )
-	PORT_DIPSETTING(    0x00, "Hardest" )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x04, "100k,1000k" )
-	PORT_DIPSETTING(    0x00, "None" )
-	PORT_DIPNAME( 0x08, 0x00, "Complete Bonus" )
-	PORT_DIPSETTING(    0x08, "1 Up" )
-	PORT_DIPSETTING(    0x00, "None" )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x10, "1" )
-	PORT_DIPSETTING(    0x00, "2" )
-	PORT_DIPSETTING(    0x30, "3" )
-	PORT_DIPSETTING(    0x20, "4" )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x00, "Coin Type" )
-	PORT_DIPSETTING(    0x00, "Type 1" )
-	PORT_DIPSETTING(    0x80, "Type 2" )
-
-	PORT_START  /* 401001 - Coins Etc. */
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 )
-
-	PORT_START	/* 401003 - Player Controls */
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_2WAY )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_2WAY )
-INPUT_PORTS_END
-
-
-/**************************************************************
-                         GFX DECODING
-**************************************************************/
-
-static struct GfxLayout tilelayout =
-{
-	8,8,    /* 8*8 tiles */
-	RGN_FRAC(1,1),
-	4,      /* 4 bits per pixel */
-	{ 0, 1, 2, 3 },
-	{ 8, 12, 0, 4, 24, 28, 16, 20 },
-	{ 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32 },
-	32*8    /* every tile takes 32 consecutive bytes */
-};
-
-static struct GfxLayout spritelayout =
-{
-	16,16,  /* 16*16 sprites */
-	RGN_FRAC(1,1),
-	4,      /* 4 bits per pixel */
-	{ 0, 1, 2, 3 },
-	{ 8, 12, 0, 4, 24, 28, 16, 20, 40, 44, 32, 36, 56, 60, 48, 52 },
-	{ 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64,
-			8*64, 9*64, 10*64, 11*64, 12*64, 13*64, 14*64, 15*64 },
-	128*8   /* every sprite takes 128 consecutive bytes */
-};
-
-static struct GfxDecodeInfo rainbow_gfxdecodeinfo[] =
-{
-	{ REGION_GFX2, 0x000000, &spritelayout, 0, 0x80 },	/* OBJ 16x16 */
-	{ REGION_GFX1, 0x000000, &tilelayout,   0, 0x80 },	/* SCR 8x8 */
-	{ -1 }	/* end of array */
-};
-
-
-static struct GfxLayout jumping_tilelayout =
-{
-	8,8,    /* 8*8 tiles */
-	16384,  /* 16384 tiles */
-	4,      /* 4 bits per pixel */
-	{ 0, 0x20000*8, 0x40000*8, 0x60000*8 },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8     /* every tile takes 8 consecutive bytes */
-};
-
-static struct GfxLayout jumping_spritelayout =
-{
-	16,16,  /* 16*16 sprites */
-	5120,   /* 5120 sprites */
-	4,      /* 4 bits per pixel */
-	{ 0x78000*8,0x50000*8,0x28000*8,0 },
-	{ 0, 1, 2, 3, 4, 5, 6, 7, 8*16+0, 8*16+1, 8*16+2, 8*16+3, 8*16+4, 8*16+5, 8*16+6, 8*16+7 },
-	{ 0, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	32*8    /* every sprite takes 32 consecutive bytes */
-};
-
-static struct GfxDecodeInfo jumping_gfxdecodeinfo[] =
-{
-	{ REGION_GFX2, 0, &jumping_spritelayout, 0, 0x80 },	/* OBJ 16x16 */
-	{ REGION_GFX1, 0, &jumping_tilelayout,   0, 0x80 },	/* SCR 8x8 */
-	{ -1 }	/* end of array */
-};
-
-
-/**************************************************************
-                   YM2151 & YM2203 (SOUND)
-**************************************************************/
-
-/* handler called by the YM2151 emulator when the internal timers cause an IRQ */
-
-static void irqhandler(int irq)
-{
-	cpu_set_irq_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
-}
-
-static struct YM2151interface ym2151_interface =
-{
-	1,          /* 1 chip */
-	4000000,    /* 4 MHz ? */
-	{ YM3012_VOL(50,MIXER_PAN_LEFT,50,MIXER_PAN_RIGHT) },
-	{ irqhandler },
-	{ bankswitch_w }
-};
-
-static struct YM2203interface ym2203_interface =
-{
-	2,          /* 2 chips */
-	3579545,    /* ?? MHz */
-	{ YM2203_VOL(30,30), YM2203_VOL(30,30) },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ 0 }
-};
-
-
-/***********************************************************
-                      MACHINE DRIVERS
-***********************************************************/
-
-static MACHINE_DRIVER_START( rainbow )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000)
-	MDRV_CPU_MEMORY(rainbow_readmem,rainbow_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
-
-	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_MEMORY(rainbow_s_readmem,rainbow_s_writemem)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(40*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1) /* is Y visible correct ? */
-	MDRV_GFXDECODE(rainbow_gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(8192)
-
-	MDRV_VIDEO_START(rainbow)
-	MDRV_VIDEO_UPDATE(rainbow)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(YM2151, ym2151_interface)
-MACHINE_DRIVER_END
-
-
-static MACHINE_DRIVER_START( jumping )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000)
-	MDRV_CPU_MEMORY(jumping_readmem,jumping_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
-
-	MDRV_CPU_ADD(Z80, 4000000)
-	MDRV_CPU_MEMORY(jumping_sound_readmem,jumping_sound_writemem)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough ? */
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(40*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1) /* is Y visible correct ? */
-	MDRV_GFXDECODE(jumping_gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(8192)
-
-	MDRV_VIDEO_START(jumping)
-	MDRV_VIDEO_UPDATE(jumping)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(YM2203, ym2203_interface)
-MACHINE_DRIVER_END
-
-
-/***************************************************************************
-                                  DRIVERS
-***************************************************************************/
-
-ROM_START( rainbow )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "b22-10-1.19",   0x00000, 0x10000, 0xe34a50ca )
-	ROM_LOAD16_BYTE( "b22-11-1.20",   0x00001, 0x10000, 0x6a31a093 )
-	ROM_LOAD16_BYTE( "b22-08-1.21",   0x20000, 0x10000, 0x15d6e17a )
-	ROM_LOAD16_BYTE( "b22-09-1.22",   0x20001, 0x10000, 0x454e66bc )
-	ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, 0x3ebb0fb8 )
-	ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, 0x91625e7f )
-
-	ROM_REGION( 0x1c000, REGION_CPU2, 0 )
-	ROM_LOAD( "b22-14.43",            0x00000, 0x4000, 0x113c1a5b )
-	ROM_CONTINUE(                     0x10000, 0xc000 )
-
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "b22-01.2",             0x00000, 0x80000, 0xb76c9168 )	/* tiles */
-
-	ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, 0x1b87ecf0 )	/* sprites */
-	ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, 0x67a76dc6 )
-	ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, 0x2fda099f )
-ROM_END
-
-ROM_START( rainbowo )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "b22-10.19",     0x00000, 0x10000, 0x3b013495 )
-	ROM_LOAD16_BYTE( "b22-11.20",     0x00001, 0x10000, 0x80041a3d )
-	ROM_LOAD16_BYTE( "b22-08.21",     0x20000, 0x10000, 0x962fb845 )
-	ROM_LOAD16_BYTE( "b22-09.22",     0x20001, 0x10000, 0xf43efa27 )
-	ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, 0x3ebb0fb8 )
-	ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, 0x91625e7f )
-
-	ROM_REGION( 0x1c000, REGION_CPU2, 0 )
-	ROM_LOAD( "b22-14.43",            0x00000, 0x4000, 0x113c1a5b )
-	ROM_CONTINUE(                     0x10000, 0xc000 )
-
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "b22-01.2",             0x00000, 0x80000, 0xb76c9168 )	/* tiles */
-
-	ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE )
-  	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, 0x1b87ecf0 )	/* sprites */
-	ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, 0x67a76dc6 )
-	ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, 0x2fda099f )
-ROM_END
-
-ROM_START( rainbowe )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "b39-01.19",     0x00000, 0x10000, 0x50690880 )
-	ROM_LOAD16_BYTE( "b39-02.20",     0x00001, 0x10000, 0x4dead71f )
-	ROM_LOAD16_BYTE( "b39-03.21",     0x20000, 0x10000, 0x4a4cb785 )
-	ROM_LOAD16_BYTE( "b39-04.22",     0x20001, 0x10000, 0x4caa53bd )
-	ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, 0x3ebb0fb8 )
-	ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, 0x91625e7f )
-
-	ROM_REGION( 0x1c000, REGION_CPU2, 0 )
-	ROM_LOAD( "b22-14.43",            0x00000, 0x4000, 0x113c1a5b )
-	ROM_CONTINUE(                     0x10000, 0xc000 )
-
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "b22-01.2",             0x00000, 0x80000, 0xb76c9168 )	/* tiles */
-
-	ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE )
-  	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, 0x1b87ecf0 )	/* sprites */
-	ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, 0x67a76dc6 )
-	ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, 0x2fda099f )
-ROM_END
-
-ROM_START( jumping )
-	ROM_REGION( 0xa0000, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "jb1_h4",        0x00000, 0x10000, 0x3fab6b31 )
-	ROM_LOAD16_BYTE( "jb1_h8",        0x00001, 0x10000, 0x8c878827 )
-	ROM_LOAD16_BYTE( "jb1_i4",        0x20000, 0x10000, 0x443492cf )
-	ROM_LOAD16_BYTE( "jb1_i8",        0x20001, 0x10000, 0xed33bae1 )
-	ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, 0x3ebb0fb8 )
-	ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, 0x91625e7f )
-	ROM_LOAD16_BYTE( "jb1_f89",       0x80001, 0x10000, 0x0810d327 )	/* c-chip substitute */
-
-	ROM_REGION( 0x14000, REGION_CPU2, 0 )
-	ROM_LOAD( "jb1_cd67",             0x00000, 0x8000, 0x8527c00e )
-	ROM_CONTINUE(                     0x10000, 0x4000 )
-	ROM_CONTINUE(                     0x0c000, 0x4000 )
-
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "jb2_ic8",              0x00000, 0x10000, 0x65b76309 )	/* tiles */
-	ROM_LOAD( "jb2_ic7",              0x10000, 0x10000, 0x43a94283 )
-	ROM_LOAD( "jb2_ic10",             0x20000, 0x10000, 0xe61933fb )
-	ROM_LOAD( "jb2_ic9",              0x30000, 0x10000, 0xed031eb2 )
-	ROM_LOAD( "jb2_ic12",             0x40000, 0x10000, 0x312700ca )
-	ROM_LOAD( "jb2_ic11",             0x50000, 0x10000, 0xde3b0b88 )
-	ROM_LOAD( "jb2_ic14",             0x60000, 0x10000, 0x9fdc6c8e )
-	ROM_LOAD( "jb2_ic13",             0x70000, 0x10000, 0x06226492 )
-
-	ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "jb2_ic62",             0x00000, 0x10000, 0x8548db6c )	/* sprites */
-	ROM_LOAD( "jb2_ic61",             0x10000, 0x10000, 0x37c5923b )
-	ROM_LOAD( "jb2_ic60",             0x20000, 0x08000, 0x662a2f1e )
-	ROM_LOAD( "jb2_ic78",             0x28000, 0x10000, 0x925865e1 )
-	ROM_LOAD( "jb2_ic77",             0x38000, 0x10000, 0xb09695d1 )
-	ROM_LOAD( "jb2_ic76",             0x48000, 0x08000, 0x41937743 )
-	ROM_LOAD( "jb2_ic93",             0x50000, 0x10000, 0xf644eeab )
-	ROM_LOAD( "jb2_ic92",             0x60000, 0x10000, 0x3fbccd33 )
-	ROM_LOAD( "jb2_ic91",             0x70000, 0x08000, 0xd886c014 )
-	ROM_LOAD( "jb2_i121",             0x78000, 0x10000, 0x93df1e4d )
-	ROM_LOAD( "jb2_i120",             0x88000, 0x10000, 0x7c4e893b )
-	ROM_LOAD( "jb2_i119",             0x98000, 0x08000, 0x7e1d58d8 )
-ROM_END
-
-
-static DRIVER_INIT( rainbow )
-{
-	rainbow_cchip_init(0);
-}
-
-static DRIVER_INIT( rainbowe )
-{
-	rainbow_cchip_init(1);
-}
-
-static DRIVER_INIT( jumping )
-{
-	int i;
-
-	/* Sprite colour map is reversed - switch to normal */
-
-	for (i = 0;i < memory_region_length(REGION_GFX2);i++)
-		memory_region(REGION_GFX2)[i] ^= 0xff;
-
-	state_save_register_int("jumping", 0, "sound", &jumping_latch);
-}
-
-
-GAME( 1987, rainbow,  0,       rainbow, rainbow, rainbow,  ROT0, "Taito Corporation", "Rainbow Islands (new version)" )
-GAME( 1987, rainbowo, rainbow, rainbow, rainbow, rainbow,  ROT0, "Taito Corporation", "Rainbow Islands (old version)" )
-GAME( 1988, rainbowe, rainbow, rainbow, rainbow, rainbowe, ROT0, "Taito Corporation", "Rainbow Islands (Extra)" )
-GAME( 1989, jumping,  rainbow, jumping, jumping, jumping,  ROT0, "bootleg", "Jumping" )

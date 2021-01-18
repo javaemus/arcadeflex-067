@@ -106,235 +106,249 @@
 
  */
 
-#include "driver.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-data16_t *pass_bg_videoram;
-data16_t *pass_fg_videoram;
-
-/* in vidhrdw */
-
-VIDEO_START( pass );
-VIDEO_UPDATE( pass );
-WRITE16_HANDLER( pass_fg_videoram_w );
-WRITE16_HANDLER( pass_bg_videoram_w );
-
-/* end in vidhrdw */
-
-static WRITE16_HANDLER ( pass_soundwrite )
+public class pass
 {
-	soundlatch_w(0,data & 0xff);
+	
+	data16_t *pass_bg_videoram;
+	data16_t *pass_fg_videoram;
+	
+	/* in vidhrdw */
+	
+	VIDEO_START( pass );
+	VIDEO_UPDATE( pass );
+	WRITE16_HANDLER( pass_fg_videoram_w );
+	WRITE16_HANDLER( pass_bg_videoram_w );
+	
+	/* end in vidhrdw */
+	
+	static WRITE16_HANDLER ( pass_soundwrite )
+	{
+		soundlatch_w(0,data & 0xff);
+	}
+	
+	/* todo: check all memory regions actually readable / read from */
+	static MEMORY_READ16_START( pass_readmem )
+		{ 0x000000, 0x03ffff, MRA16_ROM },
+		{ 0x080000, 0x083fff, MRA16_RAM },
+		{ 0x200000, 0x200fff, MRA16_RAM },
+		{ 0x210000, 0x213fff, MRA16_RAM },
+		{ 0x220000, 0x2203ff, MRA16_RAM },
+		{ 0x230100, 0x230101, input_port_0_word_r },
+		{ 0x230200, 0x230201, input_port_1_word_r },
+	MEMORY_END
+	
+	static MEMORY_WRITE16_START( pass_writemem )
+		{ 0x000000, 0x03ffff, MWA16_ROM },
+		{ 0x080000, 0x083fff, MWA16_RAM },
+		{ 0x200000, 0x200fff, pass_bg_videoram_w, &pass_bg_videoram }, // Background
+		{ 0x210000, 0x213fff, pass_fg_videoram_w, &pass_fg_videoram }, // Foreground
+		{ 0x220000, 0x2203ff, paletteram16_xRRRRRGGGGGBBBBB_word_w, &paletteram16 },
+		{ 0x230000, 0x230001, pass_soundwrite },
+	MEMORY_END
+	
+	/* sound cpu */
+	
+	public static Memory_ReadAddress pass_sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x7fff, MRA_ROM ),
+		new Memory_ReadAddress( 0xf800, 0xffff, MRA_RAM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress pass_sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x7fff, MWA_ROM ),
+		new Memory_WriteAddress( 0xf800, 0xffff, MWA_RAM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	/* todo : verify this, handle unknown writes (sample playing..?) */
+	public static IO_ReadPort pass_sound_readport[]={
+		new IO_ReadPort(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_ReadPort( 0x00, 0x00, soundlatch_r ),
+		new IO_ReadPort( 0x70, 0x70, YM2203_status_port_0_r ),
+		new IO_ReadPort( 0x71, 0x71, YM2203_read_port_0_r ),
+	MEMORY_END
+	
+	public static IO_WritePort pass_sound_writeport[]={
+		new IO_WritePort(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_WritePort( 0x70, 0x70, YM2203_control_port_0_w ),
+		new IO_WritePort( 0x71, 0x71, YM2203_write_port_0_w ),
+		new IO_WritePort( 0x80, 0x80, MWA_NOP ),
+		new IO_WritePort( 0xc0, 0xc0, MWA_NOP ),
+	MEMORY_END
+	
+	
+	/* todo : work out function of unknown but used dsw */
+	static InputPortPtr input_ports_pass = new InputPortPtr(){ public void handler() { 
+		PORT_START(); 	/* DSW */
+		PORT_DIPNAME( 0x0001, 0x0001, "Unknown SW 0-0" );// USED ! Check code at 0x0046ea
+		PORT_DIPSETTING(      0x0001, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0002, 0x0002, "Unused SW 0-1" );	// Unused ?
+		PORT_DIPSETTING(      0x0002, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0004, 0x0004, "Unused SW 0-2" );	// Unused ?
+		PORT_DIPSETTING(      0x0004, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0008, 0x0008, "Unused SW 0-3" );	// Unused ?
+		PORT_DIPSETTING(      0x0008, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0010, 0x0010, "Unused SW 0-4" );	// Unused ?
+		PORT_DIPSETTING(      0x0010, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0020, 0x0020, "Unused SW 0-5" );	// Unused ?
+		PORT_DIPSETTING(      0x0020, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0040, 0x0040, "Unused SW 0-6" );	// Unused ?
+		PORT_DIPSETTING(      0x0040, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0080, 0x0080, "Unused SW 0-7" );	// Unused ?
+		PORT_DIPSETTING(      0x0080, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( "Lives") );
+		PORT_DIPSETTING(      0x0000, "2" );
+		PORT_DIPSETTING(      0x0300, "3" );
+		PORT_DIPSETTING(      0x0100, "4" );
+		PORT_DIPSETTING(      0x0200, "5" );
+		PORT_DIPNAME( 0x0400, 0x0400, "Unused SW 0-10" );// Unused ?
+		PORT_DIPSETTING(      0x0400, DEF_STR( "Off") );
+		PORT_DIPSETTING(      0x0000, DEF_STR( "On") );
+		PORT_DIPNAME( 0x1800, 0x0000, DEF_STR( "Difficulty") );
+		PORT_DIPSETTING(      0x0000, "Easy" );		// Time = 99
+		PORT_DIPSETTING(      0x1800, "Normal" );		// Time = 88
+		PORT_DIPSETTING(      0x0800, "Hard" );		// Time = 77
+		PORT_DIPSETTING(      0x1000, "Hardest" );		// Time = 66
+		PORT_DIPNAME( 0xe000, 0xe000, DEF_STR( "Coinage") );
+	//	PORT_DIPSETTING(      0x0000, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(      0x8000, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(      0x4000, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(      0xc000, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(      0xe000, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(      0x6000, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(      0xa000, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(      0x2000, DEF_STR( "1C_4C") );
+	
+		PORT_START(); 
+		PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 );
+		PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START1 );
+		PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON1 );
+		PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_BUTTON2 );
+		PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER1 );
+		PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER1 );
+		PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER1 );
+		PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER1 );
+		PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_COIN2 );
+		PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2 );
+		PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL );
+		PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL );
+		PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER2 );
+		PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER2 );
+		PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER2 );
+		PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2 );
+	INPUT_PORTS_END(); }}; 
+	
+	static GfxLayout tiles8x8_layout = new GfxLayout
+	(
+		8,8,
+		RGN_FRAC(1,1),
+		8,
+		new int[] { 0,1, 2,3, 4,5,6,7 },
+		new int[] { 0, 8, 16, 24, 32, 40, 48, 56 },
+		new int[] { 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64 },
+		64*8
+	);
+	
+	/* for something so simple this took a while to see */
+	static GfxLayout tiles4x4_fg_layout = new GfxLayout
+	(
+		4,4,
+		RGN_FRAC(1,1),
+		8,
+		new int[] { 0,1, 2,3, 4,5,6,7 },
+		new int[] { 0, 8, 16, 24 },
+		new int[] { 0*32, 1*32, 2*32, 3*32 },
+		4*32
+	);
+	
+	static GfxDecodeInfo gfxdecodeinfo[] =
+	{
+		new GfxDecodeInfo( REGION_GFX1, 0, tiles4x4_fg_layout, 256, 2 ),
+		new GfxDecodeInfo( REGION_GFX2, 0, tiles8x8_layout, 0, 2 ),
+		new GfxDecodeInfo( -1 )
+	};
+	
+	/* todo : is this correct? */
+	static struct YM2203interface ym2203_interface =
+	{
+		1,
+		14318180/4, /* guess */
+		{ YM2203_VOL(60,60) },
+		{ 0 },
+		{ 0 },
+		{ 0 },
+		{ 0 },
+	};
+	
+	/* todo : theres probably something missing from the sound hardware */
+	static MACHINE_DRIVER_START( pass )
+		/* basic machine hardware */
+		MDRV_CPU_ADD(M68000, 10000000) /* 10MHz? */
+		MDRV_CPU_MEMORY(pass_readmem,pass_writemem)
+		MDRV_CPU_VBLANK_INT(irq1_line_hold,1) /* all the same */
+	
+		MDRV_CPU_ADD(Z80, 3000000)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+		MDRV_CPU_MEMORY(pass_sound_readmem,pass_sound_writemem)
+		MDRV_CPU_PORTS(pass_sound_readport,pass_sound_writeport)
+		MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(64*8, 32*8)
+		MDRV_VISIBLE_AREA(8*8, 48*8-1, 2*8, 30*8-1)
+		MDRV_PALETTE_LENGTH(0x200)
+		MDRV_GFXDECODE(gfxdecodeinfo)
+	
+		MDRV_VIDEO_START(pass)
+		MDRV_VIDEO_UPDATE(pass)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(YM2203, ym2203_interface)
+	MACHINE_DRIVER_END
+	
+	
+	static RomLoadPtr rom_pass = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x40000, REGION_CPU1, 0 );/* 68k */
+		ROM_LOAD16_BYTE( "33", 0x00001, 0x20000, 0x0c5f18f6 );
+		ROM_LOAD16_BYTE( "34", 0x00000, 0x20000, 0x7b54573d );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* z80 clone? */
+		ROM_LOAD( "23", 0x00000, 0x10000, 0xb9a0ccde );
+	
+		ROM_REGION( 0x20000, REGION_SOUND1, 0 );/* samples? */
+		ROM_LOAD( "31", 0x00000, 0x20000, 0xc7315bbd );
+	
+		ROM_REGION( 0x40000, REGION_GFX1, 0 );/* fg layer 'sprites' */
+		ROM_LOAD16_BYTE( "35", 0x00000, 0x20000, 0x2ab33f07 );
+		ROM_LOAD16_BYTE( "36", 0x00001, 0x20000, 0x6677709d );
+	
+		ROM_REGION( 0x80000, REGION_GFX2, 0 );/* bg tiles */
+		ROM_LOAD16_BYTE( "37", 0x40000, 0x20000, 0x296499e7 );
+		ROM_LOAD16_BYTE( "39", 0x40001, 0x20000, 0x35c0ad5c );
+		ROM_LOAD16_BYTE( "38", 0x00000, 0x20000, 0x7f11b81a );
+		ROM_LOAD16_BYTE( "40", 0x00001, 0x20000, 0x80e0a71d );
+	ROM_END(); }}; 
+	
+	
+	public static GameDriver driver_pass	   = new GameDriver("1992"	,"pass"	,"pass.java"	,rom_pass,null	,machine_driver_pass	,input_ports_pass	,null	,ROT0	,	"Oksan", "Pass", GAME_IMPERFECT_SOUND )
 }
-
-/* todo: check all memory regions actually readable / read from */
-static MEMORY_READ16_START( pass_readmem )
-	{ 0x000000, 0x03ffff, MRA16_ROM },
-	{ 0x080000, 0x083fff, MRA16_RAM },
-	{ 0x200000, 0x200fff, MRA16_RAM },
-	{ 0x210000, 0x213fff, MRA16_RAM },
-	{ 0x220000, 0x2203ff, MRA16_RAM },
-	{ 0x230100, 0x230101, input_port_0_word_r },
-	{ 0x230200, 0x230201, input_port_1_word_r },
-MEMORY_END
-
-static MEMORY_WRITE16_START( pass_writemem )
-	{ 0x000000, 0x03ffff, MWA16_ROM },
-	{ 0x080000, 0x083fff, MWA16_RAM },
-	{ 0x200000, 0x200fff, pass_bg_videoram_w, &pass_bg_videoram }, // Background
-	{ 0x210000, 0x213fff, pass_fg_videoram_w, &pass_fg_videoram }, // Foreground
-	{ 0x220000, 0x2203ff, paletteram16_xRRRRRGGGGGBBBBB_word_w, &paletteram16 },
-	{ 0x230000, 0x230001, pass_soundwrite },
-MEMORY_END
-
-/* sound cpu */
-
-static MEMORY_READ_START( pass_sound_readmem )
-	{ 0x0000, 0x7fff, MRA_ROM },
-	{ 0xf800, 0xffff, MRA_RAM },
-MEMORY_END
-
-static MEMORY_WRITE_START( pass_sound_writemem )
-	{ 0x0000, 0x7fff, MWA_ROM },
-	{ 0xf800, 0xffff, MWA_RAM },
-MEMORY_END
-
-/* todo : verify this, handle unknown writes (sample playing..?) */
-static PORT_READ_START( pass_sound_readport )
-	{ 0x00, 0x00, soundlatch_r },
-	{ 0x70, 0x70, YM2203_status_port_0_r },
-	{ 0x71, 0x71, YM2203_read_port_0_r },
-MEMORY_END
-
-static PORT_WRITE_START( pass_sound_writeport )
-	{ 0x70, 0x70, YM2203_control_port_0_w },
-	{ 0x71, 0x71, YM2203_write_port_0_w },
-	{ 0x80, 0x80, MWA_NOP },
-	{ 0xc0, 0xc0, MWA_NOP },
-MEMORY_END
-
-
-/* todo : work out function of unknown but used dsw */
-INPUT_PORTS_START( pass )
-	PORT_START	/* DSW */
-	PORT_DIPNAME( 0x0001, 0x0001, "Unknown SW 0-0" )	// USED ! Check code at 0x0046ea
-	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002, 0x0002, "Unused SW 0-1" )		// Unused ?
-	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0004, 0x0004, "Unused SW 0-2" )		// Unused ?
-	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0008, 0x0008, "Unused SW 0-3" )		// Unused ?
-	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0010, 0x0010, "Unused SW 0-4" )		// Unused ?
-	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, "Unused SW 0-5" )		// Unused ?
-	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0040, 0x0040, "Unused SW 0-6" )		// Unused ?
-	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, "Unused SW 0-7" )		// Unused ?
-	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) )
-	PORT_DIPSETTING(      0x0000, "2" )
-	PORT_DIPSETTING(      0x0300, "3" )
-	PORT_DIPSETTING(      0x0100, "4" )
-	PORT_DIPSETTING(      0x0200, "5" )
-	PORT_DIPNAME( 0x0400, 0x0400, "Unused SW 0-10" )	// Unused ?
-	PORT_DIPSETTING(      0x0400, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x1800, 0x0000, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(      0x0000, "Easy" )			// Time = 99
-	PORT_DIPSETTING(      0x1800, "Normal" )			// Time = 88
-	PORT_DIPSETTING(      0x0800, "Hard" )			// Time = 77
-	PORT_DIPSETTING(      0x1000, "Hardest" )			// Time = 66
-	PORT_DIPNAME( 0xe000, 0xe000, DEF_STR( Coinage ) )
-//	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x8000, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x4000, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0xc000, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0xe000, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x6000, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0xa000, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x2000, DEF_STR( 1C_4C ) )
-
-	PORT_START
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER1 )
-	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER1 )
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER1 )
-	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER1 )
-	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON1 | IPF_COCKTAIL )
-	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON2 | IPF_COCKTAIL )
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  | IPF_8WAY | IPF_PLAYER2 )
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_PLAYER2 )
-INPUT_PORTS_END
-
-static struct GfxLayout tiles8x8_layout =
-{
-	8,8,
-	RGN_FRAC(1,1),
-	8,
-	{ 0,1, 2,3, 4,5,6,7 },
-	{ 0, 8, 16, 24, 32, 40, 48, 56 },
-	{ 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64 },
-	64*8
-};
-
-/* for something so simple this took a while to see */
-static struct GfxLayout tiles4x4_fg_layout =
-{
-	4,4,
-	RGN_FRAC(1,1),
-	8,
-	{ 0,1, 2,3, 4,5,6,7 },
-	{ 0, 8, 16, 24 },
-	{ 0*32, 1*32, 2*32, 3*32 },
-	4*32
-};
-
-static struct GfxDecodeInfo gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &tiles4x4_fg_layout, 256, 2 },
-	{ REGION_GFX2, 0, &tiles8x8_layout, 0, 2 },
-	{ -1 }
-};
-
-/* todo : is this correct? */
-static struct YM2203interface ym2203_interface =
-{
-	1,
-	14318180/4, /* guess */
-	{ YM2203_VOL(60,60) },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-};
-
-/* todo : theres probably something missing from the sound hardware */
-static MACHINE_DRIVER_START( pass )
-	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 10000000) /* 10MHz? */
-	MDRV_CPU_MEMORY(pass_readmem,pass_writemem)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1) /* all the same */
-
-	MDRV_CPU_ADD(Z80, 3000000)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
-	MDRV_CPU_MEMORY(pass_sound_readmem,pass_sound_writemem)
-	MDRV_CPU_PORTS(pass_sound_readport,pass_sound_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_VISIBLE_AREA(8*8, 48*8-1, 2*8, 30*8-1)
-	MDRV_PALETTE_LENGTH(0x200)
-	MDRV_GFXDECODE(gfxdecodeinfo)
-
-	MDRV_VIDEO_START(pass)
-	MDRV_VIDEO_UPDATE(pass)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(YM2203, ym2203_interface)
-MACHINE_DRIVER_END
-
-
-ROM_START( pass )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68k */
-	ROM_LOAD16_BYTE( "33", 0x00001, 0x20000, 0x0c5f18f6 )
-	ROM_LOAD16_BYTE( "34", 0x00000, 0x20000, 0x7b54573d )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* z80 clone? */
-	ROM_LOAD( "23", 0x00000, 0x10000, 0xb9a0ccde )
-
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* samples? */
-	ROM_LOAD( "31", 0x00000, 0x20000, 0xc7315bbd )
-
-	ROM_REGION( 0x40000, REGION_GFX1, 0 ) /* fg layer 'sprites' */
-	ROM_LOAD16_BYTE( "35", 0x00000, 0x20000, 0x2ab33f07 )
-	ROM_LOAD16_BYTE( "36", 0x00001, 0x20000, 0x6677709d )
-
-	ROM_REGION( 0x80000, REGION_GFX2, 0 ) /* bg tiles */
-	ROM_LOAD16_BYTE( "37", 0x40000, 0x20000, 0x296499e7 )
-	ROM_LOAD16_BYTE( "39", 0x40001, 0x20000, 0x35c0ad5c )
-	ROM_LOAD16_BYTE( "38", 0x00000, 0x20000, 0x7f11b81a )
-	ROM_LOAD16_BYTE( "40", 0x00001, 0x20000, 0x80e0a71d )
-ROM_END
-
-
-GAMEX( 1992, pass, 0, pass, pass, 0, ROT0, "Oksan", "Pass", GAME_IMPERFECT_SOUND )

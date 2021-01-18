@@ -23,11 +23,8 @@
 //============================================================
 
 // current frameskip/autoframeskip settings
-extern int			frameskip;
-extern int			autoframeskip;
 
 // speed throttling
-extern int			throttle;
 
 // palette lookups
 extern UINT8		palette_lookups_invalid;

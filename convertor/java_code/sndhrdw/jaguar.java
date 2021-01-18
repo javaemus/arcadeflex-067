@@ -142,333 +142,338 @@
 
 ****************************************************************************/
 
-#include "driver.h"
-#include "jaguar.h"
-#include "cpu/jaguar/jaguar.h"
-#include <math.h>
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package sndhrdw;
 
-
-/* Jerry registers */
-enum
+public class jaguar
 {
-	JPIT1,		DSP0,		JPIT2,		DSP1,
-	JPIT3,		DSP2,		JPIT4,		DSP3,
-	CLK1,		CLK2,		CLK3,
-	JINTCTRL = 0x20/2,
-	ASIDATA = 0x30/2,		ASICTRL,	ASICLK,
-	DSP_REGS
-};
-
-
-
-/* DSP variables */
-static UINT16 dsp_regs[DSP_REGS];
-
-static UINT16 serial_frequency;
-static void *serial_timer;
-
-static UINT8 gpu_irq_state;
-
-#if ENABLE_SPEEDUP_HACKS
-
-static void serial_chunky_callback(int param);
-static WRITE32_HANDLER( dsp_flags_w );
-
-#else
-
-static void serial_callback(int param);
-
-#endif
-
-
-
-/*************************************
- *
- *	DSP optimization control
- *
- *************************************/
-
-void jaguar_dsp_suspend(void)
-{
-	timer_suspendcpu(2, 1, SUSPEND_REASON_SPIN);
-}
-
-
-void jaguar_dsp_resume(void)
-{
-	timer_suspendcpu(2, 0, SUSPEND_REASON_SPIN);
-}
-
-
-
-/*************************************
- *
- *	Jerry -> GPU interrupts
- *
- *************************************/
-
-static void update_gpu_irq(void)
-{
-	if (gpu_irq_state & dsp_regs[JINTCTRL] & 0x1f)
+	
+	
+	/* Jerry registers */
+	enum
 	{
-		cpu_set_irq_line(1, 1, ASSERT_LINE);
-		jaguar_gpu_resume();
+		JPIT1,		DSP0,		JPIT2,		DSP1,
+		JPIT3,		DSP2,		JPIT4,		DSP3,
+		CLK1,		CLK2,		CLK3,
+		JINTCTRL = 0x20/2,
+		ASIDATA = 0x30/2,		ASICTRL,	ASICLK,
+		DSP_REGS
+	};
+	
+	
+	
+	/* DSP variables */
+	static UINT16 dsp_regs[DSP_REGS];
+	
+	static UINT16 serial_frequency;
+	static void *serial_timer;
+	
+	static UINT8 gpu_irq_state;
+	
+	#if ENABLE_SPEEDUP_HACKS
+	
+	static void serial_chunky_callback(int param);
+	static WRITE32_HANDLER( dsp_flags_w );
+	
+	#else
+	
+	static void serial_callback(int param);
+	
+	#endif
+	
+	
+	
+	/*************************************
+	 *
+	 *	DSP optimization control
+	 *
+	 *************************************/
+	
+	void jaguar_dsp_suspend(void)
+	{
+		timer_suspendcpu(2, 1, SUSPEND_REASON_SPIN);
 	}
-	else
-		cpu_set_irq_line(1, 1, CLEAR_LINE);
-}
-
-
-void jaguar_external_int(int state)
-{
-	if (state != CLEAR_LINE)
-		gpu_irq_state |= 1;
-	else
-		gpu_irq_state &= ~1;
-	update_gpu_irq();
-}
-
-
-
-/*************************************
- *
- *	Sound initialization
- *
- *************************************/
-
-void cojag_sound_init(void)
-{
-	int i;
-
-	/* fill the wave ROM -- these are pretty cheesy guesses */
-	for (i = 0; i < 0x80; i++)
+	
+	
+	void jaguar_dsp_resume(void)
 	{
-		/* F1D000 = triangle wave */
-		jaguar_wave_rom[0x000 + i] = ((i <= 0x40) ? i : 0x80 - i) * 32767 / 0x40;
-
-		/* F1D200 = full sine wave */
-		jaguar_wave_rom[0x080 + i] = (int)(32767. * sin(2.0 * 3.1415927 * (double)i / (double)0x80));
-
-		/* F1D400 = amplitude modulated sine wave? */
-		jaguar_wave_rom[0x100 + i] = (int)(32767. * sin(2.0 * 3.1415927 * (double)i / (double)0x80));
-
-		/* F1D600 = sine wave and second order harmonic */
-		jaguar_wave_rom[0x180 + i] = (int)(32767. * sin(2.0 * 3.1415927 * (double)i / (double)0x80));
-
-		/* F1D800 = chirp (sine wave of increasing frequency) */
-		jaguar_wave_rom[0x200 + i] = (int)(32767. * sin(2.0 * 3.1415927 * (double)i / (double)0x80));
-
-		/* F1DA00 = traingle wave with noise */
-		jaguar_wave_rom[0x280 + i] = jaguar_wave_rom[0x000 + i] * (rand() % 32768) / 32768;
-
-		/* F1DC00 = spike */
-		jaguar_wave_rom[0x300 + i] = (i == 0x40) ? 32767 : 0;
-
-		/* F1DE00 = white noise */
-		jaguar_wave_rom[0x380 + i] = rand() % 32768;
+		timer_suspendcpu(2, 0, SUSPEND_REASON_SPIN);
 	}
-
-#if ENABLE_SPEEDUP_HACKS
-	install_mem_write32_handler(2, 0xf1a100, 0xf1a103, dsp_flags_w);
-#endif
-}
-
-
-
-/*************************************
- *
- *	Sound reset
- *
- *************************************/
-
-void cojag_sound_reset(void)
-{
-#if ENABLE_SPEEDUP_HACKS
-	serial_timer = timer_alloc(serial_chunky_callback);
-#else
-	serial_timer = timer_alloc(serial_callback);
-#endif
-}
-
-
-
-/*************************************
- *
- *	Jerry 16-bit register access
- *
- *************************************/
-
-READ16_HANDLER( jaguar_jerry_regs_r )
-{
-	if (offset != JINTCTRL && offset != JINTCTRL+2)
-		logerror("%08X:jerry read register @ F10%03X\n", activecpu_get_previouspc(), offset * 2);
-
-	switch (offset)
+	
+	
+	
+	/*************************************
+	 *
+	 *	Jerry -> GPU interrupts
+	 *
+	 *************************************/
+	
+	static void update_gpu_irq(void)
 	{
-		case JINTCTRL:
-			return gpu_irq_state;
-	}
-
-	return dsp_regs[offset];
-}
-
-
-WRITE16_HANDLER( jaguar_jerry_regs_w )
-{
-	COMBINE_DATA(&dsp_regs[offset]);
-
-	switch (offset)
-	{
-		case JINTCTRL:
-			gpu_irq_state &= ~(dsp_regs[JINTCTRL] >> 8);
-			update_gpu_irq();
-			break;
-	}
-
-	if (offset != JINTCTRL && offset != JINTCTRL+2 && offset != ASICTRL)
-		logerror("%08X:jerry write register @ F10%03X = %04X\n", activecpu_get_previouspc(), offset * 2, data);
-}
-
-
-
-/*************************************
- *
- *	Jerry 32-bit register access
- *
- *************************************/
-
-READ32_HANDLER( jaguar_jerry_regs32_r )
-{
-	return (jaguar_jerry_regs_r(offset * 2, 0) << 16) | jaguar_jerry_regs_r(offset * 2 + 1, 0);
-}
-
-
-WRITE32_HANDLER( jaguar_jerry_regs32_w )
-{
-	if (ACCESSING_MSW32)
-		jaguar_jerry_regs_w(offset * 2, data >> 16, mem_mask >> 16);
-	if (ACCESSING_LSW32)
-		jaguar_jerry_regs_w(offset * 2 + 1, data, mem_mask);
-}
-
-
-
-/*************************************
- *
- *	Speedier sound hack
- *
- *************************************/
-
-#if ENABLE_SPEEDUP_HACKS
-
-static WRITE32_HANDLER( dsp_flags_w )
-{
-	/* write the data through */
-	jaguardsp_ctrl_w(2, offset, data, mem_mask);
-
-	/* if they were clearing the A2S interrupt, see if we are headed for the spin */
-	/* loop with R22 != 0; if we are, just start spinning again */
-	if (cpu_getactivecpu() == 2 && !(mem_mask & 0x0000ff00) && (data & 0x400))
-	{
-		/* see if we're going back to the spin loop */
-		if (!(data & 0x04000) && activecpu_get_reg(JAGUAR_R22) != 0)
+		if (gpu_irq_state & dsp_regs[JINTCTRL] & 0x1f)
 		{
-			UINT32 r30 = activecpu_get_reg(JAGUAR_R30) & 0xffffff;
-			if (r30 >= 0xf1b124 && r30 <= 0xf1b126)
-				jaguar_dsp_suspend();
+			cpu_set_irq_line(1, 1, ASSERT_LINE);
+			jaguar_gpu_resume();
+		}
+		else
+			cpu_set_irq_line(1, 1, CLEAR_LINE);
+	}
+	
+	
+	void jaguar_external_int(int state)
+	{
+		if (state != CLEAR_LINE)
+			gpu_irq_state |= 1;
+		else
+			gpu_irq_state &= ~1;
+		update_gpu_irq();
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound initialization
+	 *
+	 *************************************/
+	
+	void cojag_sound_init(void)
+	{
+		int i;
+	
+		/* fill the wave ROM -- these are pretty cheesy guesses */
+		for (i = 0; i < 0x80; i++)
+		{
+			/* F1D000 = triangle wave */
+			jaguar_wave_rom[0x000 + i] = ((i <= 0x40) ? i : 0x80 - i) * 32767 / 0x40;
+	
+			/* F1D200 = full sine wave */
+			jaguar_wave_rom[0x080 + i] = (int)(32767. * sin(2.0 * 3.1415927 * (double)i / (double)0x80));
+	
+			/* F1D400 = amplitude modulated sine wave? */
+			jaguar_wave_rom[0x100 + i] = (int)(32767. * sin(2.0 * 3.1415927 * (double)i / (double)0x80));
+	
+			/* F1D600 = sine wave and second order harmonic */
+			jaguar_wave_rom[0x180 + i] = (int)(32767. * sin(2.0 * 3.1415927 * (double)i / (double)0x80));
+	
+			/* F1D800 = chirp (sine wave of increasing frequency) */
+			jaguar_wave_rom[0x200 + i] = (int)(32767. * sin(2.0 * 3.1415927 * (double)i / (double)0x80));
+	
+			/* F1DA00 = traingle wave with noise */
+			jaguar_wave_rom[0x280 + i] = jaguar_wave_rom[0x000 + i] * (rand() % 32768) / 32768;
+	
+			/* F1DC00 = spike */
+			jaguar_wave_rom[0x300 + i] = (i == 0x40) ? 32767 : 0;
+	
+			/* F1DE00 = white noise */
+			jaguar_wave_rom[0x380 + i] = rand() % 32768;
+		}
+	
+	#if ENABLE_SPEEDUP_HACKS
+		install_mem_write32_handler(2, 0xf1a100, 0xf1a103, dsp_flags_w);
+	#endif
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Sound reset
+	 *
+	 *************************************/
+	
+	void cojag_sound_reset(void)
+	{
+	#if ENABLE_SPEEDUP_HACKS
+		serial_timer = timer_alloc(serial_chunky_callback);
+	#else
+		serial_timer = timer_alloc(serial_callback);
+	#endif
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Jerry 16-bit register access
+	 *
+	 *************************************/
+	
+	READ16_HANDLER( jaguar_jerry_regs_r )
+	{
+		if (offset != JINTCTRL && offset != JINTCTRL+2)
+			logerror("%08X:jerry read register @ F10%03X\n", activecpu_get_previouspc(), offset * 2);
+	
+		switch (offset)
+		{
+			case JINTCTRL:
+				return gpu_irq_state;
+		}
+	
+		return dsp_regs[offset];
+	}
+	
+	
+	WRITE16_HANDLER( jaguar_jerry_regs_w )
+	{
+		COMBINE_DATA(&dsp_regs[offset]);
+	
+		switch (offset)
+		{
+			case JINTCTRL:
+				gpu_irq_state &= ~(dsp_regs[JINTCTRL] >> 8);
+				update_gpu_irq();
+				break;
+		}
+	
+		if (offset != JINTCTRL && offset != JINTCTRL+2 && offset != ASICTRL)
+			logerror("%08X:jerry write register @ F10%03X = %04X\n", activecpu_get_previouspc(), offset * 2, data);
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Jerry 32-bit register access
+	 *
+	 *************************************/
+	
+	READ32_HANDLER( jaguar_jerry_regs32_r )
+	{
+		return (jaguar_jerry_regs_r(offset * 2, 0) << 16) | jaguar_jerry_regs_r(offset * 2 + 1, 0);
+	}
+	
+	
+	WRITE32_HANDLER( jaguar_jerry_regs32_w )
+	{
+		if (ACCESSING_MSW32)
+			jaguar_jerry_regs_w(offset * 2, data >> 16, mem_mask >> 16);
+		if (ACCESSING_LSW32)
+			jaguar_jerry_regs_w(offset * 2 + 1, data, mem_mask);
+	}
+	
+	
+	
+	/*************************************
+	 *
+	 *	Speedier sound hack
+	 *
+	 *************************************/
+	
+	#if ENABLE_SPEEDUP_HACKS
+	
+	static WRITE32_HANDLER( dsp_flags_w )
+	{
+		/* write the data through */
+		jaguardsp_ctrl_w(2, offset, data, mem_mask);
+	
+		/* if they were clearing the A2S interrupt, see if we are headed for the spin */
+		/* loop with R22 != 0; if we are, just start spinning again */
+		if (cpu_getactivecpu() == 2 && !(mem_mask & 0x0000ff00) && (data & 0x400))
+		{
+			/* see if we're going back to the spin loop */
+			if (!(data & 0x04000) && activecpu_get_reg(JAGUAR_R22) != 0)
+			{
+				UINT32 r30 = activecpu_get_reg(JAGUAR_R30) & 0xffffff;
+				if (r30 >= 0xf1b124 && r30 <= 0xf1b126)
+					jaguar_dsp_suspend();
+			}
 		}
 	}
-}
-
-#endif
-
-
-
-/*************************************
- *
- *	Serial port interrupt generation
- *
- *************************************/
-
-#if ENABLE_SPEEDUP_HACKS
-
-static void serial_chunky_callback(int param)
-{
-	/* assert the A2S IRQ on CPU #2 (DSP) */
-	cpu_set_irq_line(2, 1, ASSERT_LINE);
-	jaguar_dsp_resume();
-
-	/* fix flaky code in interrupt handler which thwarts our speedup */
-	if ((jaguar_dsp_ram[0x3e/4] & 0xffff) == 0xbfbc &&
-		(jaguar_dsp_ram[0x42/4] & 0xffff) == 0xe400)
+	
+	#endif
+	
+	
+	
+	/*************************************
+	 *
+	 *	Serial port interrupt generation
+	 *
+	 *************************************/
+	
+	#if ENABLE_SPEEDUP_HACKS
+	
+	static void serial_chunky_callback(int param)
 	{
-		/* move the store r28,(r29) into the branch delay slot, swapping it with */
-		/* the nop that's currently there */
-		jaguar_dsp_ram[0x3e/4] = (jaguar_dsp_ram[0x3e/4] & 0xffff0000) | 0xe400;
-		jaguar_dsp_ram[0x42/4] = (jaguar_dsp_ram[0x42/4] & 0xffff0000) | 0xbfbc;
+		/* assert the A2S IRQ on CPU #2 (DSP) */
+		cpu_set_irq_line(2, 1, ASSERT_LINE);
+		jaguar_dsp_resume();
+	
+		/* fix flaky code in interrupt handler which thwarts our speedup */
+		if ((jaguar_dsp_ram[0x3e/4] & 0xffff) == 0xbfbc &&
+			(jaguar_dsp_ram[0x42/4] & 0xffff) == 0xe400)
+		{
+			/* move the store r28,(r29) into the branch delay slot, swapping it with */
+			/* the nop that's currently there */
+			jaguar_dsp_ram[0x3e/4] = (jaguar_dsp_ram[0x3e/4] & 0xffff0000) | 0xe400;
+			jaguar_dsp_ram[0x42/4] = (jaguar_dsp_ram[0x42/4] & 0xffff0000) | 0xbfbc;
+		}
 	}
-}
-
-#else
-
-static void serial_callback(int param)
-{
-	/* assert the A2S IRQ on CPU #2 (DSP) */
-	cpu_set_irq_line(2, 1, ASSERT_LINE);
-	jaguar_dsp_resume();
-}
-
-#endif
-
-
-
-/*************************************
- *
- *	Serial port handlers
- *
- *************************************/
-
-READ32_HANDLER( jaguar_serial_r )
-{
-	logerror("%08X:jaguar_serial_r(%X)\n", activecpu_get_previouspc(), offset);
-	return 0;
-}
-
-
-WRITE32_HANDLER( jaguar_serial_w )
-{
-	switch (offset)
+	
+	#else
+	
+	static void serial_callback(int param)
 	{
-		/* right DAC */
-		case 2:
-			DAC_signed_data_16_w(1, (data & 0xffff) ^ 0x8000);
-			break;
-
-		/* left DAC */
-		case 3:
-			DAC_signed_data_16_w(0, (data & 0xffff) ^ 0x8000);
-			break;
-
-		/* frequency register */
-		case 4:
-			serial_frequency = data & 0xffff;
-			break;
-
-		/* control register -- only very specific modes supported */
-		case 5:
-			if ((data & 0x3f) != 0x15)
-				logerror("Unexpected write to SMODE = %X\n", data);
-			if ((data & 0x3f) == 0x15)
-			{
-				double rate = TIME_IN_HZ(26000000 / (32 * 2 * (serial_frequency + 1)));
-				timer_adjust(serial_timer, rate, 0, rate);
-			}
-			break;
-
-		default:
-			logerror("%08X:jaguar_serial_w(%X,%X)\n", activecpu_get_previouspc(), offset, data);
-			break;
+		/* assert the A2S IRQ on CPU #2 (DSP) */
+		cpu_set_irq_line(2, 1, ASSERT_LINE);
+		jaguar_dsp_resume();
 	}
+	
+	#endif
+	
+	
+	
+	/*************************************
+	 *
+	 *	Serial port handlers
+	 *
+	 *************************************/
+	
+	READ32_HANDLER( jaguar_serial_r )
+	{
+		logerror("%08X:jaguar_serial_r(%X)\n", activecpu_get_previouspc(), offset);
+		return 0;
+	}
+	
+	
+	WRITE32_HANDLER( jaguar_serial_w )
+	{
+		switch (offset)
+		{
+			/* right DAC */
+			case 2:
+				DAC_signed_data_16_w(1, (data & 0xffff) ^ 0x8000);
+				break;
+	
+			/* left DAC */
+			case 3:
+				DAC_signed_data_16_w(0, (data & 0xffff) ^ 0x8000);
+				break;
+	
+			/* frequency register */
+			case 4:
+				serial_frequency = data & 0xffff;
+				break;
+	
+			/* control register -- only very specific modes supported */
+			case 5:
+				if ((data & 0x3f) != 0x15)
+					logerror("Unexpected write to SMODE = %X\n", data);
+				if ((data & 0x3f) == 0x15)
+				{
+					double rate = TIME_IN_HZ(26000000 / (32 * 2 * (serial_frequency + 1)));
+					timer_adjust(serial_timer, rate, 0, rate);
+				}
+				break;
+	
+			default:
+				logerror("%08X:jaguar_serial_w(%X,%X)\n", activecpu_get_previouspc(), offset, data);
+				break;
+		}
+	}
+	
+	
 }
-
-

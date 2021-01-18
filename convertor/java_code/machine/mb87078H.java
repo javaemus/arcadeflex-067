@@ -78,7 +78,6 @@ struct MB87078interface {
 };
 
 
-void MB87078_stop(void);
 void MB87078_start(int which, const struct MB87078interface *intf);
 
 void MB87078_data_w(int which, int data, int dsel);

@@ -161,218 +161,231 @@ $F987 - Addresses table at $f98d containing four structs:
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
-#include "vidhrdw/crtc6845.h"
-#include "machine/6821pia.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-
-/* VIDHRDW */
-
-PALETTE_INIT( nyny );
-VIDEO_START( spiders );
-VIDEO_UPDATE( spiders );
-
-/* MACHINE */
-
-MACHINE_INIT( spiders );
-INTERRUPT_GEN( spiders_timed_irq );
-
-
-/* Driver structure definition */
-
-static MEMORY_READ_START( readmem )
-	{ 0x0000, 0xbfff, MRA_RAM },
-	{ 0xc001, 0xc001, crtc6845_register_r },
-	{ 0xc044, 0xc047, pia_0_r },
-	{ 0xc048, 0xc04b, pia_1_r },
-	{ 0xc050, 0xc053, pia_2_r },
-	{ 0xc060, 0xc060, input_port_2_r },
-	{ 0xc080, 0xc080, input_port_3_r },
-	{ 0xc0a0, 0xc0a0, input_port_4_r },
-	{ 0xc100, 0xffff, MRA_ROM },
-MEMORY_END
-
-static MEMORY_WRITE_START( writemem )
-	{ 0x0000, 0xbfff, MWA_RAM },
-	{ 0xc000, 0xc000, crtc6845_address_w },
-	{ 0xc001, 0xc001, crtc6845_register_w },
-	{ 0xc044, 0xc047, pia_0_w },
-	{ 0xc048, 0xc04b, pia_1_w },
-	{ 0xc050, 0xc053, pia_2_w },
-	{ 0xc100, 0xffff, MWA_ROM },
-MEMORY_END
-
-
-static MEMORY_READ_START( sound_readmem )
-	{ 0x0000, 0x007f, MRA_RAM },
-	{ 0x0080, 0x0080, soundlatch_r },
-	{ 0xf800, 0xffff, MRA_ROM },
-MEMORY_END
-
-static MEMORY_WRITE_START( sound_writemem )
-	{ 0x0000, 0x007f, MWA_RAM },
-	{ 0xf800, 0xffff, MWA_ROM },
-MEMORY_END
-
-
-
-INPUT_PORTS_START( spiders )
-    PORT_START      /* IN0 */
-    PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 )	/* PIA0 PA1 */
-	PORT_BITX(0x04, IP_ACTIVE_HIGH, IPT_SERVICE, DEF_STR( Service_Mode ), KEYCODE_F2, IP_JOY_NONE )	/* PIA0 PA2 */
-    PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1 )
-    PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )
-    PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )
-    PORT_BIT( 0x90, IP_ACTIVE_HIGH, IPT_UNUSED )
-
-    PORT_START      /* IN1 */
-    PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT | IPF_2WAY )
-    PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_2WAY )
-    PORT_BIT( 0xF3, IP_ACTIVE_HIGH, IPT_UNUSED )
-
-    PORT_START  /* DSW1 */
-    PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
-    PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
-    PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
-    PORT_DIPSETTING(    0x06, DEF_STR( 4C_5C ) )
-    PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
-    PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
-    PORT_BIT(0xf8, IP_ACTIVE_LOW,IPT_UNUSED)
-
-    PORT_START  /* DSW2 */
-    PORT_DIPNAME( 0x03, 0x03, "Play mode" )
-    PORT_DIPSETTING(    0x00, "A A'" )
-    PORT_DIPSETTING(    0x01, "A B'" )
-    PORT_DIPSETTING(    0x02, "B A'" )
-    PORT_DIPSETTING(    0x03, "B B'" )
-    PORT_DIPNAME( 0x0c, 0x0c, "Spiders to complete belt" )
-    PORT_DIPSETTING(    0x00, "14" )
-    PORT_DIPSETTING(    0x04, "20" )
-    PORT_DIPSETTING(    0x08, "26" )
-    PORT_DIPSETTING(    0x0c, "16" )
-    PORT_DIPNAME( 0x10, 0x10, "Spare Guns" )
-    PORT_DIPSETTING(    0x00, "4" )
-    PORT_DIPSETTING(    0x10, "3" )
-    PORT_DIPNAME( 0x60, 0x60, "Score for bonus gun" )
-    PORT_DIPSETTING(    0x00, "NONE" )
-    PORT_DIPSETTING(    0x20, "20K" )
-    PORT_DIPSETTING(    0x40, "25K" )
-    PORT_DIPSETTING(    0x60, "15K" )
-    PORT_DIPNAME( 0x80, 0x00, "Giant Spiders" )
-    PORT_DIPSETTING(    0x00, "First screen" )
-    PORT_DIPSETTING(    0x80, "Every screen" )
-
-    PORT_START  /* DSW3 */
-    PORT_DIPNAME( 0x01, 0x00, DEF_STR( Flip_Screen ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-    PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-    PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) )
-    PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-    PORT_DIPNAME( 0x1c, 0x00, "Vertical Adjust" )
-    PORT_DIPSETTING(    0x00, "0" )
-    PORT_DIPSETTING(    0x04, "1" )
-    PORT_DIPSETTING(    0x08, "2" )
-    PORT_DIPSETTING(    0x0c, "3" )
-    PORT_DIPSETTING(    0x10, "4" )
-    PORT_DIPSETTING(    0x14, "5" )
-    PORT_DIPSETTING(    0x18, "6" )
-    PORT_DIPSETTING(    0x1c, "7" )
-    PORT_DIPNAME( 0xe0, 0x00, "Horizontal Adjust" )
-    PORT_DIPSETTING(    0x00, "0" )
-    PORT_DIPSETTING(    0x20, "1" )
-    PORT_DIPSETTING(    0x40, "2" )
-    PORT_DIPSETTING(    0x60, "3" )
-    PORT_DIPSETTING(    0x80, "4" )
-    PORT_DIPSETTING(    0xa0, "5" )
-    PORT_DIPSETTING(    0xc0, "6" )
-    PORT_DIPSETTING(    0xe0, "7" )
-
-    PORT_START      /* Connected to PIA1 CA1 input */
-    PORT_BIT( 0xFF, IP_ACTIVE_HIGH, IPT_VBLANK )
-
-    PORT_START      /* Connected to PIA0 CB1 input */
-    PORT_BITX(0xff, 0xff, IP_ACTIVE_LOW, "PS1 (Crosshatch)", KEYCODE_F1, IP_JOY_NONE )
-
-INPUT_PORTS_END
-
-
-
-static MACHINE_DRIVER_START( spiders )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, 2800000)
-	MDRV_CPU_MEMORY(readmem,writemem)
-	MDRV_CPU_PERIODIC_INT(spiders_timed_irq , 25)   /* Timed Int  */
-
-	MDRV_CPU_ADD(M6802,3000000/4)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
-	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
-	MDRV_MACHINE_INIT(spiders)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(32*8, 28*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
-	MDRV_PALETTE_LENGTH(8)
-
-	MDRV_PALETTE_INIT(nyny)
-	MDRV_VIDEO_START(spiders)
-	MDRV_VIDEO_UPDATE(spiders)
-
-	/* sound hardware */
-MACHINE_DRIVER_END
-
-
-ROM_START( spiders )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "sp-ic74",      0xc000, 0x1000, 0x6a2578f6 )
-	ROM_LOAD( "sp-ic73",      0xd000, 0x1000, 0xd69b2f21 )
-	ROM_LOAD( "sp-ic72",      0xe000, 0x1000, 0x464125da )
-	ROM_LOAD( "sp-ic71",      0xf000, 0x1000, 0xa9539b18 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the audio CPU */
-	ROM_LOAD( "sp-ic3",       0xf800, 0x0800, 0x944d761e )
-
-	ROM_REGION( 0x10000, REGION_GFX1, 0 )     /* 64k graphics block used at runtime */
-	ROM_LOAD( "sp-ic33",      0x0000, 0x1000, 0xb6731baa )
-	ROM_LOAD( "sp-ic25",      0x1000, 0x1000, 0xbaec64e7 )
-	ROM_LOAD( "sp-ic24",      0x2000, 0x1000, 0xa40a5517 )
-	ROM_LOAD( "sp-ic23",      0x3000, 0x1000, 0x3ca08053 )
-	ROM_LOAD( "sp-ic22",      0x4000, 0x1000, 0x07ea073c )
-	ROM_LOAD( "sp-ic21",      0x5000, 0x1000, 0x41b344b4 )
-	ROM_LOAD( "sp-ic20",      0x6000, 0x1000, 0x4d37da5a )
-ROM_END
-
-ROM_START( spiders2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "sp-ic74",      0xc000, 0x1000, 0x6a2578f6 )
-	ROM_LOAD( "sp2.bin",      0xd000, 0x1000, 0xcf71d12b )
-	ROM_LOAD( "sp-ic72",      0xe000, 0x1000, 0x464125da )
-	ROM_LOAD( "sp4.bin",      0xf000, 0x1000, 0xf3d126bb )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the audio CPU */
-	ROM_LOAD( "sp-ic3",       0xf800, 0x0800, 0x944d761e )
-
-	ROM_REGION( 0x10000, REGION_GFX1, 0 )     /* 64k graphics block used at runtime */
-	ROM_LOAD( "sp-ic33",      0x0000, 0x1000, 0xb6731baa )
-	ROM_LOAD( "sp-ic25",      0x1000, 0x1000, 0xbaec64e7 )
-	ROM_LOAD( "sp-ic24",      0x2000, 0x1000, 0xa40a5517 )
-	ROM_LOAD( "sp-ic23",      0x3000, 0x1000, 0x3ca08053 )
-	ROM_LOAD( "sp-ic22",      0x4000, 0x1000, 0x07ea073c )
-	ROM_LOAD( "sp-ic21",      0x5000, 0x1000, 0x41b344b4 )
-	ROM_LOAD( "sp-ic20",      0x6000, 0x1000, 0x4d37da5a )
-ROM_END
-
-
-
-/* this is a newer version with just one bug fix */
-GAMEX( 1981, spiders,  0,       spiders, spiders, 0, ROT270, "Sigma Ent. Inc.", "Spiders (set 1)", GAME_NO_SOUND | GAME_NO_COCKTAIL )
-GAMEX( 1981, spiders2, spiders, spiders, spiders, 0, ROT270, "Sigma Ent. Inc.", "Spiders (set 2)", GAME_NO_SOUND | GAME_NO_COCKTAIL )
+public class spiders
+{
+	
+	
+	/* VIDHRDW */
+	
+	PALETTE_INIT( nyny );
+	VIDEO_START( spiders );
+	VIDEO_UPDATE( spiders );
+	
+	/* MACHINE */
+	
+	MACHINE_INIT( spiders );
+	INTERRUPT_GEN( spiders_timed_irq );
+	
+	
+	/* Driver structure definition */
+	
+	public static Memory_ReadAddress readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0xbfff, MRA_RAM ),
+		new Memory_ReadAddress( 0xc001, 0xc001, crtc6845_register_r ),
+		new Memory_ReadAddress( 0xc044, 0xc047, pia_0_r ),
+		new Memory_ReadAddress( 0xc048, 0xc04b, pia_1_r ),
+		new Memory_ReadAddress( 0xc050, 0xc053, pia_2_r ),
+		new Memory_ReadAddress( 0xc060, 0xc060, input_port_2_r ),
+		new Memory_ReadAddress( 0xc080, 0xc080, input_port_3_r ),
+		new Memory_ReadAddress( 0xc0a0, 0xc0a0, input_port_4_r ),
+		new Memory_ReadAddress( 0xc100, 0xffff, MRA_ROM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0xbfff, MWA_RAM ),
+		new Memory_WriteAddress( 0xc000, 0xc000, crtc6845_address_w ),
+		new Memory_WriteAddress( 0xc001, 0xc001, crtc6845_register_w ),
+		new Memory_WriteAddress( 0xc044, 0xc047, pia_0_w ),
+		new Memory_WriteAddress( 0xc048, 0xc04b, pia_1_w ),
+		new Memory_WriteAddress( 0xc050, 0xc053, pia_2_w ),
+		new Memory_WriteAddress( 0xc100, 0xffff, MWA_ROM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	public static Memory_ReadAddress sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x007f, MRA_RAM ),
+		new Memory_ReadAddress( 0x0080, 0x0080, soundlatch_r ),
+		new Memory_ReadAddress( 0xf800, 0xffff, MRA_ROM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x007f, MWA_RAM ),
+		new Memory_WriteAddress( 0xf800, 0xffff, MWA_ROM ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	
+	
+	static InputPortPtr input_ports_spiders = new InputPortPtr(){ public void handler() { 
+	    PORT_START();       /* IN0 */
+	    PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 );/* PIA0 PA1 */
+		PORT_BITX(0x04, IP_ACTIVE_HIGH, IPT_SERVICE, DEF_STR( "Service_Mode") ); KEYCODE_F2, IP_JOY_NONE )	/* PIA0 PA2 */
+	    PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1 );
+	    PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 );
+	    PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 );
+	    PORT_BIT( 0x90, IP_ACTIVE_HIGH, IPT_UNUSED );
+	
+	    PORT_START();       /* IN1 */
+	    PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT | IPF_2WAY );
+	    PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_2WAY );
+	    PORT_BIT( 0xF3, IP_ACTIVE_HIGH, IPT_UNUSED );
+	
+	    PORT_START();   /* DSW1 */
+	    PORT_DIPNAME( 0x07, 0x07, DEF_STR( "Coinage") );
+	    PORT_DIPSETTING(    0x01, DEF_STR( "2C_1C") );
+	    PORT_DIPSETTING(    0x07, DEF_STR( "1C_1C") );
+	    PORT_DIPSETTING(    0x06, DEF_STR( "4C_5C") );
+	    PORT_DIPSETTING(    0x04, DEF_STR( "1C_2C") );
+	    PORT_DIPSETTING(    0x02, DEF_STR( "1C_3C") );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "Free_Play") );
+	    PORT_BIT(0xf8, IP_ACTIVE_LOW,IPT_UNUSED);
+	
+	    PORT_START();   /* DSW2 */
+	    PORT_DIPNAME( 0x03, 0x03, "Play mode" );
+	    PORT_DIPSETTING(    0x00, "A A'" );
+	    PORT_DIPSETTING(    0x01, "A B'" );
+	    PORT_DIPSETTING(    0x02, "B A'" );
+	    PORT_DIPSETTING(    0x03, "B B'" );
+	    PORT_DIPNAME( 0x0c, 0x0c, "Spiders to complete belt" );
+	    PORT_DIPSETTING(    0x00, "14" );
+	    PORT_DIPSETTING(    0x04, "20" );
+	    PORT_DIPSETTING(    0x08, "26" );
+	    PORT_DIPSETTING(    0x0c, "16" );
+	    PORT_DIPNAME( 0x10, 0x10, "Spare Guns" );
+	    PORT_DIPSETTING(    0x00, "4" );
+	    PORT_DIPSETTING(    0x10, "3" );
+	    PORT_DIPNAME( 0x60, 0x60, "Score for bonus gun" );
+	    PORT_DIPSETTING(    0x00, "NONE" );
+	    PORT_DIPSETTING(    0x20, "20K" );
+	    PORT_DIPSETTING(    0x40, "25K" );
+	    PORT_DIPSETTING(    0x60, "15K" );
+	    PORT_DIPNAME( 0x80, 0x00, "Giant Spiders" );
+	    PORT_DIPSETTING(    0x00, "First screen" );
+	    PORT_DIPSETTING(    0x80, "Every screen" );
+	
+	    PORT_START();   /* DSW3 */
+	    PORT_DIPNAME( 0x01, 0x00, DEF_STR( "Flip_Screen") );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+	    PORT_DIPSETTING(    0x01, DEF_STR( "On") );
+	    PORT_DIPNAME( 0x02, 0x02, DEF_STR( "Cabinet") );
+	    PORT_DIPSETTING(    0x02, DEF_STR( "Upright") );
+	    PORT_DIPSETTING(    0x00, DEF_STR( "Cocktail") );
+	    PORT_DIPNAME( 0x1c, 0x00, "Vertical Adjust" );
+	    PORT_DIPSETTING(    0x00, "0" );
+	    PORT_DIPSETTING(    0x04, "1" );
+	    PORT_DIPSETTING(    0x08, "2" );
+	    PORT_DIPSETTING(    0x0c, "3" );
+	    PORT_DIPSETTING(    0x10, "4" );
+	    PORT_DIPSETTING(    0x14, "5" );
+	    PORT_DIPSETTING(    0x18, "6" );
+	    PORT_DIPSETTING(    0x1c, "7" );
+	    PORT_DIPNAME( 0xe0, 0x00, "Horizontal Adjust" );
+	    PORT_DIPSETTING(    0x00, "0" );
+	    PORT_DIPSETTING(    0x20, "1" );
+	    PORT_DIPSETTING(    0x40, "2" );
+	    PORT_DIPSETTING(    0x60, "3" );
+	    PORT_DIPSETTING(    0x80, "4" );
+	    PORT_DIPSETTING(    0xa0, "5" );
+	    PORT_DIPSETTING(    0xc0, "6" );
+	    PORT_DIPSETTING(    0xe0, "7" );
+	
+	    PORT_START();       /* Connected to PIA1 CA1 input */
+	    PORT_BIT( 0xFF, IP_ACTIVE_HIGH, IPT_VBLANK );
+	
+	    PORT_START();       /* Connected to PIA0 CB1 input */
+	    PORT_BITX(0xff, 0xff, IP_ACTIVE_LOW, "PS1 (Crosshatch);, KEYCODE_F1, IP_JOY_NONE )
+	
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	static MACHINE_DRIVER_START( spiders )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(M6809, 2800000)
+		MDRV_CPU_MEMORY(readmem,writemem)
+		MDRV_CPU_PERIODIC_INT(spiders_timed_irq , 25)   /* Timed Int  */
+	
+		MDRV_CPU_ADD(M6802,3000000/4)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+		MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	
+		MDRV_MACHINE_INIT(spiders)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(32*8, 28*8)
+		MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
+		MDRV_PALETTE_LENGTH(8)
+	
+		MDRV_PALETTE_INIT(nyny)
+		MDRV_VIDEO_START(spiders)
+		MDRV_VIDEO_UPDATE(spiders)
+	
+		/* sound hardware */
+	MACHINE_DRIVER_END
+	
+	
+	static RomLoadPtr rom_spiders = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );
+		ROM_LOAD( "sp-ic74",      0xc000, 0x1000, 0x6a2578f6 );
+		ROM_LOAD( "sp-ic73",      0xd000, 0x1000, 0xd69b2f21 );
+		ROM_LOAD( "sp-ic72",      0xe000, 0x1000, 0x464125da );
+		ROM_LOAD( "sp-ic71",      0xf000, 0x1000, 0xa9539b18 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );    /* 64k for the audio CPU */
+		ROM_LOAD( "sp-ic3",       0xf800, 0x0800, 0x944d761e );
+	
+		ROM_REGION( 0x10000, REGION_GFX1, 0 );    /* 64k graphics block used at runtime */
+		ROM_LOAD( "sp-ic33",      0x0000, 0x1000, 0xb6731baa );
+		ROM_LOAD( "sp-ic25",      0x1000, 0x1000, 0xbaec64e7 );
+		ROM_LOAD( "sp-ic24",      0x2000, 0x1000, 0xa40a5517 );
+		ROM_LOAD( "sp-ic23",      0x3000, 0x1000, 0x3ca08053 );
+		ROM_LOAD( "sp-ic22",      0x4000, 0x1000, 0x07ea073c );
+		ROM_LOAD( "sp-ic21",      0x5000, 0x1000, 0x41b344b4 );
+		ROM_LOAD( "sp-ic20",      0x6000, 0x1000, 0x4d37da5a );
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_spiders2 = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );
+		ROM_LOAD( "sp-ic74",      0xc000, 0x1000, 0x6a2578f6 );
+		ROM_LOAD( "sp2.bin",      0xd000, 0x1000, 0xcf71d12b );
+		ROM_LOAD( "sp-ic72",      0xe000, 0x1000, 0x464125da );
+		ROM_LOAD( "sp4.bin",      0xf000, 0x1000, 0xf3d126bb );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );    /* 64k for the audio CPU */
+		ROM_LOAD( "sp-ic3",       0xf800, 0x0800, 0x944d761e );
+	
+		ROM_REGION( 0x10000, REGION_GFX1, 0 );    /* 64k graphics block used at runtime */
+		ROM_LOAD( "sp-ic33",      0x0000, 0x1000, 0xb6731baa );
+		ROM_LOAD( "sp-ic25",      0x1000, 0x1000, 0xbaec64e7 );
+		ROM_LOAD( "sp-ic24",      0x2000, 0x1000, 0xa40a5517 );
+		ROM_LOAD( "sp-ic23",      0x3000, 0x1000, 0x3ca08053 );
+		ROM_LOAD( "sp-ic22",      0x4000, 0x1000, 0x07ea073c );
+		ROM_LOAD( "sp-ic21",      0x5000, 0x1000, 0x41b344b4 );
+		ROM_LOAD( "sp-ic20",      0x6000, 0x1000, 0x4d37da5a );
+	ROM_END(); }}; 
+	
+	
+	
+	/* this is a newer version with just one bug fix */
+	public static GameDriver driver_spiders	   = new GameDriver("1981"	,"spiders"	,"spiders.java"	,rom_spiders,null	,machine_driver_spiders	,input_ports_spiders	,null	,ROT270	,	"Sigma Ent. Inc.", "Spiders (set 1)", GAME_NO_SOUND | GAME_NO_COCKTAIL )
+	public static GameDriver driver_spiders2	   = new GameDriver("1981"	,"spiders2"	,"spiders.java"	,rom_spiders2,driver_spiders	,machine_driver_spiders	,input_ports_spiders	,null	,ROT270	,	"Sigma Ent. Inc.", "Spiders (set 2)", GAME_NO_SOUND | GAME_NO_COCKTAIL )
+}

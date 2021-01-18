@@ -164,7 +164,6 @@ READ16_HANDLER( hdds3_speedup_r );
 
 /*----------- defined in sndhrdw/harddriv.c -----------*/
 
-void hdsnd_init(void);
 
 extern data16_t *hdsnddsp_ram;
 

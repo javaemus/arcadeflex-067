@@ -4,15 +4,6 @@
 
 extern const int TC0100SCN_SINGLE_VDU;	/* value set in taitoic.c */
 
-int number_of_TC0100SCN(void);
-int has_TC0110PCR(void);
-int has_second_TC0110PCR(void);
-int has_third_TC0110PCR(void);
-int has_TC0150ROD(void);
-int has_TC0280GRD(void);
-int has_TC0360PRI(void);
-int has_TC0430GRW(void);
-int has_TC0480SCP(void);
 
 
 /***************************************************************************/
@@ -36,7 +27,6 @@ READ16_HANDLER ( PC080SN_ctrl_word_1_r );
 WRITE16_HANDLER( PC080SN_ctrl_word_1_w );
 void PC080SN_set_scroll(int chip,int tilemap_num,int scrollx,int scrolly);
 void PC080SN_set_trans_pen(int chip,int tilemap_num,int pen);
-void PC080SN_tilemap_update(void);
 void PC080SN_tilemap_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int chip,int layer,int flags,UINT32 priority);
 
 /* For Topspeed */
@@ -50,7 +40,6 @@ int PC090OJ_vh_start(int gfxnum,int x_offset,int y_offset,int use_buffer);
 READ16_HANDLER( PC090OJ_word_0_r );
 WRITE16_HANDLER( PC090OJ_word_0_w );
 
-void PC090OJ_eof_callback(void);
 void PC090OJ_draw_sprites(struct mame_bitmap *bitmap, const struct rectangle *cliprect,int pri_type);
 
 extern UINT16 PC090OJ_sprite_ctrl;
@@ -63,9 +52,7 @@ int TC0080VCO_vh_start(int gfxnum,int has_fg0,int bg_xoffs,int bg_yoffs,int bg_f
 READ16_HANDLER ( TC0080VCO_word_r );
 WRITE16_HANDLER( TC0080VCO_word_w );
 
-void TC0080VCO_tilemap_update(void);
 void TC0080VCO_tilemap_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int layer,int flags,UINT32 priority);
-void TC0080VCO_draw_sprites(void);
 
 
 /***************************************************************************/
@@ -113,7 +100,6 @@ WRITE32_HANDLER( TC0100SCN_ctrl_long_w );
 WRITE16_HANDLER( TC0100SCN_dual_screen_w );
 WRITE16_HANDLER( TC0100SCN_triple_screen_w );
 
-void TC0100SCN_tilemap_update(void);
 void TC0100SCN_tilemap_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int chip,int layer,int flags,UINT32 priority);
 
 /* returns 0 or 1 depending on the lowest priority tilemap set in the internal
@@ -156,31 +142,24 @@ WRITE32_HANDLER( TC0480SCP_long_w );
 READ32_HANDLER ( TC0480SCP_ctrl_long_r );
 WRITE32_HANDLER( TC0480SCP_ctrl_long_w );
 
-void TC0480SCP_tilemap_update(void);
 void TC0480SCP_tilemap_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int layer,int flags,UINT32 priority);
 
 /* Returns the priority order of the bg tilemaps set in the internal
    register. The order in which the four layers should be drawn is
    returned in the lowest four nibbles  (msn = bottom layer; lsn = top) */
-int TC0480SCP_get_bg_priority(void);
 
 /* Undrfire needs to read this for a sprite/tile priority hack */
-extern int TC0480SCP_pri_reg;
 
 
 /***************************************************************************/
 
 READ16_HANDLER( TC0150ROD_word_r );
 WRITE16_HANDLER( TC0150ROD_word_w );
-int TC0150ROD_vh_start(void);
 void TC0150ROD_draw(struct mame_bitmap *bitmap,const struct rectangle *cliprect,int y_offs,int palette_offs,int type,int road_trans,UINT32 priority);
 
 
 /***************************************************************************/
 
-int TC0110PCR_vh_start(void);
-int TC0110PCR_1_vh_start(void);	/* 2nd chip */
-int TC0110PCR_2_vh_start(void);	/* 3rd chip */
 READ16_HANDLER ( TC0110PCR_word_r );
 READ16_HANDLER ( TC0110PCR_word_1_r );	/* 2nd chip */
 READ16_HANDLER ( TC0110PCR_word_2_r );	/* 3rd chip */
@@ -191,8 +170,6 @@ WRITE16_HANDLER( TC0110PCR_step1_word_2_w );	/* 3rd chip */
 WRITE16_HANDLER( TC0110PCR_step1_rbswap_word_w );	/* swaps red and blue components */
 WRITE16_HANDLER( TC0110PCR_step1_4bpg_word_w );	/* only 4 bits per color gun */
 
-int TC0360PRI_vh_start(void);	/* must be called to ensure regs saved in state.c */
-WRITE_HANDLER( TC0360PRI_w );
 WRITE16_HANDLER( TC0360PRI_halfword_w );
 WRITE16_HANDLER( TC0360PRI_halfword_swap_w );
 
@@ -203,11 +180,8 @@ WRITE16_HANDLER( TC0360PRI_halfword_swap_w );
    through a port, typically on earlier games. */
 
 READ_HANDLER ( TC0220IOC_r );
-WRITE_HANDLER( TC0220IOC_w );
 READ_HANDLER ( TC0220IOC_port_r );
-WRITE_HANDLER( TC0220IOC_port_w );
 READ_HANDLER ( TC0220IOC_portreg_r );
-WRITE_HANDLER( TC0220IOC_portreg_w );
 
 READ16_HANDLER ( TC0220IOC_halfword_port_r );
 WRITE16_HANDLER( TC0220IOC_halfword_port_w );
@@ -223,7 +197,6 @@ READ16_HANDLER ( TC0220IOC_halfword_byteswap_r );
 WRITE16_HANDLER( TC0220IOC_halfword_byteswap_w );
 
 READ_HANDLER ( TC0510NIO_r );
-WRITE_HANDLER( TC0510NIO_w );
 
 READ16_HANDLER ( TC0510NIO_halfword_r );
 WRITE16_HANDLER( TC0510NIO_halfword_w );
@@ -231,7 +204,6 @@ READ16_HANDLER ( TC0510NIO_halfword_wordswap_r );
 WRITE16_HANDLER( TC0510NIO_halfword_wordswap_w );
 
 READ_HANDLER ( TC0640FIO_r );
-WRITE_HANDLER( TC0640FIO_W );
 
 READ16_HANDLER ( TC0640FIO_halfword_r );
 WRITE16_HANDLER( TC0640FIO_halfword_w );

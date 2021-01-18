@@ -239,19 +239,19 @@ UINT32 opTRAP(void)
 	switch ((amOut >> 4) & 0xF)
 	{
 	case 0:
-		if (!_OV) return amLength1+1;
+		if (_OV == 0) return amLength1+1;
 		else break;
 	case 1:
 		if (_OV) return amLength1+1;
 		else break;
 	case 2:
-		if (!_CY) return amLength1+1;
+		if (_CY == 0) return amLength1+1;
 		else break;
 	case 3:
 		if (_CY) return amLength1+1;
 		else break;
 	case 4:
-		if (!_Z) return amLength1+1;
+		if (_Z == 0) return amLength1+1;
 		else break;
 	case 5:
 		if (_Z) return amLength1+1;
@@ -263,7 +263,7 @@ UINT32 opTRAP(void)
 		if ((_CY | _Z)) return amLength1+1;
 		else break;
 	case 8:
-		if (!_S) return amLength1+1;
+		if (_S == 0) return amLength1+1;
 		else break;
 	case 9:
 		if (_S) return amLength1+1;

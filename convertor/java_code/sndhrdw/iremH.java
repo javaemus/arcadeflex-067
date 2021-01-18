@@ -6,4 +6,3 @@
 
 MACHINE_DRIVER_EXTERN( irem_audio );
 
-WRITE_HANDLER( irem_sound_cmd_w );

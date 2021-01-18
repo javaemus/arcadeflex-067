@@ -4,32 +4,39 @@
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package vidhrdw;
 
-
-/*************************************
- *
- *	Memory handlers
- *
- *************************************/
-
-WRITE_HANDLER( beaminv_videoram_w )
+public class beaminv
 {
-	UINT8 x,y;
-	int i;
-
-
-	videoram[offset] = data;
-
-	y = ~(offset >> 8 << 3);
-	x = offset;
-
-	for (i = 0; i < 8; i++)
+	
+	
+	/*************************************
+	 *
+	 *	Memory handlers
+	 *
+	 *************************************/
+	
+	public static WriteHandlerPtr beaminv_videoram_w = new WriteHandlerPtr() {public void handler(int offset, int data)
 	{
-		plot_pixel(tmpbitmap, x, y, data & 0x01);
-
-		y--;
-		data >>= 1;
-	}
+		UINT8 x,y;
+		int i;
+	
+	
+		videoram.write(offset,data);
+	
+		y = ~(offset >> 8 << 3);
+		x = offset;
+	
+		for (i = 0; i < 8; i++)
+		{
+			plot_pixel(tmpbitmap, x, y, data & 0x01);
+	
+			y--;
+			data >>= 1;
+		}
+	} };
 }

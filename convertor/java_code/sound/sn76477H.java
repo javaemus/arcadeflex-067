@@ -59,28 +59,18 @@ struct SN76477interface {
 };
 
 /* Noise clock write, useful only if noise_res is zero */
-extern void SN76477_noise_clock_w(int chip, int data);
 
 /* Enable (one input line: 0 enabled, 1 inhibited) - resets one shot */
-extern void SN76477_enable_w(int chip, int data);
 
 /* Mixer select (three input lines, data 0 to 7) */
-extern void SN76477_mixer_w(int chip, int data);
 
 /* Alternatively write the single input lines */
-extern void SN76477_mixer_a_w(int chip, int data);
-extern void SN76477_mixer_b_w(int chip, int data);
-extern void SN76477_mixer_c_w(int chip, int data);
 
 /* Select envelope (two input lines, data 0 to 3) */
-extern void SN76477_envelope_w(int chip, int data);
 
 /* Alternatively use the single input lines */
-extern void SN76477_envelope_1_w(int chip, int data);
-extern void SN76477_envelope_2_w(int chip, int data);
 
 /* VCO select (one input line: 0 external control, 1: SLF control) */
-extern void SN76477_vco_w(int chip, int data);
 
 void SN76477_set_noise_res(int chip, double res);
 void SN76477_set_filter_res(int chip, double res);
@@ -100,7 +90,5 @@ void SN76477_set_pitch_voltage(int chip, double voltage);
 void SN76477_set_vco_voltage(int chip, double voltage);
 
 int SN76477_sh_start(const struct MachineSound *msound);
-void SN76477_sh_stop(void);
-void SN76477_sh_update(void);
 
 #endif

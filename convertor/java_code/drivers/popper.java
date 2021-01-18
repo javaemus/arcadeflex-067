@@ -74,302 +74,311 @@ Notes:
   special handling needed, possibly tied to the 0xe002 writes
 
 - the game freezes in much the same way as the stop dip switch when the coin
-  inputs are high (a short PORT_BIT_IMPULSE duration will still cause a hitch),
+  inputs are high (a short PORT_BIT_IMPULSE duration will still cause a hitch);
   so potentially there's a coin lockout mechanism
 */
 
-#include "driver.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-extern data8_t *popper_videoram, *popper_attribram, *popper_ol_videoram, *popper_ol_attribram, *popper_spriteram;
-extern size_t popper_spriteram_size;
-
-WRITE_HANDLER( popper_videoram_w );
-WRITE_HANDLER( popper_attribram_w );
-WRITE_HANDLER( popper_ol_videoram_w );
-WRITE_HANDLER( popper_ol_attribram_w );
-WRITE_HANDLER( popper_flipscreen_w );
-WRITE_HANDLER( popper_e002_w );
-WRITE_HANDLER( popper_gfx_bank_w );
-
-PALETTE_INIT( popper );
-VIDEO_START( popper );
-VIDEO_UPDATE( popper );
-static data8_t *popper_sharedram;
-
-static READ_HANDLER( popper_sharedram_r )
+public class popper
 {
-	return popper_sharedram[offset];
-}
-
-//e000                  e001                  e002                  e003
-//76543210              76543210              76543210              76543210
-//x-------  unused      x-------  unused      x-------  unused      x-------  unused
-//-x------  dsw1:1      -x------  dsw1:2      -x------  dsw1:3      -x------  dsw1:4
-//--x-----  unused      --x-----  unused      --x-----  unused      --x-----  unused
-//---x----  dsw2:1      ---x----  dsw2:2      ---x----  dsw2:3      ---x----  dsw2:4
-//----x---  service     ----xxxx  p1 udlr     ----x---  unused      ----xxxx  p2 udlr
-//-----x--  coin a                            -----x--  coin b
-//------x-  start 1                           ------x-  start 2
-//-------x  p1 b1                             -------x  p2 b1
-//
-//e004                  e005                  e006                  e007
-//x-------  dsw1:5      x-------  dsw1:6      x-------  dsw1:7      x-------  dsw1:8
-//-x------  unused      -x------  unused      -x------  unused      -x------  unused
-//--x-----  dsw2:5      --x-----  dsw2:6      --x-----  dsw2:7      --x-----  dsw2:8
-//---xxxxx  unused      ---xxxxx  unused      ---xxxxx  unused      ---xxxxx  unused
-//
-//dsw1                  dsw2
-//87654321              87654321
-//xx------  extra       x-------  stop
-//--xx----  poppers     -x------  clear (current level)
-//----xx--  coin b      --x-----  upright (cabinet)
-//------xx  coin a      ---x----  crt dir. (flip screen)
-//                      ----x---  pass (unlimited lives)
-//                      -----x--  free play
-//                      ------x-  continue
-//                      -------x  sound
-static READ_HANDLER( popper_input_ports_r )
-{
-	data8_t data=0;
-	switch (offset)
+	
+	extern data8_t *popper_videoram, *popper_attribram, *popper_ol_videoram, *popper_ol_attribram, *popper_spriteram;
+	extern size_t popper_spriteram_size;
+	
+	
+	PALETTE_INIT( popper );
+	VIDEO_START( popper );
+	VIDEO_UPDATE( popper );
+	static data8_t *popper_sharedram;
+	
+	public static ReadHandlerPtr popper_sharedram_r  = new ReadHandlerPtr() { public int handler(int offset)
 	{
-		//           player inputs        dsw1                           dsw2
-		case 0: data=readinputport(0) | ((readinputport(4)&0x02)<<5) | ((readinputport(5)&0x01)<<4); break;
-		case 1: data=readinputport(1) | ((readinputport(4)&0x01)<<6) | ((readinputport(5)&0x02)<<3); break;
-		case 2: data=readinputport(2) | ((readinputport(4)&0x08)<<3) | ((readinputport(5)&0x04)<<2); break;
-		case 3: data=readinputport(3) | ((readinputport(4)&0x04)<<4) | ((readinputport(5)&0x08)<<1); break;
-		case 4: data=                   ((readinputport(4)&0x20)<<2) | ((readinputport(5)&0x10)<<1); break;
-		case 5: data=                   ((readinputport(4)&0x10)<<3) | ((readinputport(5)&0x20)<<0); break;
-		case 6: data=                   ((readinputport(4)&0x80)<<0) | ((readinputport(5)&0x40)>>1); break;
-		case 7: data=                   ((readinputport(4)&0x40)<<1) | ((readinputport(5)&0x80)>>2); break;
-	}
-	return data;
+		return popper_sharedram[offset];
+	} };
+	
+	//e000                  e001                  e002                  e003
+	//76543210              76543210              76543210              76543210
+	//x-------  unused      x-------  unused      x-------  unused      x-------  unused
+	//-x------  dsw1:1      -x------  dsw1:2      -x------  dsw1:3      -x------  dsw1:4
+	//--x-----  unused      --x-----  unused      --x-----  unused      --x-----  unused
+	//---x----  dsw2:1      ---x----  dsw2:2      ---x----  dsw2:3      ---x----  dsw2:4
+	//----x---  service     ----xxxx  p1 udlr     ----x---  unused      ----xxxx  p2 udlr
+	//-----x--  coin a                            -----x--  coin b
+	//------x-  start 1                           ------x-  start 2
+	//-------x  p1 b1                             -------x  p2 b1
+	//
+	//e004                  e005                  e006                  e007
+	//x-------  dsw1:5      x-------  dsw1:6      x-------  dsw1:7      x-------  dsw1:8
+	//-x------  unused      -x------  unused      -x------  unused      -x------  unused
+	//--x-----  dsw2:5      --x-----  dsw2:6      --x-----  dsw2:7      --x-----  dsw2:8
+	//---xxxxx  unused      ---xxxxx  unused      ---xxxxx  unused      ---xxxxx  unused
+	//
+	//dsw1                  dsw2
+	//87654321              87654321
+	//xx------  extra       x-------  stop
+	//--xx----  poppers     -x------  clear (current level)
+	//----xx--  coin b      --x-----  upright (cabinet)
+	//------xx  coin a      ---x----  crt dir. (flip screen)
+	//                      ----x---  pass (unlimited lives)
+	//                      -----x--  free play
+	//                      ------x-  continue
+	//                      -------x  sound
+	public static ReadHandlerPtr popper_input_ports_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		data8_t data=0;
+		switch (offset)
+		{
+			//           player inputs        dsw1                           dsw2
+			case 0: data=readinputport(0) | ((readinputport(4)&0x02)<<5) | ((readinputport(5)&0x01)<<4); break;
+			case 1: data=readinputport(1) | ((readinputport(4)&0x01)<<6) | ((readinputport(5)&0x02)<<3); break;
+			case 2: data=readinputport(2) | ((readinputport(4)&0x08)<<3) | ((readinputport(5)&0x04)<<2); break;
+			case 3: data=readinputport(3) | ((readinputport(4)&0x04)<<4) | ((readinputport(5)&0x08)<<1); break;
+			case 4: data=                   ((readinputport(4)&0x20)<<2) | ((readinputport(5)&0x10)<<1); break;
+			case 5: data=                   ((readinputport(4)&0x10)<<3) | ((readinputport(5)&0x20)<<0); break;
+			case 6: data=                   ((readinputport(4)&0x80)<<0) | ((readinputport(5)&0x40)>>1); break;
+			case 7: data=                   ((readinputport(4)&0x40)<<1) | ((readinputport(5)&0x80)>>2); break;
+		}
+		return data;
+	} };
+	
+	public static ReadHandlerPtr popper_soundcpu_nmi_r  = new ReadHandlerPtr() { public int handler(int offset)
+	{
+		cpu_set_nmi_line(1,PULSE_LINE);
+		return 0;
+	} };
+	
+	public static WriteHandlerPtr popper_sharedram_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		popper_sharedram[offset]=data;
+	} };
+	
+	public static Memory_ReadAddress popper_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x5fff, MRA_ROM ),
+		new Memory_ReadAddress( 0xc000, 0xd7ff, MRA_RAM ),
+		new Memory_ReadAddress( 0xd800, 0xdfff, MRA_RAM ),					//shared with sound cpu
+		new Memory_ReadAddress( 0xe000, 0xe007, popper_input_ports_r ),
+		new Memory_ReadAddress( 0xe400, 0xe400, popper_soundcpu_nmi_r ),
+		new Memory_ReadAddress( 0xf800, 0xf800, MRA_NOP ),					//?? read once at startup
+		new Memory_ReadAddress( 0xfc00, 0xfc00, MRA_NOP ),					//?? possibly watchdog
+		new Memory_ReadAddress( 0xffff, 0xffff, MRA_NOP ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress popper_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x5fff, MWA_ROM ),
+		new Memory_WriteAddress( 0xc000, 0xc1bf, MWA_RAM ),
+		new Memory_WriteAddress( 0xc1c0, 0xc1ff, popper_ol_videoram_w, popper_ol_videoram ),
+		new Memory_WriteAddress( 0xc200, 0xc61f, popper_videoram_w, popper_videoram ),
+		new Memory_WriteAddress( 0xc620, 0xc9bf, MWA_RAM ),
+		new Memory_WriteAddress( 0xc9c0, 0xc9ff, popper_ol_attribram_w, popper_ol_attribram ),
+		new Memory_WriteAddress( 0xca00, 0xce1f, popper_attribram_w, popper_attribram ),
+		new Memory_WriteAddress( 0xce20, 0xcfff, MWA_RAM ),
+		new Memory_WriteAddress( 0xd000, 0xd7ff, MWA_RAM, popper_spriteram, popper_spriteram_size ),
+		new Memory_WriteAddress( 0xd800, 0xdfff, MWA_RAM, popper_sharedram ),	//shared with sound cpu
+		new Memory_WriteAddress( 0xe000, 0xe000, interrupt_enable_w ),
+		new Memory_WriteAddress( 0xe001, 0xe001, popper_flipscreen_w ),
+		new Memory_WriteAddress( 0xe002, 0xe002, popper_e002_w ),				//?? seems to be graphic related
+		new Memory_WriteAddress( 0xe003, 0xe003, popper_gfx_bank_w ),
+		new Memory_WriteAddress( 0xe004, 0xe007, MWA_NOP ),					//?? range cleared once when the SP is set
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_ReadAddress popper_sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x0fff, MRA_ROM ),
+		new Memory_ReadAddress( 0x8002, 0x8002, MRA_NOP ),					//?? all read once at startup and the
+		new Memory_ReadAddress( 0x8003, 0x8003, MRA_NOP ),					//?? result ignored, looks like part
+		new Memory_ReadAddress( 0xa002, 0xa002, MRA_NOP ),					//?? of AY8910 initialisation
+		new Memory_ReadAddress( 0xd800, 0xdfff, popper_sharedram_r ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress popper_sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x0fff, MWA_ROM ),
+		new Memory_WriteAddress( 0x8000, 0x8000, AY8910_control_port_0_w ),
+		new Memory_WriteAddress( 0x8001, 0x8001, AY8910_write_port_0_w ),
+		new Memory_WriteAddress( 0x8002, 0x8002, MWA_NOP ),					//?? same writes as 0x8000 (mostly)
+		new Memory_WriteAddress( 0xa000, 0xa000, AY8910_control_port_1_w ),
+		new Memory_WriteAddress( 0xa001, 0xa001, AY8910_write_port_1_w ),
+		new Memory_WriteAddress( 0xa002, 0xa002, MWA_NOP ),					//?? same writes as 0xa000
+		new Memory_WriteAddress( 0xd800, 0xdfff, popper_sharedram_w ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	static InputPortPtr input_ports_popper = new InputPortPtr(){ public void handler() { 
+		PORT_START(); 	/* IN0 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN1 );		//ignored if held for 12 or more frames
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SERVICE1 );
+	
+		PORT_START(); 	/* IN1 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT | IPF_8WAY );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN | IPF_8WAY );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP | IPF_8WAY );
+	
+		PORT_START(); 	/* IN2 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN2 );		//ignored if held for 12 or more frames
+	
+		PORT_START(); 	/* IN3 */
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_COCKTAIL );
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP | IPF_8WAY | IPF_COCKTAIL );
+	
+		PORT_START(); 	/* IN4 - FAKE DSW1 */
+		PORT_DIPNAME( 0x03, 0x00, DEF_STR( "Coin_A") );		//SW1:1-2
+		PORT_DIPSETTING(    0x02, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(    0x01, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(    0x03, DEF_STR( "1C_2C") );
+		PORT_DIPNAME( 0x0c, 0x08, DEF_STR( "Coin_B") );		//SW1:3-4
+		PORT_DIPSETTING(    0x00, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(    0x04, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(    0x08, DEF_STR( "1C_5C") );
+		PORT_DIPSETTING(    0x0c, DEF_STR( "1C_6C") );
+		PORT_DIPNAME( 0x30, 0x10, DEF_STR( "Lives") );		//SW1:5-6
+		PORT_DIPSETTING(    0x00, "2" );
+		PORT_DIPSETTING(    0x10, "3" );
+		PORT_DIPSETTING(    0x20, "4" );
+		PORT_DIPSETTING(    0x30, "5" );
+		PORT_DIPNAME( 0xc0, 0x00, DEF_STR( "Bonus_Life") );	//SW1:7-8
+		PORT_DIPSETTING(    0x00, "20k, then every 70k" );
+		PORT_DIPSETTING(    0x40, "30k, then every 70k" );
+		PORT_DIPSETTING(    0x80, "40k, then every 70k" );
+		PORT_DIPSETTING(    0xc0, "50k, then every 70k" );
+	
+		PORT_START(); 	/* IN5 - FAKE DSW2 */
+		PORT_DIPNAME( 0x01, 0x01, DEF_STR( "Demo_Sounds") );	//SW2:1
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x01, DEF_STR( "On") );
+		PORT_DIPNAME( 0x02, 0x00, "Allow Continue" );	//SW2:2 (stored in 0xd987, never read)
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x02, DEF_STR( "On") );
+		PORT_DIPNAME( 0x04, 0x00, DEF_STR( "Free_Play") );	//SW2:3
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x04, DEF_STR( "On") );
+		PORT_BITX(    0x08, 0x00, IPT_DIPSWITCH_NAME | IPF_CHEAT, "Pass (unlimited lives);, IP_KEY_NONE, IP_JOY_NONE )	//SW2:4
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x08, DEF_STR( "On") );
+		PORT_DIPNAME( 0x10, 0x00, DEF_STR( "Flip_Screen") );	//SW2:5
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x10, DEF_STR( "On") );
+		PORT_DIPNAME( 0x20, 0x20, DEF_STR( "Cabinet") );		//SW2:6
+		PORT_DIPSETTING(    0x20, DEF_STR( "Upright") );
+		PORT_DIPSETTING(    0x00, DEF_STR( "Cocktail") );
+		PORT_BITX(    0x40, 0x00, IPT_DIPSWITCH_NAME | IPF_CHEAT, "Clear (current level);, IP_KEY_NONE, IP_JOY_NONE )	//SW2:7
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x40, DEF_STR( "On") );
+		PORT_DIPNAME( 0x80, 0x00, "Stop" );				//SW2:8
+		PORT_DIPSETTING(    0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(    0x80, DEF_STR( "On") );
+	INPUT_PORTS_END(); }}; 
+	
+	static GfxLayout popper_charlayout = new GfxLayout
+	(
+		8,8,
+		RGN_FRAC(2,2),
+		2,
+		new int[] { 0, 4 },
+		new int[] { STEP4(8,1), STEP4(0,1) },
+		new int[] { STEP8(0,16) },
+		16*8
+	);
+	
+	static GfxLayout popper_spritelayout = new GfxLayout
+	(
+		16,16,
+		RGN_FRAC(1,2),
+		2,
+		new int[] { 0, RGN_FRAC(1,2) },
+		new int[] { STEP8(8,1), STEP8(0,1) },
+		new int[] { STEP16(0, 16) },
+		16*2*8
+	);
+	
+	static GfxDecodeInfo popper_gfxdecodeinfo[] =
+	{
+		new GfxDecodeInfo( REGION_GFX1, 0, popper_charlayout,   0, 16 ),
+		new GfxDecodeInfo( REGION_GFX2, 0, popper_spritelayout, 0, 16 ),
+		new GfxDecodeInfo( -1 ) /* end of array */
+	};
+	
+	static AY8910interface popper_ay8910_interface = new AY8910interface
+	(
+		2,	/* 2 chips */
+		18432000/12,
+		new int[] { 25, 25 },
+		new ReadHandlerPtr[] { 0 },
+		new ReadHandlerPtr[] { 0 },
+		new WriteHandlerPtr[] { 0 },
+		new WriteHandlerPtr[] { 0 }
+	);
+	
+	static MACHINE_DRIVER_START( popper )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(Z80,18432000/6)
+		MDRV_CPU_MEMORY(popper_readmem,popper_writemem)
+		MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	
+		MDRV_CPU_ADD(Z80,18432000/12)
+		MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
+		MDRV_CPU_MEMORY(popper_sound_readmem,popper_sound_writemem)
+		MDRV_CPU_VBLANK_INT(irq0_line_hold,4)		//NMIs caused by the main CPU
+	
+		MDRV_FRAMES_PER_SECOND(60)
+		MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+		MDRV_INTERLEAVE(30)
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+		MDRV_SCREEN_SIZE(33*8, 32*8)
+		MDRV_VISIBLE_AREA(0*8, 33*8-1, 2*8, 30*8-1)
+		MDRV_GFXDECODE(popper_gfxdecodeinfo)
+		MDRV_PALETTE_LENGTH(64)
+	
+		MDRV_PALETTE_INIT(popper)
+		MDRV_VIDEO_START(popper)
+		MDRV_VIDEO_UPDATE(popper)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(AY8910, popper_ay8910_interface)
+	MACHINE_DRIVER_END
+	
+	
+	static RomLoadPtr rom_popper = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x10000, REGION_CPU1, 0 );/* 64k for code */
+		ROM_LOAD( "p1",   0x0000, 0x2000, 0x56881b70 );
+		ROM_LOAD( "p2",   0x2000, 0x2000, 0xa054d9d2 );
+		ROM_LOAD( "p3",   0x4000, 0x2000, 0x6201928a );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* 64k for code */
+		ROM_LOAD( "p0",   0x0000, 0x1000, 0xef5f7c5b );
+	
+		ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE );
+		ROM_LOAD( "p4",   0x0000, 0x2000, 0x86203349 );
+	
+		ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE );
+		ROM_LOAD( "p5",   0x0000, 0x2000, 0xa21ac194 );
+		ROM_LOAD( "p6",   0x2000, 0x2000, 0xd99fa790 );
+	
+		ROM_REGION( 0x0040, REGION_PROMS, 0 );
+		ROM_LOAD( "p.m3", 0x0000, 0x0020, 0x713217aa );
+		ROM_LOAD( "p.m4", 0x0020, 0x0020, 0x384de5c1 );
+	ROM_END(); }}; 
+	
+	
+	public static GameDriver driver_popper	   = new GameDriver("1983"	,"popper"	,"popper.java"	,rom_popper,null	,machine_driver_popper	,input_ports_popper	,null	,ROT90	,	"Omori Electric Co., Ltd.", "Popper", GAME_IMPERFECT_COLORS )
 }
-
-static READ_HANDLER( popper_soundcpu_nmi_r )
-{
-	cpu_set_nmi_line(1,PULSE_LINE);
-	return 0;
-}
-
-static WRITE_HANDLER( popper_sharedram_w )
-{
-	popper_sharedram[offset]=data;
-}
-
-static MEMORY_READ_START( popper_readmem )
-	{ 0x0000, 0x5fff, MRA_ROM },
-	{ 0xc000, 0xd7ff, MRA_RAM },
-	{ 0xd800, 0xdfff, MRA_RAM },					//shared with sound cpu
-	{ 0xe000, 0xe007, popper_input_ports_r },
-	{ 0xe400, 0xe400, popper_soundcpu_nmi_r },
-	{ 0xf800, 0xf800, MRA_NOP },					//?? read once at startup
-	{ 0xfc00, 0xfc00, MRA_NOP },					//?? possibly watchdog
-	{ 0xffff, 0xffff, MRA_NOP },
-MEMORY_END
-
-static MEMORY_WRITE_START( popper_writemem )
-	{ 0x0000, 0x5fff, MWA_ROM },
-	{ 0xc000, 0xc1bf, MWA_RAM },
-	{ 0xc1c0, 0xc1ff, popper_ol_videoram_w, &popper_ol_videoram },
-	{ 0xc200, 0xc61f, popper_videoram_w, &popper_videoram },
-	{ 0xc620, 0xc9bf, MWA_RAM },
-	{ 0xc9c0, 0xc9ff, popper_ol_attribram_w, &popper_ol_attribram },
-	{ 0xca00, 0xce1f, popper_attribram_w, &popper_attribram },
-	{ 0xce20, 0xcfff, MWA_RAM },
-	{ 0xd000, 0xd7ff, MWA_RAM, &popper_spriteram, &popper_spriteram_size },
-	{ 0xd800, 0xdfff, MWA_RAM, &popper_sharedram },	//shared with sound cpu
-	{ 0xe000, 0xe000, interrupt_enable_w },
-	{ 0xe001, 0xe001, popper_flipscreen_w },
-	{ 0xe002, 0xe002, popper_e002_w },				//?? seems to be graphic related
-	{ 0xe003, 0xe003, popper_gfx_bank_w },
-	{ 0xe004, 0xe007, MWA_NOP },					//?? range cleared once when the SP is set
-MEMORY_END
-
-static MEMORY_READ_START( popper_sound_readmem )
-	{ 0x0000, 0x0fff, MRA_ROM },
-	{ 0x8002, 0x8002, MRA_NOP },					//?? all read once at startup and the
-	{ 0x8003, 0x8003, MRA_NOP },					//?? result ignored, looks like part
-	{ 0xa002, 0xa002, MRA_NOP },					//?? of AY8910 initialisation
-	{ 0xd800, 0xdfff, popper_sharedram_r },
-MEMORY_END
-
-static MEMORY_WRITE_START( popper_sound_writemem )
-	{ 0x0000, 0x0fff, MWA_ROM },
-	{ 0x8000, 0x8000, AY8910_control_port_0_w },
-	{ 0x8001, 0x8001, AY8910_write_port_0_w },
-	{ 0x8002, 0x8002, MWA_NOP },					//?? same writes as 0x8000 (mostly)
-	{ 0xa000, 0xa000, AY8910_control_port_1_w },
-	{ 0xa001, 0xa001, AY8910_write_port_1_w },
-	{ 0xa002, 0xa002, MWA_NOP },					//?? same writes as 0xa000
-	{ 0xd800, 0xdfff, popper_sharedram_w },
-MEMORY_END
-
-INPUT_PORTS_START( popper )
-	PORT_START	/* IN0 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN1 )			//ignored if held for 12 or more frames
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SERVICE1 )
-
-	PORT_START	/* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT | IPF_8WAY )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN | IPF_8WAY )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP | IPF_8WAY )
-
-	PORT_START	/* IN2 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 | IPF_COCKTAIL )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN2 )			//ignored if held for 12 or more frames
-
-	PORT_START	/* IN3 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN | IPF_8WAY | IPF_COCKTAIL )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP | IPF_8WAY | IPF_COCKTAIL )
-
-	PORT_START	/* IN4 - FAKE DSW1 */
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coin_A ) )		//SW1:1-2
-	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x0c, 0x08, DEF_STR( Coin_B ) )		//SW1:3-4
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x30, 0x10, DEF_STR( Lives ) )		//SW1:5-6
-	PORT_DIPSETTING(    0x00, "2" )
-	PORT_DIPSETTING(    0x10, "3" )
-	PORT_DIPSETTING(    0x20, "4" )
-	PORT_DIPSETTING(    0x30, "5" )
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Bonus_Life ) )	//SW1:7-8
-	PORT_DIPSETTING(    0x00, "20k, then every 70k" )
-	PORT_DIPSETTING(    0x40, "30k, then every 70k" )
-	PORT_DIPSETTING(    0x80, "40k, then every 70k" )
-	PORT_DIPSETTING(    0xc0, "50k, then every 70k" )
-
-	PORT_START	/* IN5 - FAKE DSW2 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Demo_Sounds ) )	//SW2:1
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x00, "Allow Continue" )		//SW2:2 (stored in 0xd987, never read)
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Free_Play ) )	//SW2:3
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
-	PORT_BITX(    0x08, 0x00, IPT_DIPSWITCH_NAME | IPF_CHEAT, "Pass (unlimited lives)", IP_KEY_NONE, IP_JOY_NONE )	//SW2:4
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Flip_Screen ) )	//SW2:5
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Cabinet ) )		//SW2:6
-	PORT_DIPSETTING(    0x20, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_BITX(    0x40, 0x00, IPT_DIPSWITCH_NAME | IPF_CHEAT, "Clear (current level)", IP_KEY_NONE, IP_JOY_NONE )	//SW2:7
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x00, "Stop" )					//SW2:8
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
-INPUT_PORTS_END
-
-static struct GfxLayout popper_charlayout =
-{
-	8,8,
-	RGN_FRAC(2,2),
-	2,
-	{ 0, 4 },
-	{ STEP4(8,1), STEP4(0,1) },
-	{ STEP8(0,16) },
-	16*8
-};
-
-static struct GfxLayout popper_spritelayout =
-{
-	16,16,
-	RGN_FRAC(1,2),
-	2,
-	{ 0, RGN_FRAC(1,2) },
-	{ STEP8(8,1), STEP8(0,1) },
-	{ STEP16(0, 16) },
-	16*2*8
-};
-
-static struct GfxDecodeInfo popper_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &popper_charlayout,   0, 16 },
-	{ REGION_GFX2, 0, &popper_spritelayout, 0, 16 },
-	{ -1 } /* end of array */
-};
-
-static struct AY8910interface popper_ay8910_interface =
-{
-	2,	/* 2 chips */
-	18432000/12,
-	{ 25, 25 },
-	{ 0 },
-	{ 0 },
-	{ 0 },
-	{ 0 }
-};
-
-static MACHINE_DRIVER_START( popper )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,18432000/6)
-	MDRV_CPU_MEMORY(popper_readmem,popper_writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
-
-	MDRV_CPU_ADD(Z80,18432000/12)
-	MDRV_CPU_FLAGS(CPU_AUDIO_CPU)
-	MDRV_CPU_MEMORY(popper_sound_readmem,popper_sound_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)		//NMIs caused by the main CPU
-
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_INTERLEAVE(30)
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(33*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 33*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(popper_gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(64)
-
-	MDRV_PALETTE_INIT(popper)
-	MDRV_VIDEO_START(popper)
-	MDRV_VIDEO_UPDATE(popper)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(AY8910, popper_ay8910_interface)
-MACHINE_DRIVER_END
-
-
-ROM_START( popper )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
-	ROM_LOAD( "p1",   0x0000, 0x2000, 0x56881b70 )
-	ROM_LOAD( "p2",   0x2000, 0x2000, 0xa054d9d2 )
-	ROM_LOAD( "p3",   0x4000, 0x2000, 0x6201928a )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for code */
-	ROM_LOAD( "p0",   0x0000, 0x1000, 0xef5f7c5b )
-
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "p4",   0x0000, 0x2000, 0x86203349 )
-
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "p5",   0x0000, 0x2000, 0xa21ac194 )
-	ROM_LOAD( "p6",   0x2000, 0x2000, 0xd99fa790 )
-
-	ROM_REGION( 0x0040, REGION_PROMS, 0 )
-	ROM_LOAD( "p.m3", 0x0000, 0x0020, 0x713217aa )
-	ROM_LOAD( "p.m4", 0x0020, 0x0020, 0x384de5c1 )
-ROM_END
-
-
-GAMEX(1983, popper, 0, popper, popper, 0, ROT90, "Omori Electric Co., Ltd.", "Popper", GAME_IMPERFECT_COLORS )

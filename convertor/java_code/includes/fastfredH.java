@@ -13,15 +13,6 @@ extern data8_t *fastfred_attributesram;
 
 PALETTE_INIT( fastfred );
 VIDEO_START( fastfred );
-WRITE_HANDLER( fastfred_videoram_w );
-WRITE_HANDLER( fastfred_attributes_w );
-WRITE_HANDLER( fastfred_charbank1_w );
-WRITE_HANDLER( fastfred_charbank2_w );
-WRITE_HANDLER( fastfred_colorbank1_w );
-WRITE_HANDLER( fastfred_colorbank2_w );
-WRITE_HANDLER( fastfred_background_color_w );
-WRITE_HANDLER( fastfred_flip_screen_x_w );
-WRITE_HANDLER( fastfred_flip_screen_y_w );
 VIDEO_UPDATE( fastfred );
 
 

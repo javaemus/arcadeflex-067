@@ -187,973 +187,986 @@ Shark	Zame
 *****************************************************************************/
 
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
-#include "cpu/m68000/m68000.h"
-#include "cpu/tms32010/tms32010.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package drivers;
 
-
-
-/**************** Machine stuff ******************/
-MACHINE_INIT( fsharkbt_reset_8741_mcu );
-INTERRUPT_GEN  ( twincobr_interrupt );
-READ16_HANDLER ( fsharkbt_dsp_r );
-READ16_HANDLER ( twincobr_dsp_r );
-WRITE16_HANDLER( twincobr_dsp_w );
-READ16_HANDLER ( twincobr_BIO_r );
-WRITE_HANDLER  ( twincobr_coin_w );
-WRITE16_HANDLER( fshark_coin_dsp_w );
-READ16_HANDLER ( twincobr_68k_dsp_r );
-WRITE16_HANDLER( twincobr_68k_dsp_w );
-WRITE16_HANDLER( twincobr_control_w );
-READ16_HANDLER ( twincobr_sharedram_r );
-WRITE16_HANDLER( twincobr_sharedram_w );
-
-extern data16_t *twincobr_68k_dsp_ram;
-extern data8_t *twincobr_sharedram;
-
-
-/**************** Video stuff ******************/
-WRITE16_HANDLER( twincobr_txscroll_w );
-WRITE16_HANDLER( twincobr_bgscroll_w );
-WRITE16_HANDLER( twincobr_fgscroll_w );
-WRITE16_HANDLER( twincobr_exscroll_w );
-WRITE16_HANDLER( twincobr_txoffs_w );
-WRITE16_HANDLER( twincobr_bgoffs_w );
-WRITE16_HANDLER( twincobr_fgoffs_w );
-READ16_HANDLER ( twincobr_txram_r );
-READ16_HANDLER ( twincobr_bgram_r );
-READ16_HANDLER ( twincobr_fgram_r );
-WRITE16_HANDLER( twincobr_txram_w );
-WRITE16_HANDLER( twincobr_bgram_w );
-WRITE16_HANDLER( twincobr_fgram_w );
-WRITE16_HANDLER( twincobr_crtc_reg_sel_w );
-WRITE16_HANDLER( twincobr_crtc_data_w );
-
-VIDEO_START( toaplan0 );
-VIDEO_UPDATE( toaplan0 );
-VIDEO_EOF( toaplan0 );
-
-
-
-
-/* 68000 memory maps */
-static MEMORY_READ16_START( readmem )
-	{ 0x000000, 0x02ffff, MRA16_ROM },
-	{ 0x030000, 0x033fff, twincobr_68k_dsp_r },		/* 68K and DSP shared RAM */
-	{ 0x040000, 0x040fff, MRA16_RAM },				/* sprite ram data */
-	{ 0x050000, 0x050dff, paletteram16_word_r },
-	{ 0x078000, 0x078001, input_port_3_word_r },	/* Flying Shark - DSW A */
-	{ 0x078002, 0x078003, input_port_4_word_r },	/* Flying Shark - DSW B */
-	{ 0x078004, 0x078005, input_port_1_word_r },	/* Player 1 inputs */
-	{ 0x078006, 0x078007, input_port_2_word_r },	/* Player 2 inputs */
-	{ 0x078008, 0x078009, input_port_0_word_r },	/* V-Blank & FShark Coin/Start */
-	{ 0x07a000, 0x07abff, twincobr_sharedram_r },	/* 16-bit on 68000 side, 8-bit on Z80 side */
-	{ 0x07e000, 0x07e001, twincobr_txram_r },		/* data from text video RAM */
-	{ 0x07e002, 0x07e003, twincobr_bgram_r },		/* data from bg video RAM */
-	{ 0x07e004, 0x07e005, twincobr_fgram_r },		/* data from fg video RAM */
-MEMORY_END
-
-static MEMORY_WRITE16_START( writemem )
-	{ 0x000000, 0x02ffff, MWA16_ROM },
-	{ 0x030000, 0x033fff, twincobr_68k_dsp_w, &twincobr_68k_dsp_ram },	/* 68K and DSP shared RAM */
-	{ 0x040000, 0x040fff, MWA16_RAM, &spriteram16, &spriteram_size },	/* sprite ram data */
-	{ 0x050000, 0x050dff, paletteram16_xBBBBBGGGGGRRRRR_word_w, &paletteram16 },
-	{ 0x060000, 0x060001, twincobr_crtc_reg_sel_w },/* 6845 CRT controller */
-	{ 0x060002, 0x060003, twincobr_crtc_data_w },	/* 6845 CRT controller */
-	{ 0x070000, 0x070003, twincobr_txscroll_w },	/* text layer scroll */
-	{ 0x070004, 0x070005, twincobr_txoffs_w },		/* offset in text video RAM */
-	{ 0x072000, 0x072003, twincobr_bgscroll_w },	/* bg layer scroll */
-	{ 0x072004, 0x072005, twincobr_bgoffs_w },		/* offset in bg video RAM */
-	{ 0x074000, 0x074003, twincobr_fgscroll_w },	/* fg layer scroll */
-	{ 0x074004, 0x074005, twincobr_fgoffs_w },		/* offset in fg video RAM */
-	{ 0x076000, 0x076003, twincobr_exscroll_w },	/* Spare layer scroll */
-	{ 0x07800a, 0x07800b, fshark_coin_dsp_w },		/* Flying Shark DSP Comms & coin stuff */
-	{ 0x07800c, 0x07800d, twincobr_control_w },		/* Twin Cobra DSP Comms & system control */
-	{ 0x07a000, 0x07afff, twincobr_sharedram_w },	/* 16-bit on 68000 side, 8-bit on Z80 side */
-	{ 0x07e000, 0x07e001, twincobr_txram_w },		/* data for text video RAM */
-	{ 0x07e002, 0x07e003, twincobr_bgram_w },		/* data for bg video RAM */
-	{ 0x07e004, 0x07e005, twincobr_fgram_w },		/* data for fg video RAM */
-MEMORY_END
-
-
-/* Z80 memory/port maps */
-static MEMORY_READ_START( sound_readmem )
-	{ 0x0000, 0x7fff, MRA_ROM },
-	{ 0x8000, 0x87ff, MRA_RAM },
-MEMORY_END
-
-static MEMORY_WRITE_START( sound_writemem )
-	{ 0x0000, 0x7fff, MWA_ROM },
-	{ 0x8000, 0x87ff, MWA_RAM, &twincobr_sharedram },
-MEMORY_END
-
-static PORT_READ_START( sound_readport )
-	{ 0x00, 0x00, YM3812_status_port_0_r },
-	{ 0x10, 0x10, input_port_5_r },		/* Twin Cobra - Coin/Start */
-	{ 0x40, 0x40, input_port_3_r },		/* Twin Cobra - DSW A */
-	{ 0x50, 0x50, input_port_4_r },		/* Twin Cobra - DSW B */
-PORT_END
-
-static PORT_WRITE_START( sound_writeport )
-	{ 0x00, 0x00, YM3812_control_port_0_w },
-	{ 0x01, 0x01, YM3812_write_port_0_w },
-	{ 0x20, 0x20, twincobr_coin_w },	/* Twin Cobra coin count-lockout */
-PORT_END
-
-
-/* TMS32010 memory/port maps */
-static MEMORY_READ16_START( DSP_readmem )
-	{ TMS32010_DATA_ADDR_RANGE(0x000, 0x08f), MRA16_RAM },	/* 90h words internal RAM */
-	{ TMS32010_PGM_ADDR_RANGE(0x000, 0x7ff), MRA16_ROM },	/* 800h words. The real DSPs ROM is at */
-									/* address 0 */
-									/* View it at 8000h in the debugger */
-MEMORY_END
-
-static MEMORY_WRITE16_START( DSP_writemem )
-	{ TMS32010_DATA_ADDR_RANGE(0x000, 0x08f), MWA16_RAM },
-	{ TMS32010_PGM_ADDR_RANGE(0x000, 0x7ff), MWA16_ROM },
-MEMORY_END
-
-static PORT_READ16_START( DSP_readport )
-	{ TMS32010_PORT_RANGE(1, 1),       twincobr_dsp_r },
-	{ TMS32010_PORT_RANGE(2, 2),       fsharkbt_dsp_r },
-	{ TMS32010_PORT_RANGE(TMS32010_BIO, TMS32010_BIO), twincobr_BIO_r },
-PORT_END
-
-static PORT_WRITE16_START( DSP_writeport )
-	{ TMS32010_PORT_RANGE(0, 3),       twincobr_dsp_w },
-PORT_END
-
-
-
-/*****************************************************************************
-	Input Port definitions
-*****************************************************************************/
-
-#define  TOAPLAN_PLAYER_INPUT( player )										 \
-	PORT_START 																 \
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY | player ) \
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY | player ) \
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY | player ) \
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY | player ) \
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 | player)					 \
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 | player)					 \
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )							 \
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-
-#define  TOAPLAN_JAPAN_DSW_A							\
-	PORT_START		/* DSW A */							\
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )		\
-	PORT_DIPSETTING(	0x01, DEF_STR( Upright ) )		\
-	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )		\
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Flip_Screen ) )	\
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )			\
-	PORT_DIPSETTING(	0x02, DEF_STR( On ) )			\
-	PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" )	\
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )			\
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )			\
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Demo_Sounds ) )	\
-	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )			\
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )			\
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )		\
-	PORT_DIPSETTING(	0x20, DEF_STR( 2C_1C ) )		\
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )		\
-	PORT_DIPSETTING(	0x30, DEF_STR( 2C_3C ) )		\
-	PORT_DIPSETTING(	0x10, DEF_STR( 1C_2C ) )		\
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coin_B ) )		\
-	PORT_DIPSETTING(	0x80, DEF_STR( 2C_1C ) )		\
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )		\
-	PORT_DIPSETTING(	0xc0, DEF_STR( 2C_3C ) )		\
-	PORT_DIPSETTING(	0x40, DEF_STR( 1C_2C ) )
-
-#define  TWINCOBR_VBLANK_INPUT( active_level )		\
-	PORT_START										\
-	PORT_BIT( 0x7f, active_level, IPT_UNKNOWN )		\
-	PORT_BIT( 0x80, active_level, IPT_VBLANK )
-
-#define  TWINCOBR_SYSTEM_INPUTS							\
-	PORT_START											\
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN3 )			\
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_TILT )			\
-	PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" )	\
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )			\
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )			\
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )			\
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_COIN2 )			\
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )		\
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )		\
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-
-#define TWINCOBR_DSW_B		/* not KTIGER */			\
-	PORT_START		/* DSW B */							\
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Difficulty ) )	\
-	PORT_DIPSETTING(	0x01, "Easy" )					\
-	PORT_DIPSETTING(	0x00, "Normal" )				\
-	PORT_DIPSETTING(	0x02, "Hard" )					\
-	PORT_DIPSETTING(	0x03, "Hardest" )				\
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Bonus_Life ) )	\
-	PORT_DIPSETTING(	0x00, "50K, then every 150K" )	\
-	PORT_DIPSETTING(	0x04, "70K, then every 200K" )	\
-	PORT_DIPSETTING(	0x08, "50000" )					\
-	PORT_DIPSETTING(	0x0c, "100000" )				\
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Lives ) )		\
-	PORT_DIPSETTING(	0x30, "2" )						\
-	PORT_DIPSETTING(	0x00, "3" )						\
-	PORT_DIPSETTING(	0x20, "4" )						\
-	PORT_DIPSETTING(	0x10, "5" )						\
-	PORT_DIPNAME( 0x40, 0x00, "Show DIP SW Settings" )	\
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )			\
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )			\
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Unknown ) )		\
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )			\
-	PORT_DIPSETTING(	0x80, DEF_STR( On ) )
-
-#define  FSHARK_SYSTEM_INPUTS		/* V-Blank is also here */				 \
-	PORT_START																 \
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN3 )								 \
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_TILT )		/* tilt causes freeze */ \
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED )	/* reset button */		 \
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )								 \
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_COIN2 )								 \
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )							 \
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )							 \
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
-
-#define FSHARK_DSW_B									\
-	PORT_START		/* DSW B */							\
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Difficulty ) )	\
-	PORT_DIPSETTING(	0x01, "Easy" )					\
-	PORT_DIPSETTING(	0x00, "Normal" )				\
-	PORT_DIPSETTING(	0x02, "Hard" )					\
-	PORT_DIPSETTING(	0x03, "Hardest" )				\
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Bonus_Life ) )	\
-	PORT_DIPSETTING(	0x00, "50K, then every 150K" )	\
-	PORT_DIPSETTING(	0x04, "70K, then every 200K" )	\
-	PORT_DIPSETTING(	0x08, "50000" )					\
-	PORT_DIPSETTING(	0x0c, "100000" )				\
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Lives ) )		\
-	PORT_DIPSETTING(	0x20, "1" )						\
-	PORT_DIPSETTING(	0x30, "2" )						\
-	PORT_DIPSETTING(	0x00, "3" )						\
-	PORT_DIPSETTING(	0x10, "5" )						\
-	PORT_DIPNAME( 0x40, 0x00, "Show DIP SW Settings" )	\
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )			\
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )			\
-	PORT_DIPNAME( 0x80, 0x80, "Allow Continue" )		\
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )			\
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
-
-
-
-
-INPUT_PORTS_START( twincobr )
-	TWINCOBR_VBLANK_INPUT( IP_ACTIVE_HIGH )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
-
-	PORT_START		/* DSW A */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(	0x30, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(	0xc0, DEF_STR( 1C_6C ) )
-
-	TWINCOBR_DSW_B
-	TWINCOBR_SYSTEM_INPUTS
-INPUT_PORTS_END
-
-INPUT_PORTS_START( twincobu )
-	TWINCOBR_VBLANK_INPUT( IP_ACTIVE_HIGH )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
-
-	PORT_START		/* DSW A */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(	0x30, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(	0xc0, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( 1C_2C ) )
-
-	TWINCOBR_DSW_B
-	TWINCOBR_SYSTEM_INPUTS
-INPUT_PORTS_END
-
-INPUT_PORTS_START( ktiger )
-	TWINCOBR_VBLANK_INPUT( IP_ACTIVE_HIGH )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
-	TOAPLAN_JAPAN_DSW_A
-
-	PORT_START		/* DSW B */
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(	0x01, "Easy" )
-	PORT_DIPSETTING(	0x00, "Normal" )
-	PORT_DIPSETTING(	0x02, "Hard" )
-	PORT_DIPSETTING(	0x03, "Hardest" )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(	0x00, "70K, then every 200K" )
-	PORT_DIPSETTING(	0x04, "50K, then every 150K" )
-	PORT_DIPSETTING(	0x08, "100000" )
-	PORT_DIPSETTING(	0x0c, "No Extend" )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(	0x30, "2" )
-	PORT_DIPSETTING(	0x00, "3" )
-	PORT_DIPSETTING(	0x20, "4" )
-	PORT_DIPSETTING(	0x10, "5" )
-	PORT_DIPNAME( 0x40, 0x00, "Show DIP SW Settings" )
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x80, 0x80, "Allow Continue" )
-	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
-
-	TWINCOBR_SYSTEM_INPUTS
-INPUT_PORTS_END
-
-INPUT_PORTS_START( fshark )
-	FSHARK_SYSTEM_INPUTS
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
-
-	PORT_START		/* DSW A */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( Upright ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(	0x30, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(	0xc0, DEF_STR( 1C_6C ) )
-
-	FSHARK_DSW_B
-INPUT_PORTS_END
-
-INPUT_PORTS_START( skyshark )
-	FSHARK_SYSTEM_INPUTS
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
-
-	PORT_START		/* DSW A */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( Upright ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( 1C_2C ) )
-/*	PORT_DIPSETTING(	0x30, DEF_STR( 1C_2C ) )	Same as previous */
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( 1C_2C ) )
-/*	PORT_DIPSETTING(	0xc0, DEF_STR( 1C_2C ) )	Same as previous */
-
-	FSHARK_DSW_B
-INPUT_PORTS_END
-
-INPUT_PORTS_START( hishouza )
-	FSHARK_SYSTEM_INPUTS
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
-	TOAPLAN_JAPAN_DSW_A
-	FSHARK_DSW_B
-INPUT_PORTS_END
-
-INPUT_PORTS_START( gulfwar2 )
-	TWINCOBR_VBLANK_INPUT( IP_ACTIVE_LOW )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
-	TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
-
-	PORT_START		/* DSW A */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(	0x30, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(	0x20, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(	0x80, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(	0xc0, DEF_STR( 1C_6C ) )
-
-	TWINCOBR_DSW_B
-	TWINCOBR_SYSTEM_INPUTS
-INPUT_PORTS_END
-
-
-
-static struct GfxLayout charlayout =
+public class twincobr
 {
-	8,8,			/* 8*8 characters */
-	RGN_FRAC(1,3),	/* 2048 characters */
-	3,				/* 3 bits per pixel */
-	{ RGN_FRAC(0,3), RGN_FRAC(1,3), RGN_FRAC(2,3) },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8				/* every char takes 8 consecutive bytes */
-};
-
-static struct GfxLayout tilelayout =
-{
-	8,8,			/* 8*8 tiles */
-	RGN_FRAC(1,4),	/* 4096/8192 tiles */
-	4,				/* 4 bits per pixel */
-	{ RGN_FRAC(0,4), RGN_FRAC(1,4), RGN_FRAC(2,4), RGN_FRAC(3,4) },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8				/* every tile takes 8 consecutive bytes */
-};
-
-static struct GfxLayout spritelayout =
-{
-	16,16,			/* 16*16 sprites */
-	RGN_FRAC(1,4),	/* 2048 sprites */
-	4,				/* 4 bits per pixel */
-	{ RGN_FRAC(0,4), RGN_FRAC(1,4), RGN_FRAC(2,4), RGN_FRAC(3,4) },
-	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
-	{ 0*16, 1*16, 2*16, 3*16, 4*16, 5*16, 6*16, 7*16,
-			8*16, 9*16, 10*16, 11*16, 12*16, 13*16, 14*16, 15*16 },
-	32*8			/* every sprite takes 32 consecutive bytes */
-};
-
-static struct GfxDecodeInfo gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0x00000, &charlayout,	1536, 32 },	/* colors 1536-1791 */
-	{ REGION_GFX2, 0x00000, &tilelayout,	1280, 16 },	/* colors 1280-1535 */
-	{ REGION_GFX3, 0x00000, &tilelayout,	1024, 16 },	/* colors 1024-1079 */
-	{ REGION_GFX4, 0x00000, &spritelayout,	   0, 64 },	/* colors    0-1023 */
-	{ -1 } /* end of array */
-};
-
-
-
-/* handler called by the 3812 emulator when the internal timers cause an IRQ */
-static void irqhandler(int linestate)
-{
-	cpu_set_irq_line(1,0,linestate);
+	
+	
+	
+	/**************** Machine stuff ******************/
+	MACHINE_INIT( fsharkbt_reset_8741_mcu );
+	INTERRUPT_GEN  ( twincobr_interrupt );
+	READ16_HANDLER ( fsharkbt_dsp_r );
+	READ16_HANDLER ( twincobr_dsp_r );
+	WRITE16_HANDLER( twincobr_dsp_w );
+	READ16_HANDLER ( twincobr_BIO_r );
+	WRITE_HANDLER  ( twincobr_coin_w );
+	WRITE16_HANDLER( fshark_coin_dsp_w );
+	READ16_HANDLER ( twincobr_68k_dsp_r );
+	WRITE16_HANDLER( twincobr_68k_dsp_w );
+	WRITE16_HANDLER( twincobr_control_w );
+	READ16_HANDLER ( twincobr_sharedram_r );
+	WRITE16_HANDLER( twincobr_sharedram_w );
+	
+	extern data16_t *twincobr_68k_dsp_ram;
+	extern data8_t *twincobr_sharedram;
+	
+	
+	/**************** Video stuff ******************/
+	WRITE16_HANDLER( twincobr_txscroll_w );
+	WRITE16_HANDLER( twincobr_bgscroll_w );
+	WRITE16_HANDLER( twincobr_fgscroll_w );
+	WRITE16_HANDLER( twincobr_exscroll_w );
+	WRITE16_HANDLER( twincobr_txoffs_w );
+	WRITE16_HANDLER( twincobr_bgoffs_w );
+	WRITE16_HANDLER( twincobr_fgoffs_w );
+	READ16_HANDLER ( twincobr_txram_r );
+	READ16_HANDLER ( twincobr_bgram_r );
+	READ16_HANDLER ( twincobr_fgram_r );
+	WRITE16_HANDLER( twincobr_txram_w );
+	WRITE16_HANDLER( twincobr_bgram_w );
+	WRITE16_HANDLER( twincobr_fgram_w );
+	WRITE16_HANDLER( twincobr_crtc_reg_sel_w );
+	WRITE16_HANDLER( twincobr_crtc_data_w );
+	
+	VIDEO_START( toaplan0 );
+	VIDEO_UPDATE( toaplan0 );
+	VIDEO_EOF( toaplan0 );
+	
+	
+	
+	
+	/* 68000 memory maps */
+	static MEMORY_READ16_START( readmem )
+		{ 0x000000, 0x02ffff, MRA16_ROM },
+		{ 0x030000, 0x033fff, twincobr_68k_dsp_r },		/* 68K and DSP shared RAM */
+		{ 0x040000, 0x040fff, MRA16_RAM },				/* sprite ram data */
+		{ 0x050000, 0x050dff, paletteram16_word_r },
+		{ 0x078000, 0x078001, input_port_3_word_r },	/* Flying Shark - DSW A */
+		{ 0x078002, 0x078003, input_port_4_word_r },	/* Flying Shark - DSW B */
+		{ 0x078004, 0x078005, input_port_1_word_r },	/* Player 1 inputs */
+		{ 0x078006, 0x078007, input_port_2_word_r },	/* Player 2 inputs */
+		{ 0x078008, 0x078009, input_port_0_word_r },	/* V-Blank & FShark Coin/Start */
+		{ 0x07a000, 0x07abff, twincobr_sharedram_r },	/* 16-bit on 68000 side, 8-bit on Z80 side */
+		{ 0x07e000, 0x07e001, twincobr_txram_r },		/* data from text video RAM */
+		{ 0x07e002, 0x07e003, twincobr_bgram_r },		/* data from bg video RAM */
+		{ 0x07e004, 0x07e005, twincobr_fgram_r },		/* data from fg video RAM */
+	MEMORY_END
+	
+	static MEMORY_WRITE16_START( writemem )
+		{ 0x000000, 0x02ffff, MWA16_ROM },
+		{ 0x030000, 0x033fff, twincobr_68k_dsp_w, &twincobr_68k_dsp_ram },	/* 68K and DSP shared RAM */
+		{ 0x040000, 0x040fff, MWA16_RAM, &spriteram16, &spriteram_size },	/* sprite ram data */
+		{ 0x050000, 0x050dff, paletteram16_xBBBBBGGGGGRRRRR_word_w, &paletteram16 },
+		{ 0x060000, 0x060001, twincobr_crtc_reg_sel_w },/* 6845 CRT controller */
+		{ 0x060002, 0x060003, twincobr_crtc_data_w },	/* 6845 CRT controller */
+		{ 0x070000, 0x070003, twincobr_txscroll_w },	/* text layer scroll */
+		{ 0x070004, 0x070005, twincobr_txoffs_w },		/* offset in text video RAM */
+		{ 0x072000, 0x072003, twincobr_bgscroll_w },	/* bg layer scroll */
+		{ 0x072004, 0x072005, twincobr_bgoffs_w },		/* offset in bg video RAM */
+		{ 0x074000, 0x074003, twincobr_fgscroll_w },	/* fg layer scroll */
+		{ 0x074004, 0x074005, twincobr_fgoffs_w },		/* offset in fg video RAM */
+		{ 0x076000, 0x076003, twincobr_exscroll_w },	/* Spare layer scroll */
+		{ 0x07800a, 0x07800b, fshark_coin_dsp_w },		/* Flying Shark DSP Comms & coin stuff */
+		{ 0x07800c, 0x07800d, twincobr_control_w },		/* Twin Cobra DSP Comms & system control */
+		{ 0x07a000, 0x07afff, twincobr_sharedram_w },	/* 16-bit on 68000 side, 8-bit on Z80 side */
+		{ 0x07e000, 0x07e001, twincobr_txram_w },		/* data for text video RAM */
+		{ 0x07e002, 0x07e003, twincobr_bgram_w },		/* data for bg video RAM */
+		{ 0x07e004, 0x07e005, twincobr_fgram_w },		/* data for fg video RAM */
+	MEMORY_END
+	
+	
+	/* Z80 memory/port maps */
+	public static Memory_ReadAddress sound_readmem[]={
+		new Memory_ReadAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_ReadAddress( 0x0000, 0x7fff, MRA_ROM ),
+		new Memory_ReadAddress( 0x8000, 0x87ff, MRA_RAM ),
+		new Memory_ReadAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static Memory_WriteAddress sound_writemem[]={
+		new Memory_WriteAddress(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_MEM | MEMPORT_WIDTH_8),
+		new Memory_WriteAddress( 0x0000, 0x7fff, MWA_ROM ),
+		new Memory_WriteAddress( 0x8000, 0x87ff, MWA_RAM, twincobr_sharedram ),
+		new Memory_WriteAddress(MEMPORT_MARKER, 0)
+	};
+	
+	public static IO_ReadPort sound_readport[]={
+		new IO_ReadPort(MEMPORT_MARKER, MEMPORT_DIRECTION_READ | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_ReadPort( 0x00, 0x00, YM3812_status_port_0_r ),
+		new IO_ReadPort( 0x10, 0x10, input_port_5_r ),		/* Twin Cobra - Coin/Start */
+		new IO_ReadPort( 0x40, 0x40, input_port_3_r ),		/* Twin Cobra - DSW A */
+		new IO_ReadPort( 0x50, 0x50, input_port_4_r ),		/* Twin Cobra - DSW B */
+		new IO_ReadPort(MEMPORT_MARKER, 0)
+	};
+	
+	public static IO_WritePort sound_writeport[]={
+		new IO_WritePort(MEMPORT_MARKER, MEMPORT_DIRECTION_WRITE | MEMPORT_TYPE_IO | MEMPORT_WIDTH_8),
+		new IO_WritePort( 0x00, 0x00, YM3812_control_port_0_w ),
+		new IO_WritePort( 0x01, 0x01, YM3812_write_port_0_w ),
+		new IO_WritePort( 0x20, 0x20, twincobr_coin_w ),	/* Twin Cobra coin count-lockout */
+		new IO_WritePort(MEMPORT_MARKER, 0)
+	};
+	
+	
+	/* TMS32010 memory/port maps */
+	static MEMORY_READ16_START( DSP_readmem )
+		{ TMS32010_DATA_ADDR_RANGE(0x000, 0x08f), MRA16_RAM },	/* 90h words internal RAM */
+		{ TMS32010_PGM_ADDR_RANGE(0x000, 0x7ff), MRA16_ROM },	/* 800h words. The real DSPs ROM is at */
+										/* address 0 */
+										/* View it at 8000h in the debugger */
+	MEMORY_END
+	
+	static MEMORY_WRITE16_START( DSP_writemem )
+		{ TMS32010_DATA_ADDR_RANGE(0x000, 0x08f), MWA16_RAM },
+		{ TMS32010_PGM_ADDR_RANGE(0x000, 0x7ff), MWA16_ROM },
+	MEMORY_END
+	
+	static PORT_READ16_START( DSP_readport )
+		{ TMS32010_PORT_RANGE(1, 1),       twincobr_dsp_r },
+		{ TMS32010_PORT_RANGE(2, 2),       fsharkbt_dsp_r },
+		{ TMS32010_PORT_RANGE(TMS32010_BIO, TMS32010_BIO), twincobr_BIO_r },
+	PORT_END
+	
+	static PORT_WRITE16_START( DSP_writeport )
+		{ TMS32010_PORT_RANGE(0, 3),       twincobr_dsp_w },
+	PORT_END
+	
+	
+	
+	/*****************************************************************************
+		Input Port definitions
+	*****************************************************************************/
+	
+	#define  TOAPLAN_PLAYER_INPUT( player )										 \
+		PORT_START();  																 \
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    | IPF_8WAY | player );\
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  | IPF_8WAY | player );\
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  | IPF_8WAY | player );\
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT | IPF_8WAY | player );\
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 | player);				 \
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 | player);				 \
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN );						 \
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+	
+	#define  TOAPLAN_JAPAN_DSW_A							\
+		PORT_START(); 		/* DSW A */							\
+		PORT_DIPNAME( 0x01, 0x01, DEF_STR( "Cabinet") );		\
+		PORT_DIPSETTING(	0x01, DEF_STR( "Upright") );		\
+		PORT_DIPSETTING(	0x00, DEF_STR( "Cocktail") );		\
+		PORT_DIPNAME( 0x02, 0x00, DEF_STR( "Flip_Screen") );	\
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );			\
+		PORT_DIPSETTING(	0x02, DEF_STR( "On") );			\
+		PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" );\
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );			\
+		PORT_DIPSETTING(	0x04, DEF_STR( "On") );			\
+		PORT_DIPNAME( 0x08, 0x00, DEF_STR( "Demo_Sounds") );	\
+		PORT_DIPSETTING(	0x08, DEF_STR( "Off") );			\
+		PORT_DIPSETTING(	0x00, DEF_STR( "On") );			\
+		PORT_DIPNAME( 0x30, 0x00, DEF_STR( "Coin_A") );		\
+		PORT_DIPSETTING(	0x20, DEF_STR( "2C_1C") );		\
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_1C") );		\
+		PORT_DIPSETTING(	0x30, DEF_STR( "2C_3C") );		\
+		PORT_DIPSETTING(	0x10, DEF_STR( "1C_2C") );		\
+		PORT_DIPNAME( 0xc0, 0x00, DEF_STR( "Coin_B") );		\
+		PORT_DIPSETTING(	0x80, DEF_STR( "2C_1C") );		\
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_1C") );		\
+		PORT_DIPSETTING(	0xc0, DEF_STR( "2C_3C") );		\
+		PORT_DIPSETTING(	0x40, DEF_STR( "1C_2C") );
+	
+	#define  TWINCOBR_VBLANK_INPUT( active_level )		\
+		PORT_START(); 										\
+		PORT_BIT( 0x7f, active_level, IPT_UNKNOWN );	\
+		PORT_BIT( 0x80, active_level, IPT_VBLANK );
+	
+	#define  TWINCOBR_SYSTEM_INPUTS							\
+		PORT_START(); 											\
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN3 );		\
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_TILT );		\
+		PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" );\
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );			\
+		PORT_DIPSETTING(	0x04, DEF_STR( "On") );			\
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 );		\
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_COIN2 );		\
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 );	\
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 );	\
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN );
+	
+	#define TWINCOBR_DSW_B		/* not KTIGER */			\
+		PORT_START(); 		/* DSW B */							\
+		PORT_DIPNAME( 0x03, 0x00, DEF_STR( "Difficulty") );	\
+		PORT_DIPSETTING(	0x01, "Easy" );				\
+		PORT_DIPSETTING(	0x00, "Normal" );			\
+		PORT_DIPSETTING(	0x02, "Hard" );				\
+		PORT_DIPSETTING(	0x03, "Hardest" );			\
+		PORT_DIPNAME( 0x0c, 0x00, DEF_STR( "Bonus_Life") );	\
+		PORT_DIPSETTING(	0x00, "50K, then every 150K" );\
+		PORT_DIPSETTING(	0x04, "70K, then every 200K" );\
+		PORT_DIPSETTING(	0x08, "50000" );				\
+		PORT_DIPSETTING(	0x0c, "100000" );			\
+		PORT_DIPNAME( 0x30, 0x00, DEF_STR( "Lives") );		\
+		PORT_DIPSETTING(	0x30, "2" );					\
+		PORT_DIPSETTING(	0x00, "3" );					\
+		PORT_DIPSETTING(	0x20, "4" );					\
+		PORT_DIPSETTING(	0x10, "5" );					\
+		PORT_DIPNAME( 0x40, 0x00, "Show DIP SW Settings" );\
+		PORT_DIPSETTING(	0x00, DEF_STR( "No") );			\
+		PORT_DIPSETTING(	0x40, DEF_STR( "Yes") );			\
+		PORT_DIPNAME( 0x80, 0x00, DEF_STR( "Unknown") );		\
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );			\
+		PORT_DIPSETTING(	0x80, DEF_STR( "On") );
+	
+	#define  FSHARK_SYSTEM_INPUTS		/* V-Blank is also here */				 \
+		PORT_START(); 																 \
+		PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN3 );							 \
+		PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_TILT );	/* tilt causes freeze */ \
+		PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED );/* reset button */		 \
+		PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 );							 \
+		PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_COIN2 );							 \
+		PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 );						 \
+		PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 );						 \
+		PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK );
+	
+	#define FSHARK_DSW_B									\
+		PORT_START(); 		/* DSW B */							\
+		PORT_DIPNAME( 0x03, 0x00, DEF_STR( "Difficulty") );	\
+		PORT_DIPSETTING(	0x01, "Easy" );				\
+		PORT_DIPSETTING(	0x00, "Normal" );			\
+		PORT_DIPSETTING(	0x02, "Hard" );				\
+		PORT_DIPSETTING(	0x03, "Hardest" );			\
+		PORT_DIPNAME( 0x0c, 0x00, DEF_STR( "Bonus_Life") );	\
+		PORT_DIPSETTING(	0x00, "50K, then every 150K" );\
+		PORT_DIPSETTING(	0x04, "70K, then every 200K" );\
+		PORT_DIPSETTING(	0x08, "50000" );				\
+		PORT_DIPSETTING(	0x0c, "100000" );			\
+		PORT_DIPNAME( 0x30, 0x00, DEF_STR( "Lives") );		\
+		PORT_DIPSETTING(	0x20, "1" );					\
+		PORT_DIPSETTING(	0x30, "2" );					\
+		PORT_DIPSETTING(	0x00, "3" );					\
+		PORT_DIPSETTING(	0x10, "5" );					\
+		PORT_DIPNAME( 0x40, 0x00, "Show DIP SW Settings" );\
+		PORT_DIPSETTING(	0x00, DEF_STR( "No") );			\
+		PORT_DIPSETTING(	0x40, DEF_STR( "Yes") );			\
+		PORT_DIPNAME( 0x80, 0x80, "Allow Continue" );	\
+		PORT_DIPSETTING(	0x00, DEF_STR( "No") );			\
+		PORT_DIPSETTING(	0x80, DEF_STR( "Yes") );
+	
+	
+	
+	
+	static InputPortPtr input_ports_twincobr = new InputPortPtr(){ public void handler() { 
+		TWINCOBR_VBLANK_INPUT( IP_ACTIVE_HIGH )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
+	
+		PORT_START(); 		/* DSW A */
+		PORT_DIPNAME( 0x01, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x01, DEF_STR( "On") );
+		PORT_DIPNAME( 0x02, 0x00, DEF_STR( "Flip_Screen") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x02, DEF_STR( "On") );
+		PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x04, DEF_STR( "On") );
+		PORT_DIPNAME( 0x08, 0x00, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(	0x08, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x30, 0x00, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(	0x30, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(	0x20, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(	0x10, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_1C") );
+		PORT_DIPNAME( 0xc0, 0x00, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(	0x40, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(	0x80, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(	0xc0, DEF_STR( "1C_6C") );
+	
+		TWINCOBR_DSW_B
+		TWINCOBR_SYSTEM_INPUTS
+	INPUT_PORTS_END(); }}; 
+	
+	static InputPortPtr input_ports_twincobu = new InputPortPtr(){ public void handler() { 
+		TWINCOBR_VBLANK_INPUT( IP_ACTIVE_HIGH )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
+	
+		PORT_START(); 		/* DSW A */
+		PORT_DIPNAME( 0x01, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x01, DEF_STR( "On") );
+		PORT_DIPNAME( 0x02, 0x00, DEF_STR( "Flip_Screen") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x02, DEF_STR( "On") );
+		PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x04, DEF_STR( "On") );
+		PORT_DIPNAME( 0x08, 0x00, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(	0x08, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x30, 0x00, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(	0x20, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(	0x30, DEF_STR( "2C_3C") );
+		PORT_DIPSETTING(	0x10, DEF_STR( "1C_2C") );
+		PORT_DIPNAME( 0xc0, 0x00, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(	0x80, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(	0xc0, DEF_STR( "2C_3C") );
+		PORT_DIPSETTING(	0x40, DEF_STR( "1C_2C") );
+	
+		TWINCOBR_DSW_B
+		TWINCOBR_SYSTEM_INPUTS
+	INPUT_PORTS_END(); }}; 
+	
+	static InputPortPtr input_ports_ktiger = new InputPortPtr(){ public void handler() { 
+		TWINCOBR_VBLANK_INPUT( IP_ACTIVE_HIGH )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
+		TOAPLAN_JAPAN_DSW_A
+	
+		PORT_START(); 		/* DSW B */
+		PORT_DIPNAME( 0x03, 0x00, DEF_STR( "Difficulty") );
+		PORT_DIPSETTING(	0x01, "Easy" );
+		PORT_DIPSETTING(	0x00, "Normal" );
+		PORT_DIPSETTING(	0x02, "Hard" );
+		PORT_DIPSETTING(	0x03, "Hardest" );
+		PORT_DIPNAME( 0x0c, 0x00, DEF_STR( "Bonus_Life") );
+		PORT_DIPSETTING(	0x00, "70K, then every 200K" );
+		PORT_DIPSETTING(	0x04, "50K, then every 150K" );
+		PORT_DIPSETTING(	0x08, "100000" );
+		PORT_DIPSETTING(	0x0c, "No Extend" );
+		PORT_DIPNAME( 0x30, 0x00, DEF_STR( "Lives") );
+		PORT_DIPSETTING(	0x30, "2" );
+		PORT_DIPSETTING(	0x00, "3" );
+		PORT_DIPSETTING(	0x20, "4" );
+		PORT_DIPSETTING(	0x10, "5" );
+		PORT_DIPNAME( 0x40, 0x00, "Show DIP SW Settings" );
+		PORT_DIPSETTING(	0x00, DEF_STR( "No") );
+		PORT_DIPSETTING(	0x40, DEF_STR( "Yes") );
+		PORT_DIPNAME( 0x80, 0x80, "Allow Continue" );
+		PORT_DIPSETTING(	0x00, DEF_STR( "No") );
+		PORT_DIPSETTING(	0x80, DEF_STR( "Yes") );
+	
+		TWINCOBR_SYSTEM_INPUTS
+	INPUT_PORTS_END(); }}; 
+	
+	static InputPortPtr input_ports_fshark = new InputPortPtr(){ public void handler() { 
+		FSHARK_SYSTEM_INPUTS
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
+	
+		PORT_START(); 		/* DSW A */
+		PORT_DIPNAME( 0x01, 0x01, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING(	0x01, DEF_STR( "Upright") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Cocktail") );
+		PORT_DIPNAME( 0x02, 0x00, DEF_STR( "Flip_Screen") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x02, DEF_STR( "On") );
+		PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x04, DEF_STR( "On") );
+		PORT_DIPNAME( 0x08, 0x00, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(	0x08, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x30, 0x00, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(	0x30, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(	0x20, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(	0x10, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_1C") );
+		PORT_DIPNAME( 0xc0, 0x00, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(	0x40, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(	0x80, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(	0xc0, DEF_STR( "1C_6C") );
+	
+		FSHARK_DSW_B
+	INPUT_PORTS_END(); }}; 
+	
+	static InputPortPtr input_ports_skyshark = new InputPortPtr(){ public void handler() { 
+		FSHARK_SYSTEM_INPUTS
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
+	
+		PORT_START(); 		/* DSW A */
+		PORT_DIPNAME( 0x01, 0x01, DEF_STR( "Cabinet") );
+		PORT_DIPSETTING(	0x01, DEF_STR( "Upright") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Cocktail") );
+		PORT_DIPNAME( 0x02, 0x00, DEF_STR( "Flip_Screen") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x02, DEF_STR( "On") );
+		PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x04, DEF_STR( "On") );
+		PORT_DIPNAME( 0x08, 0x00, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(	0x08, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x30, 0x00, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(	0x10, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(	0x20, DEF_STR( "1C_2C") );
+	/*	PORT_DIPSETTING(	0x30, DEF_STR( "1C_2C") );	Same as previous */
+		PORT_DIPNAME( 0xc0, 0x00, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(	0x40, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_1C") );
+		PORT_DIPSETTING(	0x80, DEF_STR( "1C_2C") );
+	/*	PORT_DIPSETTING(	0xc0, DEF_STR( "1C_2C") );	Same as previous */
+	
+		FSHARK_DSW_B
+	INPUT_PORTS_END(); }}; 
+	
+	static InputPortPtr input_ports_hishouza = new InputPortPtr(){ public void handler() { 
+		FSHARK_SYSTEM_INPUTS
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
+		TOAPLAN_JAPAN_DSW_A
+		FSHARK_DSW_B
+	INPUT_PORTS_END(); }}; 
+	
+	static InputPortPtr input_ports_gulfwar2 = new InputPortPtr(){ public void handler() { 
+		TWINCOBR_VBLANK_INPUT( IP_ACTIVE_LOW )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER1 )
+		TOAPLAN_PLAYER_INPUT( IPF_PLAYER2 )
+	
+		PORT_START(); 		/* DSW A */
+		PORT_DIPNAME( 0x01, 0x00, DEF_STR( "Unknown") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x01, DEF_STR( "On") );
+		PORT_DIPNAME( 0x02, 0x00, DEF_STR( "Flip_Screen") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x02, DEF_STR( "On") );
+		PORT_DIPNAME( 0x04, 0x00, "Cross Hatch Pattern" );
+		PORT_DIPSETTING(	0x00, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x04, DEF_STR( "On") );
+		PORT_DIPNAME( 0x08, 0x00, DEF_STR( "Demo_Sounds") );
+		PORT_DIPSETTING(	0x08, DEF_STR( "Off") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "On") );
+		PORT_DIPNAME( 0x30, 0x00, DEF_STR( "Coin_A") );
+		PORT_DIPSETTING(	0x30, DEF_STR( "4C_1C") );
+		PORT_DIPSETTING(	0x20, DEF_STR( "3C_1C") );
+		PORT_DIPSETTING(	0x10, DEF_STR( "2C_1C") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_1C") );
+		PORT_DIPNAME( 0xc0, 0x00, DEF_STR( "Coin_B") );
+		PORT_DIPSETTING(	0x00, DEF_STR( "1C_2C") );
+		PORT_DIPSETTING(	0x40, DEF_STR( "1C_3C") );
+		PORT_DIPSETTING(	0x80, DEF_STR( "1C_4C") );
+		PORT_DIPSETTING(	0xc0, DEF_STR( "1C_6C") );
+	
+		TWINCOBR_DSW_B
+		TWINCOBR_SYSTEM_INPUTS
+	INPUT_PORTS_END(); }}; 
+	
+	
+	
+	static GfxLayout charlayout = new GfxLayout
+	(
+		8,8,			/* 8*8 characters */
+		RGN_FRAC(1,3),	/* 2048 characters */
+		3,				/* 3 bits per pixel */
+		new int[] { RGN_FRAC(0,3), RGN_FRAC(1,3), RGN_FRAC(2,3) },
+		new int[] { 0, 1, 2, 3, 4, 5, 6, 7 },
+		new int[] { 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+		8*8				/* every char takes 8 consecutive bytes */
+	);
+	
+	static GfxLayout tilelayout = new GfxLayout
+	(
+		8,8,			/* 8*8 tiles */
+		RGN_FRAC(1,4),	/* 4096/8192 tiles */
+		4,				/* 4 bits per pixel */
+		new int[] { RGN_FRAC(0,4), RGN_FRAC(1,4), RGN_FRAC(2,4), RGN_FRAC(3,4) },
+		new int[] { 0, 1, 2, 3, 4, 5, 6, 7 },
+		new int[] { 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+		8*8				/* every tile takes 8 consecutive bytes */
+	);
+	
+	static GfxLayout spritelayout = new GfxLayout
+	(
+		16,16,			/* 16*16 sprites */
+		RGN_FRAC(1,4),	/* 2048 sprites */
+		4,				/* 4 bits per pixel */
+		new int[] { RGN_FRAC(0,4), RGN_FRAC(1,4), RGN_FRAC(2,4), RGN_FRAC(3,4) },
+		new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
+		new int[] { 0*16, 1*16, 2*16, 3*16, 4*16, 5*16, 6*16, 7*16,
+				8*16, 9*16, 10*16, 11*16, 12*16, 13*16, 14*16, 15*16 },
+		32*8			/* every sprite takes 32 consecutive bytes */
+	);
+	
+	static GfxDecodeInfo gfxdecodeinfo[] =
+	{
+		new GfxDecodeInfo( REGION_GFX1, 0x00000, charlayout,	1536, 32 ),	/* colors 1536-1791 */
+		new GfxDecodeInfo( REGION_GFX2, 0x00000, tilelayout,	1280, 16 ),	/* colors 1280-1535 */
+		new GfxDecodeInfo( REGION_GFX3, 0x00000, tilelayout,	1024, 16 ),	/* colors 1024-1079 */
+		new GfxDecodeInfo( REGION_GFX4, 0x00000, spritelayout,	   0, 64 ),	/* colors    0-1023 */
+		new GfxDecodeInfo( -1 ) /* end of array */
+	};
+	
+	
+	
+	/* handler called by the 3812 emulator when the internal timers cause an IRQ */
+	static void irqhandler(int linestate)
+	{
+		cpu_set_irq_line(1,0,linestate);
+	}
+	
+	static struct YM3812interface ym3812_interface =
+	{
+		1,				/* 1 chip  */
+		28000000/8,		/* 3.5MHz */
+		{ 100 },		/* volume */
+		{ irqhandler },
+	};
+	
+	
+	
+	static MACHINE_DRIVER_START( twincobr )
+	
+		/* basic machine hardware */
+		MDRV_CPU_ADD(M68000,28000000/4)			/* 7.0MHz - Main board Crystal is 28MHz */
+		MDRV_CPU_MEMORY(readmem,writemem)
+		MDRV_CPU_VBLANK_INT(twincobr_interrupt,1)
+	
+		MDRV_CPU_ADD(Z80,28000000/8)			/* 3.5MHz */
+		MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
+		MDRV_CPU_PORTS(sound_readport,sound_writeport)
+	
+		MDRV_CPU_ADD(TMS32010,28000000/2)		/* 14MHz CLKin */
+		MDRV_CPU_MEMORY(DSP_readmem,DSP_writemem)
+		MDRV_CPU_PORTS(DSP_readport,DSP_writeport)
+	
+		MDRV_FRAMES_PER_SECOND( (28000000.0 / 4) / (446 * 286) )
+		MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+		MDRV_INTERLEAVE(100)
+	
+		MDRV_MACHINE_INIT(fsharkbt_reset_8741_mcu)	/* Reset fshark bootleg 8741 MCU data */
+	
+		/* video hardware */
+		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM)
+		MDRV_SCREEN_SIZE(64*8, 32*8)
+		MDRV_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
+		MDRV_GFXDECODE(gfxdecodeinfo)
+		MDRV_PALETTE_LENGTH(1792)
+	
+		MDRV_VIDEO_START(toaplan0)
+		MDRV_VIDEO_EOF(toaplan0)
+		MDRV_VIDEO_UPDATE(toaplan0)
+	
+		/* sound hardware */
+		MDRV_SOUND_ADD(YM3812, ym3812_interface)
+	MACHINE_DRIVER_END
+	
+	
+	
+	/***************************************************************************
+	
+	  Game driver(s)
+	
+	***************************************************************************/
+	
+	static RomLoadPtr rom_twincobr = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x30000, REGION_CPU1, 0 );/* Main 68K code */
+		ROM_LOAD16_BYTE( "tc16",		0x00000, 0x10000, 0x07f64d13 );
+		ROM_LOAD16_BYTE( "tc14",		0x00001, 0x10000, 0x41be6978 );
+		ROM_LOAD16_BYTE( "tc15",		0x20000, 0x08000, 0x3a646618 );
+		ROM_LOAD16_BYTE( "tc13",		0x20001, 0x08000, 0xd7d1e317 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* Sound Z80 code */
+		ROM_LOAD( "tc12",			0x00000, 0x08000, 0xe37b3c44 );/* slightly different from the other two sets */
+	
+		ROM_REGION( 0x10000, REGION_CPU3, 0 );/* Co-Processor TMS320C10 MCU code */
+		ROM_LOAD16_BYTE( "dsp_22.bin",	0x8001, 0x0800, 0x79389a71 );
+		ROM_LOAD16_BYTE( "dsp_21.bin",	0x8000, 0x0800, 0x2d135376 );
+	/******  The following are from a bootleg board. ******
+		A0 and A1 are swapped between the TMS320C10 and these BPROMs on the board.
+		ROM_LOAD16_BYTE( "tc1b",		0x0000, 0x0800, 0x1757cc33 );
+		ROM_LOAD16_BYTE( "tc2a",		0x0001, 0x0800, 0xd6d878c9 );
+	*/
+	
+		ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE );/* chars */
+		ROM_LOAD( "tc11",			0x00000, 0x04000, 0x0a254133 );
+		ROM_LOAD( "tc03",			0x04000, 0x04000, 0xe9e2d4b1 );
+		ROM_LOAD( "tc04",			0x08000, 0x04000, 0xa599d845 );
+	
+		ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE );/* fg tiles */
+		ROM_LOAD( "tc01",			0x00000, 0x10000, 0x15b3991d );
+		ROM_LOAD( "tc02",			0x10000, 0x10000, 0xd9e2e55d );
+		ROM_LOAD( "tc06",			0x20000, 0x10000, 0x13daeac8 );
+		ROM_LOAD( "tc05",			0x30000, 0x10000, 0x8cc79357 );
+	
+		ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE );/* bg tiles */
+		ROM_LOAD( "tc07",			0x00000, 0x08000, 0xb5d48389 );
+		ROM_LOAD( "tc08",			0x08000, 0x08000, 0x97f20fdc );
+		ROM_LOAD( "tc09",			0x10000, 0x08000, 0x170c01db );
+		ROM_LOAD( "tc10",			0x18000, 0x08000, 0x44f5accd );
+	
+		ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE );/* sprites */
+		ROM_LOAD( "tc20",			0x00000, 0x10000, 0xcb4092b8 );
+		ROM_LOAD( "tc19",			0x10000, 0x10000, 0x9cb8675e );
+		ROM_LOAD( "tc18",			0x20000, 0x10000, 0x806fb374 );
+		ROM_LOAD( "tc17",			0x30000, 0x10000, 0x4264bff8 );
+	
+		ROM_REGION( 0x260, REGION_PROMS, 0 );/* nibble bproms, lo/hi order to be determined */
+		ROM_LOAD( "82s129.d3",	0x000, 0x100, 0x24e7d62f );/* sprite priority control ?? */
+		ROM_LOAD( "82s129.d4",	0x100, 0x100, 0xa50cef09 );/* sprite priority control ?? */
+		ROM_LOAD( "82s123.d2",	0x200, 0x020, 0xf72482db );/* sprite control ?? */
+		ROM_LOAD( "82s123.e18",	0x220, 0x020, 0xbc88cced );/* sprite attribute (flip/position) ?? */
+		ROM_LOAD( "82s123.b24",	0x240, 0x020, 0x4fb5df2a );/* tile to sprite priority ?? */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_twincobu = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x30000, REGION_CPU1, 0 );/* Main 68K code */
+		ROM_LOAD16_BYTE( "tc16",			0x00000, 0x10000, 0x07f64d13 );
+		ROM_LOAD16_BYTE( "tc14",			0x00001, 0x10000, 0x41be6978 );
+		ROM_LOAD16_BYTE( "tcbra26.bin",	0x20000, 0x08000, 0xbdd00ba4 );
+		ROM_LOAD16_BYTE( "tcbra27.bin",	0x20001, 0x08000, 0xed600907 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* Sound Z80 code */
+		ROM_LOAD( "b30-05",				0x00000, 0x08000, 0x1a8f1e10 );
+	
+		ROM_REGION( 0x10000, REGION_CPU3, 0 );/* Co-Processor TMS320C10 MCU code */
+		ROM_LOAD16_BYTE( "dsp_22.bin",	0x8001, 0x0800, 0x79389a71 );
+		ROM_LOAD16_BYTE( "dsp_21.bin",	0x8000, 0x0800, 0x2d135376 );
+	
+		ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE );/* chars */
+		ROM_LOAD( "tc11",			0x00000, 0x04000, 0x0a254133 );
+		ROM_LOAD( "tc03",			0x04000, 0x04000, 0xe9e2d4b1 );
+		ROM_LOAD( "tc04",			0x08000, 0x04000, 0xa599d845 );
+	
+		ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE );/* fg tiles */
+		ROM_LOAD( "tc01",			0x00000, 0x10000, 0x15b3991d );
+		ROM_LOAD( "tc02",			0x10000, 0x10000, 0xd9e2e55d );
+		ROM_LOAD( "tc06",			0x20000, 0x10000, 0x13daeac8 );
+		ROM_LOAD( "tc05",			0x30000, 0x10000, 0x8cc79357 );
+	
+		ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE );/* bg tiles */
+		ROM_LOAD( "tc07",			0x00000, 0x08000, 0xb5d48389 );
+		ROM_LOAD( "tc08",			0x08000, 0x08000, 0x97f20fdc );
+		ROM_LOAD( "tc09",			0x10000, 0x08000, 0x170c01db );
+		ROM_LOAD( "tc10",			0x18000, 0x08000, 0x44f5accd );
+	
+		ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE );/* sprites */
+		ROM_LOAD( "tc20",			0x00000, 0x10000, 0xcb4092b8 );
+		ROM_LOAD( "tc19",			0x10000, 0x10000, 0x9cb8675e );
+		ROM_LOAD( "tc18",			0x20000, 0x10000, 0x806fb374 );
+		ROM_LOAD( "tc17",			0x30000, 0x10000, 0x4264bff8 );
+	
+		ROM_REGION( 0x260, REGION_PROMS, 0 );/* nibble bproms, lo/hi order to be determined */
+		ROM_LOAD( "82s129.d3",	0x000, 0x100, 0x24e7d62f );/* sprite priority control ?? */
+		ROM_LOAD( "82s129.d4",	0x100, 0x100, 0xa50cef09 );/* sprite priority control ?? */
+		ROM_LOAD( "82s123.d2",	0x200, 0x020, 0xf72482db );/* sprite control ?? */
+		ROM_LOAD( "82s123.e18",	0x220, 0x020, 0xbc88cced );/* sprite attribute (flip/position) ?? */
+		ROM_LOAD( "82s123.b24",	0x240, 0x020, 0x4fb5df2a );/* tile to sprite priority ?? */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_ktiger = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x30000, REGION_CPU1, 0 );/* Main 68K code */
+		ROM_LOAD16_BYTE( "tc16",		0x00000, 0x10000, 0x07f64d13 );
+		ROM_LOAD16_BYTE( "tc14",		0x00001, 0x10000, 0x41be6978 );
+		ROM_LOAD16_BYTE( "b30-02",	0x20000, 0x08000, 0x1d63e9c4 );
+		ROM_LOAD16_BYTE( "b30-04",	0x20001, 0x08000, 0x03957a30 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* Sound Z80 code */
+		ROM_LOAD( "b30-05",			0x00000, 0x08000, 0x1a8f1e10 );
+	
+		ROM_REGION( 0x10000, REGION_CPU3, 0 );/* Co-Processor TMS320C10 MCU code */
+		ROM_LOAD16_BYTE( "dsp-22",	0x8001, 0x0800, BADCRC( 0x8a1d48d9 ));
+		ROM_LOAD16_BYTE( "dsp-21",	0x8000, 0x0800, BADCRC( 0x33d99bc2 ));
+	
+		ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE );/* chars */
+		ROM_LOAD( "tc11",			0x00000, 0x04000, 0x0a254133 );
+		ROM_LOAD( "tc03",			0x04000, 0x04000, 0xe9e2d4b1 );
+		ROM_LOAD( "tc04",			0x08000, 0x04000, 0xa599d845 );
+	
+		ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE );/* fg tiles */
+		ROM_LOAD( "tc01",			0x00000, 0x10000, 0x15b3991d );
+		ROM_LOAD( "tc02",			0x10000, 0x10000, 0xd9e2e55d );
+		ROM_LOAD( "tc06",			0x20000, 0x10000, 0x13daeac8 );
+		ROM_LOAD( "tc05",			0x30000, 0x10000, 0x8cc79357 );
+	
+		ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE );/* bg tiles */
+		ROM_LOAD( "tc07",			0x00000, 0x08000, 0xb5d48389 );
+		ROM_LOAD( "tc08",			0x08000, 0x08000, 0x97f20fdc );
+		ROM_LOAD( "tc09",			0x10000, 0x08000, 0x170c01db );
+		ROM_LOAD( "tc10",			0x18000, 0x08000, 0x44f5accd );
+	
+		ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE );/* sprites */
+		ROM_LOAD( "tc20",			0x00000, 0x10000, 0xcb4092b8 );
+		ROM_LOAD( "tc19",			0x10000, 0x10000, 0x9cb8675e );
+		ROM_LOAD( "tc18",			0x20000, 0x10000, 0x806fb374 );
+		ROM_LOAD( "tc17",			0x30000, 0x10000, 0x4264bff8 );
+	
+		ROM_REGION( 0x260, REGION_PROMS, 0 );/* nibble bproms, lo/hi order to be determined */
+		ROM_LOAD( "82s129.d3",	0x000, 0x100, 0x24e7d62f );/* sprite priority control ?? */
+		ROM_LOAD( "82s129.d4",	0x100, 0x100, 0xa50cef09 );/* sprite priority control ?? */
+		ROM_LOAD( "82s123.d2",	0x200, 0x020, 0xf72482db );/* sprite control ?? */
+		ROM_LOAD( "82s123.e18",	0x220, 0x020, 0xbc88cced );/* sprite attribute (flip/position) ?? */
+		ROM_LOAD( "82s123.b24",	0x240, 0x020, 0x4fb5df2a );/* tile to sprite priority ?? */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_fshark = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x20000, REGION_CPU1, 0 );/* Main 68K code */
+		ROM_LOAD16_BYTE( "b02_18-1.rom",	0x00000, 0x10000, 0x04739e02 );
+		ROM_LOAD16_BYTE( "b02_17-1.rom",	0x00001, 0x10000, 0xfd6ef7a8 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* Sound Z80 code */
+		ROM_LOAD( "b02_16.rom",		0x0000, 0x8000, 0xcdd1a153 );
+	
+		ROM_REGION( 0x10000, REGION_CPU3, 0 );/* Space for Co-Processor TMS320C10 */
+	
+		ROM_REGION( 0x1000, REGION_USER1, 0 );/* Co-Processor TMS320C10 MCU code */
+		ROM_LOAD_NIB_HIGH( "82s137-1.mcu",  0x0000, 0x0400, 0xcc5b3f53 );/* msb */
+		ROM_LOAD_NIB_LOW ( "82s137-2.mcu",  0x0000, 0x0400, 0x47351d55 );
+		ROM_LOAD_NIB_HIGH( "82s137-5.mcu",  0x0400, 0x0400, 0xf35b978a );
+		ROM_LOAD_NIB_LOW ( "82s137-6.mcu",  0x0400, 0x0400, 0x0459e51b );
+		ROM_LOAD_NIB_HIGH( "82s137-3.mcu",  0x0800, 0x0400, 0x70b537b9 );/* lsb */
+		ROM_LOAD_NIB_LOW ( "82s137-4.mcu",  0x0800, 0x0400, 0x6edb2de8 );
+		ROM_LOAD_NIB_HIGH( "82s137-7.mcu",  0x0c00, 0x0400, 0xcbf3184b );
+		ROM_LOAD_NIB_LOW ( "82s137-8.mcu",  0x0c00, 0x0400, 0x8246a05c );
+	
+		ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE );/* chars */
+		ROM_LOAD( "b02_07-1.rom",	0x00000, 0x04000, 0xe669f80e );
+		ROM_LOAD( "b02_06-1.rom",	0x04000, 0x04000, 0x5e53ae47 );
+		ROM_LOAD( "b02_05-1.rom",	0x08000, 0x04000, 0xa8b05bd0 );
+	
+		ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE );/* fg tiles */
+		ROM_LOAD( "b02_12.rom",		0x00000, 0x08000, 0x733b9997 );
+		ROM_LOAD( "b02_15.rom",		0x08000, 0x08000, 0x8b70ef32 );
+		ROM_LOAD( "b02_14.rom",		0x10000, 0x08000, 0xf711ba7d );
+		ROM_LOAD( "b02_13.rom",		0x18000, 0x08000, 0x62532cd3 );
+	
+		ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE );/* bg tiles */
+		ROM_LOAD( "b02_08.rom",		0x00000, 0x08000, 0xef0cf49c );
+		ROM_LOAD( "b02_11.rom",		0x08000, 0x08000, 0xf5799422 );
+		ROM_LOAD( "b02_10.rom",		0x10000, 0x08000, 0x4bd099ff );
+		ROM_LOAD( "b02_09.rom",		0x18000, 0x08000, 0x230f1582 );
+	
+		ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE );/* sprites */
+		ROM_LOAD( "b02_01.512",		0x00000, 0x10000, 0x2234b424 );
+		ROM_LOAD( "b02_02.512",		0x10000, 0x10000, 0x30d4c9a8 );
+		ROM_LOAD( "b02_03.512",		0x20000, 0x10000, 0x64f3d88f );
+		ROM_LOAD( "b02_04.512",		0x30000, 0x10000, 0x3b23a9fc );
+	
+		ROM_REGION( 0x300, REGION_PROMS, 0 );/* nibble bproms, lo/hi order to be determined */
+		ROM_LOAD( "clr2.bpr",	0x000, 0x100, 0x24e7d62f );/* sprite priority control ?? */
+		ROM_LOAD( "clr1.bpr",	0x100, 0x100, 0xa50cef09 );/* sprite priority control ?? */
+		ROM_LOAD( "clr3.bpr",	0x200, 0x100, 0x016fe2f7 );/* ?? */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_skyshark = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x20000, REGION_CPU1, 0 );/* Main 68K code */
+		ROM_LOAD16_BYTE( "18-2",		0x00000, 0x10000, 0x888e90f3 );
+		ROM_LOAD16_BYTE( "17-2",		0x00001, 0x10000, 0x066d67be );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* Sound Z80 code */
+		ROM_LOAD( "b02_16.rom",		0x0000, 0x8000, 0xcdd1a153 );
+	
+		ROM_REGION( 0x10000, REGION_CPU3, 0 );/* Space for Co-Processor TMS320C10 */
+	
+		ROM_REGION( 0x1000, REGION_USER1, 0 );/* Co-Processor TMS320C10 MCU code */
+		ROM_LOAD_NIB_HIGH( "82s137-1.mcu",  0x0000, 0x0400, 0xcc5b3f53 );/* msb */
+		ROM_LOAD_NIB_LOW ( "82s137-2.mcu",  0x0000, 0x0400, 0x47351d55 );
+		ROM_LOAD_NIB_HIGH( "82s137-5.mcu",  0x0400, 0x0400, 0xf35b978a );
+		ROM_LOAD_NIB_LOW ( "82s137-6.mcu",  0x0400, 0x0400, 0x0459e51b );
+		ROM_LOAD_NIB_HIGH( "82s137-3.mcu",  0x0800, 0x0400, 0x70b537b9 );/* lsb */
+		ROM_LOAD_NIB_LOW ( "82s137-4.mcu",  0x0800, 0x0400, 0x6edb2de8 );
+		ROM_LOAD_NIB_HIGH( "82s137-7.mcu",  0x0c00, 0x0400, 0xcbf3184b );
+		ROM_LOAD_NIB_LOW ( "82s137-8.mcu",  0x0c00, 0x0400, 0x8246a05c );
+	
+		ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE );/* chars */
+		ROM_LOAD( "7-2",			0x00000, 0x04000, 0xaf48c4e6 );
+		ROM_LOAD( "6-2",			0x04000, 0x04000, 0x9a29a862 );
+		ROM_LOAD( "5-2",			0x08000, 0x04000, 0xfb7cad55 );
+	
+		ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE );/* fg tiles */
+		ROM_LOAD( "b02_12.rom",		0x00000, 0x08000, 0x733b9997 );
+		ROM_LOAD( "b02_15.rom",		0x08000, 0x08000, 0x8b70ef32 );
+		ROM_LOAD( "b02_14.rom",		0x10000, 0x08000, 0xf711ba7d );
+		ROM_LOAD( "b02_13.rom",		0x18000, 0x08000, 0x62532cd3 );
+	
+		ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE );/* bg tiles */
+		ROM_LOAD( "b02_08.rom",		0x00000, 0x08000, 0xef0cf49c );
+		ROM_LOAD( "b02_11.rom",		0x08000, 0x08000, 0xf5799422 );
+		ROM_LOAD( "b02_10.rom",		0x10000, 0x08000, 0x4bd099ff );
+		ROM_LOAD( "b02_09.rom",		0x18000, 0x08000, 0x230f1582 );
+	
+		ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE );/* sprites */
+		ROM_LOAD( "b02_01.512",		0x00000, 0x10000, 0x2234b424 );
+		ROM_LOAD( "b02_02.512",		0x10000, 0x10000, 0x30d4c9a8 );
+		ROM_LOAD( "b02_03.512",		0x20000, 0x10000, 0x64f3d88f );
+		ROM_LOAD( "b02_04.512",		0x30000, 0x10000, 0x3b23a9fc );
+	
+		ROM_REGION( 0x300, REGION_PROMS, 0 );/* nibble bproms, lo/hi order to be determined */
+		ROM_LOAD( "clr2.bpr",	0x000, 0x100, 0x24e7d62f );/* sprite priority control ?? */
+		ROM_LOAD( "clr1.bpr",	0x100, 0x100, 0xa50cef09 );/* sprite priority control ?? */
+		ROM_LOAD( "clr3.bpr",	0x200, 0x100, 0x016fe2f7 );/* ?? */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_hishouza = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x20000, REGION_CPU1, 0 );/* Main 68K code */
+		ROM_LOAD16_BYTE( "b02-18.rom",	0x00000, 0x10000, 0x4444bb94 );
+		ROM_LOAD16_BYTE( "b02-17.rom",	0x00001, 0x10000, 0xcdac7228 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* Sound Z80 code */
+		ROM_LOAD( "b02_16.rom",		0x0000, 0x8000, 0xcdd1a153 );
+	
+		ROM_REGION( 0x10000, REGION_CPU3, 0 );/* Space for Co-Processor TMS320C10 */
+	
+		ROM_REGION( 0x1000, REGION_USER1, 0 );/* Co-Processor TMS320C10 MCU code */
+		ROM_LOAD_NIB_HIGH( "dsp-a1.bpr", 0x0000, 0x0400, 0x45d4d1b1 );/* msb */
+		ROM_LOAD_NIB_LOW ( "dsp-a2.bpr", 0x0000, 0x0400, 0xedd227fa );
+		ROM_LOAD_NIB_HIGH( "dsp-b5.bpr", 0x0400, 0x0400, 0x85ca5d47 );
+		ROM_LOAD_NIB_LOW ( "dsp-b6.bpr", 0x0400, 0x0400, 0x81816b2c );
+		ROM_LOAD_NIB_HIGH( "dsp-a3.bpr", 0x0800, 0x0400, 0xdf88e79b );/* lsb */
+		ROM_LOAD_NIB_LOW ( "dsp-a4.bpr", 0x0800, 0x0400, 0xa2094a7f );
+		ROM_LOAD_NIB_HIGH( "dsp-b7.bpr", 0x0c00, 0x0400, 0xe87540cd );
+		ROM_LOAD_NIB_LOW ( "dsp-b8.bpr", 0x0c00, 0x0400, 0xd3c16c5c );
+	
+		ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE );/* chars */
+		ROM_LOAD( "b02-07.rom",		0x00000, 0x04000, 0xc13a775e );
+		ROM_LOAD( "b02-06.rom",		0x04000, 0x04000, 0xad5f1371 );
+		ROM_LOAD( "b02-05.rom",		0x08000, 0x04000, 0x85a7bff6 );
+	
+		ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE );/* fg tiles */
+		ROM_LOAD( "b02_12.rom",		0x00000, 0x08000, 0x733b9997 );
+		ROM_LOAD( "b02_15.rom",		0x08000, 0x08000, 0x8b70ef32 );
+		ROM_LOAD( "b02_14.rom",		0x10000, 0x08000, 0xf711ba7d );
+		ROM_LOAD( "b02_13.rom",		0x18000, 0x08000, 0x62532cd3 );
+	
+		ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE );/* bg tiles */
+		ROM_LOAD( "b02_08.rom",		0x00000, 0x08000, 0xef0cf49c );
+		ROM_LOAD( "b02_11.rom",		0x08000, 0x08000, 0xf5799422 );
+		ROM_LOAD( "b02_10.rom",		0x10000, 0x08000, 0x4bd099ff );
+		ROM_LOAD( "b02_09.rom",		0x18000, 0x08000, 0x230f1582 );
+	
+		ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE );/* sprites */
+		ROM_LOAD( "b02_01.512",		0x00000, 0x10000, 0x2234b424 );
+		ROM_LOAD( "b02_02.512",		0x10000, 0x10000, 0x30d4c9a8 );
+		ROM_LOAD( "b02_03.512",		0x20000, 0x10000, 0x64f3d88f );
+		ROM_LOAD( "b02_04.512",		0x30000, 0x10000, 0x3b23a9fc );
+	
+		ROM_REGION( 0x300, REGION_PROMS, 0 );/* nibble bproms, lo/hi order to be determined */
+		ROM_LOAD( "clr2.bpr",	0x000, 0x100, 0x24e7d62f );/* sprite priority control ?? */
+		ROM_LOAD( "clr1.bpr",	0x100, 0x100, 0xa50cef09 );/* sprite priority control ?? */
+		ROM_LOAD( "clr3.bpr",	0x200, 0x100, 0x016fe2f7 );/* ?? */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_fsharkbt = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x20000, REGION_CPU1, 0 );/* Main 68K code */
+		ROM_LOAD16_BYTE( "r18",		0x00000, 0x10000, 0xef30f563 );
+		ROM_LOAD16_BYTE( "r17",		0x00001, 0x10000, 0x0e18d25f );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* Sound Z80 code */
+		ROM_LOAD( "b02_16.rom",		0x0000, 0x8000, 0xcdd1a153 );
+	
+		ROM_REGION( 0x10000, REGION_CPU3, 0 );/* Space for Co-Processor TMS320C10 */
+	
+		ROM_REGION( 0x1000, REGION_USER1, 0 );/* Co-Processor TMS320C10 MCU code */
+		ROM_LOAD_NIB_HIGH( "mcu-1.bpr",  0x0000, 0x0400, 0x45d4d1b1 );/* msb */
+		ROM_LOAD_NIB_LOW ( "mcu-2.bpr",  0x0000, 0x0400, 0x651336d1 );
+		ROM_LOAD_NIB_HIGH( "mcu-5.bpr",  0x0400, 0x0400, 0xf97a58da );
+		ROM_LOAD_NIB_LOW ( "mcu-6.bpr",  0x0400, 0x0400, 0xffcc422d );
+		ROM_LOAD_NIB_HIGH( "mcu-3.bpr",  0x0800, 0x0400, 0xdf88e79b );/* lsb */
+		ROM_LOAD_NIB_LOW ( "mcu-4.bpr",  0x0800, 0x0400, 0xa2094a7f );
+		ROM_LOAD_NIB_HIGH( "mcu-7.bpr",  0x0c00, 0x0400, 0x0cd30d49 );
+		ROM_LOAD_NIB_LOW ( "mcu-8.bpr",  0x0c00, 0x0400, 0x3379bbff );
+	
+		ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE );/* chars */
+		ROM_LOAD( "b02_07-1.rom",	0x00000, 0x04000, 0xe669f80e );
+		ROM_LOAD( "b02_06-1.rom",	0x04000, 0x04000, 0x5e53ae47 );
+		ROM_LOAD( "b02_05-1.rom",	0x08000, 0x04000, 0xa8b05bd0 );
+	
+		ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE );/* fg tiles */
+		ROM_LOAD( "b02_12.rom",		0x00000, 0x08000, 0x733b9997 );
+		ROM_LOAD( "b02_15.rom",		0x08000, 0x08000, 0x8b70ef32 );
+		ROM_LOAD( "b02_14.rom",		0x10000, 0x08000, 0xf711ba7d );
+		ROM_LOAD( "b02_13.rom",		0x18000, 0x08000, 0x62532cd3 );
+	
+		ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE );/* bg tiles */
+		ROM_LOAD( "b02_08.rom",		0x00000, 0x08000, 0xef0cf49c );
+		ROM_LOAD( "b02_11.rom",		0x08000, 0x08000, 0xf5799422 );
+		ROM_LOAD( "b02_10.rom",		0x10000, 0x08000, 0x4bd099ff );
+		ROM_LOAD( "b02_09.rom",		0x18000, 0x08000, 0x230f1582 );
+	
+		ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE );/* sprites */
+		ROM_LOAD( "b02_01.512",		0x00000, 0x10000, 0x2234b424 );
+		ROM_LOAD( "b02_02.512",		0x10000, 0x10000, 0x30d4c9a8 );
+		ROM_LOAD( "b02_03.512",		0x20000, 0x10000, 0x64f3d88f );
+		ROM_LOAD( "b02_04.512",		0x30000, 0x10000, 0x3b23a9fc );
+	
+		ROM_REGION( 0x300, REGION_PROMS, 0 );/* nibble bproms, lo/hi order to be determined */
+		ROM_LOAD( "clr2.bpr",	0x000, 0x100, 0x24e7d62f );/* sprite priority control ?? */
+		ROM_LOAD( "clr1.bpr",	0x100, 0x100, 0xa50cef09 );/* sprite priority control ?? */
+		ROM_LOAD( "clr3.bpr",	0x200, 0x100, 0x016fe2f7 );/* ?? */
+	ROM_END(); }}; 
+	
+	static RomLoadPtr rom_gulfwar2 = new RomLoadPtr(){ public void handler(){ 
+		ROM_REGION( 0x40000, REGION_CPU1, 0 );/* Main 68K code */
+		ROM_LOAD16_BYTE( "07-u92.bin",  0x00001, 0x20000, 0xb73e6b25 );
+		ROM_LOAD16_BYTE( "08-u119.bin", 0x00000, 0x20000, 0x41ebf9c0 );
+	
+		ROM_REGION( 0x10000, REGION_CPU2, 0 );/* Sound Z80 code */
+		ROM_LOAD( "06-u51.bin",			0x00000, 0x08000, 0x75504f95 );
+	
+		ROM_REGION( 0x10000, REGION_CPU3, 0 );/* Co-Processor TMS320C10 MCU code */
+		ROM_LOAD16_BYTE( "02-u1.rom",	0x8001, 0x2000, 0xabefe4ca );// Same code as Twin Cobra
+		ROM_LOAD16_BYTE( "01-u2.rom",	0x8000, 0x2000, 0x01399b65 );// Same code as Twin Cobra
+	
+		ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE );/* chars */
+		ROM_LOAD( "03-u9.bin",			0x00000, 0x04000, 0x1b7934b3 );
+		ROM_LOAD( "04-u10.bin",			0x04000, 0x04000, 0x6f7bfb58 );
+		ROM_LOAD( "05-u11.bin",			0x08000, 0x04000, 0x31814724 );
+	
+		ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE );/* fg tiles */
+		ROM_LOAD( "16-u202.bin",			0x00000, 0x10000, 0xd815d175 );
+		ROM_LOAD( "13-u199.bin",			0x10000, 0x10000, 0xd949b0d9 );
+		ROM_LOAD( "14-u200.bin",			0x20000, 0x10000, 0xc109a6ac );
+		ROM_LOAD( "15-u201.bin",			0x30000, 0x10000, 0xad21f2ab );
+	
+		ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE );/* bg tiles */
+		ROM_LOAD( "09-u195.bin",			0x00000, 0x08000, 0xb7be3a6d );
+		ROM_LOAD( "12-u198.bin",			0x08000, 0x08000, 0xfd7032a6 );
+		ROM_LOAD( "11-u197.bin",			0x10000, 0x08000, 0x7b721ed3 );
+		ROM_LOAD( "10-u196.rom",			0x18000, 0x08000, 0x160f38ab );
+	
+		ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE );/* sprites */
+		ROM_LOAD( "20-u262.bin",			0x00000, 0x10000, 0x10665ca0 );
+		ROM_LOAD( "19-u261.bin",			0x10000, 0x10000, 0xcfa6d417 );
+		ROM_LOAD( "18-u260.bin",			0x20000, 0x10000, 0x2e6a0c49 );
+		ROM_LOAD( "17-u259.bin",			0x30000, 0x10000, 0x66c1b0e6 );
+	
+		ROM_REGION( 0x260, REGION_PROMS, 0 );
+		ROM_LOAD( "82s129.d3",	0x000, 0x100, 0x24e7d62f );/* sprite priority control ?? */
+		ROM_LOAD( "82s129.d4",	0x100, 0x100, 0xa50cef09 );/* sprite priority control ?? */
+		ROM_LOAD( "82s123.d2",	0x200, 0x020, 0xf72482db );/* sprite control ?? */
+		ROM_LOAD( "82s123.e18",	0x220, 0x020, 0xbc88cced );/* sprite attribute (flip/position) ?? */
+		ROM_LOAD( "82s123.b24",	0x240, 0x020, 0x4fb5df2a );/* tile to sprite priority ?? */
+	ROM_END(); }}; 
+	
+	static DRIVER_INIT( fshark )
+	{
+		data8_t *source = memory_region(REGION_USER1);
+		data16_t *dest = (data16_t *)&memory_region(REGION_CPU3)[TMS32010_PGM_OFFSET];
+		int A;
+	
+		/* The ROM loader fixes the nibble images. Here we fix the byte ordering. */
+		for (A = 0;A < 0x0800;A++)
+			dest[A] = (source[A] << 8) | source[A + 0x800];
+	}
+	
+	
+	
+	public static GameDriver driver_twincobr	   = new GameDriver("1987"	,"twincobr"	,"twincobr.java"	,rom_twincobr,null	,machine_driver_twincobr	,input_ports_twincobr	,null	,ROT270	,	"[Toaplan] Taito Corporation", "Twin Cobra (World)" )
+	public static GameDriver driver_twincobu	   = new GameDriver("1987"	,"twincobu"	,"twincobr.java"	,rom_twincobu,driver_twincobr	,machine_driver_twincobr	,input_ports_twincobu	,null	,ROT270	,	"[Toaplan] Taito America Corporation (Romstar license)", "Twin Cobra (US)" )
+	public static GameDriver driver_ktiger	   = new GameDriver("1987"	,"ktiger"	,"twincobr.java"	,rom_ktiger,driver_twincobr	,machine_driver_twincobr	,input_ports_ktiger	,null	,ROT270	,	"[Toaplan] Taito Corporation", "Kyukyoku Tiger (Japan)" )
+	public static GameDriver driver_fshark	   = new GameDriver("1987"	,"fshark"	,"twincobr.java"	,rom_fshark,null	,machine_driver_twincobr	,input_ports_fshark	,init_fshark	,ROT270	,	"[Toaplan] Taito Corporation", "Flying Shark (World)" )
+	public static GameDriver driver_skyshark	   = new GameDriver("1987"	,"skyshark"	,"twincobr.java"	,rom_skyshark,driver_fshark	,machine_driver_twincobr	,input_ports_skyshark	,init_fshark	,ROT270	,	"[Toaplan] Taito America Corporation (Romstar license)", "Sky Shark (US)" )
+	public static GameDriver driver_hishouza	   = new GameDriver("1987"	,"hishouza"	,"twincobr.java"	,rom_hishouza,driver_fshark	,machine_driver_twincobr	,input_ports_hishouza	,init_fshark	,ROT270	,	"[Toaplan] Taito Corporation", "Hishou Zame (Japan)" )
+	public static GameDriver driver_fsharkbt	   = new GameDriver("1987"	,"fsharkbt"	,"twincobr.java"	,rom_fsharkbt,driver_fshark	,machine_driver_twincobr	,input_ports_skyshark	,init_fshark	,ROT270	,	"bootleg", "Flying Shark (bootleg)" )
+	public static GameDriver driver_gulfwar2	   = new GameDriver("1991"	,"gulfwar2"	,"twincobr.java"	,rom_gulfwar2,null	,machine_driver_twincobr	,input_ports_gulfwar2	,null	,ROT270	,	"Comad", "Gulf War II" )
 }
-
-static struct YM3812interface ym3812_interface =
-{
-	1,				/* 1 chip  */
-	28000000/8,		/* 3.5MHz */
-	{ 100 },		/* volume */
-	{ irqhandler },
-};
-
-
-
-static MACHINE_DRIVER_START( twincobr )
-
-	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,28000000/4)			/* 7.0MHz - Main board Crystal is 28MHz */
-	MDRV_CPU_MEMORY(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(twincobr_interrupt,1)
-
-	MDRV_CPU_ADD(Z80,28000000/8)			/* 3.5MHz */
-	MDRV_CPU_MEMORY(sound_readmem,sound_writemem)
-	MDRV_CPU_PORTS(sound_readport,sound_writeport)
-
-	MDRV_CPU_ADD(TMS32010,28000000/2)		/* 14MHz CLKin */
-	MDRV_CPU_MEMORY(DSP_readmem,DSP_writemem)
-	MDRV_CPU_PORTS(DSP_readport,DSP_writeport)
-
-	MDRV_FRAMES_PER_SECOND( (28000000.0 / 4) / (446 * 286) )
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_INTERLEAVE(100)
-
-	MDRV_MACHINE_INIT(fsharkbt_reset_8741_mcu)	/* Reset fshark bootleg 8741 MCU data */
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM)
-	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
-	MDRV_GFXDECODE(gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(1792)
-
-	MDRV_VIDEO_START(toaplan0)
-	MDRV_VIDEO_EOF(toaplan0)
-	MDRV_VIDEO_UPDATE(toaplan0)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD(YM3812, ym3812_interface)
-MACHINE_DRIVER_END
-
-
-
-/***************************************************************************
-
-  Game driver(s)
-
-***************************************************************************/
-
-ROM_START( twincobr )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )	/* Main 68K code */
-	ROM_LOAD16_BYTE( "tc16",		0x00000, 0x10000, 0x07f64d13 )
-	ROM_LOAD16_BYTE( "tc14",		0x00001, 0x10000, 0x41be6978 )
-	ROM_LOAD16_BYTE( "tc15",		0x20000, 0x08000, 0x3a646618 )
-	ROM_LOAD16_BYTE( "tc13",		0x20001, 0x08000, 0xd7d1e317 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
-	ROM_LOAD( "tc12",			0x00000, 0x08000, 0xe37b3c44 )	/* slightly different from the other two sets */
-
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* Co-Processor TMS320C10 MCU code */
-	ROM_LOAD16_BYTE( "dsp_22.bin",	0x8001, 0x0800, 0x79389a71 )
-	ROM_LOAD16_BYTE( "dsp_21.bin",	0x8000, 0x0800, 0x2d135376 )
-/******  The following are from a bootleg board. ******
-	A0 and A1 are swapped between the TMS320C10 and these BPROMs on the board.
-	ROM_LOAD16_BYTE( "tc1b",		0x0000, 0x0800, 0x1757cc33 )
-	ROM_LOAD16_BYTE( "tc2a",		0x0001, 0x0800, 0xd6d878c9 )
-*/
-
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
-	ROM_LOAD( "tc11",			0x00000, 0x04000, 0x0a254133 )
-	ROM_LOAD( "tc03",			0x04000, 0x04000, 0xe9e2d4b1 )
-	ROM_LOAD( "tc04",			0x08000, 0x04000, 0xa599d845 )
-
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
-	ROM_LOAD( "tc01",			0x00000, 0x10000, 0x15b3991d )
-	ROM_LOAD( "tc02",			0x10000, 0x10000, 0xd9e2e55d )
-	ROM_LOAD( "tc06",			0x20000, 0x10000, 0x13daeac8 )
-	ROM_LOAD( "tc05",			0x30000, 0x10000, 0x8cc79357 )
-
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
-	ROM_LOAD( "tc07",			0x00000, 0x08000, 0xb5d48389 )
-	ROM_LOAD( "tc08",			0x08000, 0x08000, 0x97f20fdc )
-	ROM_LOAD( "tc09",			0x10000, 0x08000, 0x170c01db )
-	ROM_LOAD( "tc10",			0x18000, 0x08000, 0x44f5accd )
-
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD( "tc20",			0x00000, 0x10000, 0xcb4092b8 )
-	ROM_LOAD( "tc19",			0x10000, 0x10000, 0x9cb8675e )
-	ROM_LOAD( "tc18",			0x20000, 0x10000, 0x806fb374 )
-	ROM_LOAD( "tc17",			0x30000, 0x10000, 0x4264bff8 )
-
-	ROM_REGION( 0x260, REGION_PROMS, 0 )	/* nibble bproms, lo/hi order to be determined */
-	ROM_LOAD( "82s129.d3",	0x000, 0x100, 0x24e7d62f )	/* sprite priority control ?? */
-	ROM_LOAD( "82s129.d4",	0x100, 0x100, 0xa50cef09 )	/* sprite priority control ?? */
-	ROM_LOAD( "82s123.d2",	0x200, 0x020, 0xf72482db )	/* sprite control ?? */
-	ROM_LOAD( "82s123.e18",	0x220, 0x020, 0xbc88cced )	/* sprite attribute (flip/position) ?? */
-	ROM_LOAD( "82s123.b24",	0x240, 0x020, 0x4fb5df2a )	/* tile to sprite priority ?? */
-ROM_END
-
-ROM_START( twincobu )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )	/* Main 68K code */
-	ROM_LOAD16_BYTE( "tc16",			0x00000, 0x10000, 0x07f64d13 )
-	ROM_LOAD16_BYTE( "tc14",			0x00001, 0x10000, 0x41be6978 )
-	ROM_LOAD16_BYTE( "tcbra26.bin",	0x20000, 0x08000, 0xbdd00ba4 )
-	ROM_LOAD16_BYTE( "tcbra27.bin",	0x20001, 0x08000, 0xed600907 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
-	ROM_LOAD( "b30-05",				0x00000, 0x08000, 0x1a8f1e10 )
-
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* Co-Processor TMS320C10 MCU code */
-	ROM_LOAD16_BYTE( "dsp_22.bin",	0x8001, 0x0800, 0x79389a71 )
-	ROM_LOAD16_BYTE( "dsp_21.bin",	0x8000, 0x0800, 0x2d135376 )
-
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
-	ROM_LOAD( "tc11",			0x00000, 0x04000, 0x0a254133 )
-	ROM_LOAD( "tc03",			0x04000, 0x04000, 0xe9e2d4b1 )
-	ROM_LOAD( "tc04",			0x08000, 0x04000, 0xa599d845 )
-
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
-	ROM_LOAD( "tc01",			0x00000, 0x10000, 0x15b3991d )
-	ROM_LOAD( "tc02",			0x10000, 0x10000, 0xd9e2e55d )
-	ROM_LOAD( "tc06",			0x20000, 0x10000, 0x13daeac8 )
-	ROM_LOAD( "tc05",			0x30000, 0x10000, 0x8cc79357 )
-
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
-	ROM_LOAD( "tc07",			0x00000, 0x08000, 0xb5d48389 )
-	ROM_LOAD( "tc08",			0x08000, 0x08000, 0x97f20fdc )
-	ROM_LOAD( "tc09",			0x10000, 0x08000, 0x170c01db )
-	ROM_LOAD( "tc10",			0x18000, 0x08000, 0x44f5accd )
-
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD( "tc20",			0x00000, 0x10000, 0xcb4092b8 )
-	ROM_LOAD( "tc19",			0x10000, 0x10000, 0x9cb8675e )
-	ROM_LOAD( "tc18",			0x20000, 0x10000, 0x806fb374 )
-	ROM_LOAD( "tc17",			0x30000, 0x10000, 0x4264bff8 )
-
-	ROM_REGION( 0x260, REGION_PROMS, 0 )	/* nibble bproms, lo/hi order to be determined */
-	ROM_LOAD( "82s129.d3",	0x000, 0x100, 0x24e7d62f )	/* sprite priority control ?? */
-	ROM_LOAD( "82s129.d4",	0x100, 0x100, 0xa50cef09 )	/* sprite priority control ?? */
-	ROM_LOAD( "82s123.d2",	0x200, 0x020, 0xf72482db )	/* sprite control ?? */
-	ROM_LOAD( "82s123.e18",	0x220, 0x020, 0xbc88cced )	/* sprite attribute (flip/position) ?? */
-	ROM_LOAD( "82s123.b24",	0x240, 0x020, 0x4fb5df2a )	/* tile to sprite priority ?? */
-ROM_END
-
-ROM_START( ktiger )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )	/* Main 68K code */
-	ROM_LOAD16_BYTE( "tc16",		0x00000, 0x10000, 0x07f64d13 )
-	ROM_LOAD16_BYTE( "tc14",		0x00001, 0x10000, 0x41be6978 )
-	ROM_LOAD16_BYTE( "b30-02",	0x20000, 0x08000, 0x1d63e9c4 )
-	ROM_LOAD16_BYTE( "b30-04",	0x20001, 0x08000, 0x03957a30 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
-	ROM_LOAD( "b30-05",			0x00000, 0x08000, 0x1a8f1e10 )
-
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* Co-Processor TMS320C10 MCU code */
-	ROM_LOAD16_BYTE( "dsp-22",	0x8001, 0x0800, BADCRC( 0x8a1d48d9 ) )
-	ROM_LOAD16_BYTE( "dsp-21",	0x8000, 0x0800, BADCRC( 0x33d99bc2 ) )
-
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
-	ROM_LOAD( "tc11",			0x00000, 0x04000, 0x0a254133 )
-	ROM_LOAD( "tc03",			0x04000, 0x04000, 0xe9e2d4b1 )
-	ROM_LOAD( "tc04",			0x08000, 0x04000, 0xa599d845 )
-
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
-	ROM_LOAD( "tc01",			0x00000, 0x10000, 0x15b3991d )
-	ROM_LOAD( "tc02",			0x10000, 0x10000, 0xd9e2e55d )
-	ROM_LOAD( "tc06",			0x20000, 0x10000, 0x13daeac8 )
-	ROM_LOAD( "tc05",			0x30000, 0x10000, 0x8cc79357 )
-
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
-	ROM_LOAD( "tc07",			0x00000, 0x08000, 0xb5d48389 )
-	ROM_LOAD( "tc08",			0x08000, 0x08000, 0x97f20fdc )
-	ROM_LOAD( "tc09",			0x10000, 0x08000, 0x170c01db )
-	ROM_LOAD( "tc10",			0x18000, 0x08000, 0x44f5accd )
-
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD( "tc20",			0x00000, 0x10000, 0xcb4092b8 )
-	ROM_LOAD( "tc19",			0x10000, 0x10000, 0x9cb8675e )
-	ROM_LOAD( "tc18",			0x20000, 0x10000, 0x806fb374 )
-	ROM_LOAD( "tc17",			0x30000, 0x10000, 0x4264bff8 )
-
-	ROM_REGION( 0x260, REGION_PROMS, 0 )	/* nibble bproms, lo/hi order to be determined */
-	ROM_LOAD( "82s129.d3",	0x000, 0x100, 0x24e7d62f )	/* sprite priority control ?? */
-	ROM_LOAD( "82s129.d4",	0x100, 0x100, 0xa50cef09 )	/* sprite priority control ?? */
-	ROM_LOAD( "82s123.d2",	0x200, 0x020, 0xf72482db )	/* sprite control ?? */
-	ROM_LOAD( "82s123.e18",	0x220, 0x020, 0xbc88cced )	/* sprite attribute (flip/position) ?? */
-	ROM_LOAD( "82s123.b24",	0x240, 0x020, 0x4fb5df2a )	/* tile to sprite priority ?? */
-ROM_END
-
-ROM_START( fshark )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* Main 68K code */
-	ROM_LOAD16_BYTE( "b02_18-1.rom",	0x00000, 0x10000, 0x04739e02 )
-	ROM_LOAD16_BYTE( "b02_17-1.rom",	0x00001, 0x10000, 0xfd6ef7a8 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
-	ROM_LOAD( "b02_16.rom",		0x0000, 0x8000, 0xcdd1a153 )
-
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* Space for Co-Processor TMS320C10 */
-
-	ROM_REGION( 0x1000, REGION_USER1, 0 )	/* Co-Processor TMS320C10 MCU code */
-	ROM_LOAD_NIB_HIGH( "82s137-1.mcu",  0x0000, 0x0400, 0xcc5b3f53 ) /* msb */
-	ROM_LOAD_NIB_LOW ( "82s137-2.mcu",  0x0000, 0x0400, 0x47351d55 )
-	ROM_LOAD_NIB_HIGH( "82s137-5.mcu",  0x0400, 0x0400, 0xf35b978a )
-	ROM_LOAD_NIB_LOW ( "82s137-6.mcu",  0x0400, 0x0400, 0x0459e51b )
-	ROM_LOAD_NIB_HIGH( "82s137-3.mcu",  0x0800, 0x0400, 0x70b537b9 ) /* lsb */
-	ROM_LOAD_NIB_LOW ( "82s137-4.mcu",  0x0800, 0x0400, 0x6edb2de8 )
-	ROM_LOAD_NIB_HIGH( "82s137-7.mcu",  0x0c00, 0x0400, 0xcbf3184b )
-	ROM_LOAD_NIB_LOW ( "82s137-8.mcu",  0x0c00, 0x0400, 0x8246a05c )
-
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
-	ROM_LOAD( "b02_07-1.rom",	0x00000, 0x04000, 0xe669f80e )
-	ROM_LOAD( "b02_06-1.rom",	0x04000, 0x04000, 0x5e53ae47 )
-	ROM_LOAD( "b02_05-1.rom",	0x08000, 0x04000, 0xa8b05bd0 )
-
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
-	ROM_LOAD( "b02_12.rom",		0x00000, 0x08000, 0x733b9997 )
-	ROM_LOAD( "b02_15.rom",		0x08000, 0x08000, 0x8b70ef32 )
-	ROM_LOAD( "b02_14.rom",		0x10000, 0x08000, 0xf711ba7d )
-	ROM_LOAD( "b02_13.rom",		0x18000, 0x08000, 0x62532cd3 )
-
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
-	ROM_LOAD( "b02_08.rom",		0x00000, 0x08000, 0xef0cf49c )
-	ROM_LOAD( "b02_11.rom",		0x08000, 0x08000, 0xf5799422 )
-	ROM_LOAD( "b02_10.rom",		0x10000, 0x08000, 0x4bd099ff )
-	ROM_LOAD( "b02_09.rom",		0x18000, 0x08000, 0x230f1582 )
-
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD( "b02_01.512",		0x00000, 0x10000, 0x2234b424 )
-	ROM_LOAD( "b02_02.512",		0x10000, 0x10000, 0x30d4c9a8 )
-	ROM_LOAD( "b02_03.512",		0x20000, 0x10000, 0x64f3d88f )
-	ROM_LOAD( "b02_04.512",		0x30000, 0x10000, 0x3b23a9fc )
-
-	ROM_REGION( 0x300, REGION_PROMS, 0 )	/* nibble bproms, lo/hi order to be determined */
-	ROM_LOAD( "clr2.bpr",	0x000, 0x100, 0x24e7d62f )	/* sprite priority control ?? */
-	ROM_LOAD( "clr1.bpr",	0x100, 0x100, 0xa50cef09 )	/* sprite priority control ?? */
-	ROM_LOAD( "clr3.bpr",	0x200, 0x100, 0x016fe2f7 )	/* ?? */
-ROM_END
-
-ROM_START( skyshark )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* Main 68K code */
-	ROM_LOAD16_BYTE( "18-2",		0x00000, 0x10000, 0x888e90f3 )
-	ROM_LOAD16_BYTE( "17-2",		0x00001, 0x10000, 0x066d67be )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
-	ROM_LOAD( "b02_16.rom",		0x0000, 0x8000, 0xcdd1a153 )
-
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* Space for Co-Processor TMS320C10 */
-
-	ROM_REGION( 0x1000, REGION_USER1, 0 )	/* Co-Processor TMS320C10 MCU code */
-	ROM_LOAD_NIB_HIGH( "82s137-1.mcu",  0x0000, 0x0400, 0xcc5b3f53 ) /* msb */
-	ROM_LOAD_NIB_LOW ( "82s137-2.mcu",  0x0000, 0x0400, 0x47351d55 )
-	ROM_LOAD_NIB_HIGH( "82s137-5.mcu",  0x0400, 0x0400, 0xf35b978a )
-	ROM_LOAD_NIB_LOW ( "82s137-6.mcu",  0x0400, 0x0400, 0x0459e51b )
-	ROM_LOAD_NIB_HIGH( "82s137-3.mcu",  0x0800, 0x0400, 0x70b537b9 ) /* lsb */
-	ROM_LOAD_NIB_LOW ( "82s137-4.mcu",  0x0800, 0x0400, 0x6edb2de8 )
-	ROM_LOAD_NIB_HIGH( "82s137-7.mcu",  0x0c00, 0x0400, 0xcbf3184b )
-	ROM_LOAD_NIB_LOW ( "82s137-8.mcu",  0x0c00, 0x0400, 0x8246a05c )
-
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
-	ROM_LOAD( "7-2",			0x00000, 0x04000, 0xaf48c4e6 )
-	ROM_LOAD( "6-2",			0x04000, 0x04000, 0x9a29a862 )
-	ROM_LOAD( "5-2",			0x08000, 0x04000, 0xfb7cad55 )
-
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
-	ROM_LOAD( "b02_12.rom",		0x00000, 0x08000, 0x733b9997 )
-	ROM_LOAD( "b02_15.rom",		0x08000, 0x08000, 0x8b70ef32 )
-	ROM_LOAD( "b02_14.rom",		0x10000, 0x08000, 0xf711ba7d )
-	ROM_LOAD( "b02_13.rom",		0x18000, 0x08000, 0x62532cd3 )
-
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
-	ROM_LOAD( "b02_08.rom",		0x00000, 0x08000, 0xef0cf49c )
-	ROM_LOAD( "b02_11.rom",		0x08000, 0x08000, 0xf5799422 )
-	ROM_LOAD( "b02_10.rom",		0x10000, 0x08000, 0x4bd099ff )
-	ROM_LOAD( "b02_09.rom",		0x18000, 0x08000, 0x230f1582 )
-
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD( "b02_01.512",		0x00000, 0x10000, 0x2234b424 )
-	ROM_LOAD( "b02_02.512",		0x10000, 0x10000, 0x30d4c9a8 )
-	ROM_LOAD( "b02_03.512",		0x20000, 0x10000, 0x64f3d88f )
-	ROM_LOAD( "b02_04.512",		0x30000, 0x10000, 0x3b23a9fc )
-
-	ROM_REGION( 0x300, REGION_PROMS, 0 )	/* nibble bproms, lo/hi order to be determined */
-	ROM_LOAD( "clr2.bpr",	0x000, 0x100, 0x24e7d62f )	/* sprite priority control ?? */
-	ROM_LOAD( "clr1.bpr",	0x100, 0x100, 0xa50cef09 )	/* sprite priority control ?? */
-	ROM_LOAD( "clr3.bpr",	0x200, 0x100, 0x016fe2f7 )	/* ?? */
-ROM_END
-
-ROM_START( hishouza )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* Main 68K code */
-	ROM_LOAD16_BYTE( "b02-18.rom",	0x00000, 0x10000, 0x4444bb94 )
-	ROM_LOAD16_BYTE( "b02-17.rom",	0x00001, 0x10000, 0xcdac7228 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
-	ROM_LOAD( "b02_16.rom",		0x0000, 0x8000, 0xcdd1a153 )
-
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* Space for Co-Processor TMS320C10 */
-
-	ROM_REGION( 0x1000, REGION_USER1, 0 )	/* Co-Processor TMS320C10 MCU code */
-	ROM_LOAD_NIB_HIGH( "dsp-a1.bpr", 0x0000, 0x0400, 0x45d4d1b1 ) /* msb */
-	ROM_LOAD_NIB_LOW ( "dsp-a2.bpr", 0x0000, 0x0400, 0xedd227fa )
-	ROM_LOAD_NIB_HIGH( "dsp-b5.bpr", 0x0400, 0x0400, 0x85ca5d47 )
-	ROM_LOAD_NIB_LOW ( "dsp-b6.bpr", 0x0400, 0x0400, 0x81816b2c )
-	ROM_LOAD_NIB_HIGH( "dsp-a3.bpr", 0x0800, 0x0400, 0xdf88e79b ) /* lsb */
-	ROM_LOAD_NIB_LOW ( "dsp-a4.bpr", 0x0800, 0x0400, 0xa2094a7f )
-	ROM_LOAD_NIB_HIGH( "dsp-b7.bpr", 0x0c00, 0x0400, 0xe87540cd )
-	ROM_LOAD_NIB_LOW ( "dsp-b8.bpr", 0x0c00, 0x0400, 0xd3c16c5c )
-
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
-	ROM_LOAD( "b02-07.rom",		0x00000, 0x04000, 0xc13a775e )
-	ROM_LOAD( "b02-06.rom",		0x04000, 0x04000, 0xad5f1371 )
-	ROM_LOAD( "b02-05.rom",		0x08000, 0x04000, 0x85a7bff6 )
-
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
-	ROM_LOAD( "b02_12.rom",		0x00000, 0x08000, 0x733b9997 )
-	ROM_LOAD( "b02_15.rom",		0x08000, 0x08000, 0x8b70ef32 )
-	ROM_LOAD( "b02_14.rom",		0x10000, 0x08000, 0xf711ba7d )
-	ROM_LOAD( "b02_13.rom",		0x18000, 0x08000, 0x62532cd3 )
-
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
-	ROM_LOAD( "b02_08.rom",		0x00000, 0x08000, 0xef0cf49c )
-	ROM_LOAD( "b02_11.rom",		0x08000, 0x08000, 0xf5799422 )
-	ROM_LOAD( "b02_10.rom",		0x10000, 0x08000, 0x4bd099ff )
-	ROM_LOAD( "b02_09.rom",		0x18000, 0x08000, 0x230f1582 )
-
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD( "b02_01.512",		0x00000, 0x10000, 0x2234b424 )
-	ROM_LOAD( "b02_02.512",		0x10000, 0x10000, 0x30d4c9a8 )
-	ROM_LOAD( "b02_03.512",		0x20000, 0x10000, 0x64f3d88f )
-	ROM_LOAD( "b02_04.512",		0x30000, 0x10000, 0x3b23a9fc )
-
-	ROM_REGION( 0x300, REGION_PROMS, 0 )	/* nibble bproms, lo/hi order to be determined */
-	ROM_LOAD( "clr2.bpr",	0x000, 0x100, 0x24e7d62f )	/* sprite priority control ?? */
-	ROM_LOAD( "clr1.bpr",	0x100, 0x100, 0xa50cef09 )	/* sprite priority control ?? */
-	ROM_LOAD( "clr3.bpr",	0x200, 0x100, 0x016fe2f7 )	/* ?? */
-ROM_END
-
-ROM_START( fsharkbt )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* Main 68K code */
-	ROM_LOAD16_BYTE( "r18",		0x00000, 0x10000, 0xef30f563 )
-	ROM_LOAD16_BYTE( "r17",		0x00001, 0x10000, 0x0e18d25f )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
-	ROM_LOAD( "b02_16.rom",		0x0000, 0x8000, 0xcdd1a153 )
-
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* Space for Co-Processor TMS320C10 */
-
-	ROM_REGION( 0x1000, REGION_USER1, 0 )	/* Co-Processor TMS320C10 MCU code */
-	ROM_LOAD_NIB_HIGH( "mcu-1.bpr",  0x0000, 0x0400, 0x45d4d1b1 ) /* msb */
-	ROM_LOAD_NIB_LOW ( "mcu-2.bpr",  0x0000, 0x0400, 0x651336d1 )
-	ROM_LOAD_NIB_HIGH( "mcu-5.bpr",  0x0400, 0x0400, 0xf97a58da )
-	ROM_LOAD_NIB_LOW ( "mcu-6.bpr",  0x0400, 0x0400, 0xffcc422d )
-	ROM_LOAD_NIB_HIGH( "mcu-3.bpr",  0x0800, 0x0400, 0xdf88e79b ) /* lsb */
-	ROM_LOAD_NIB_LOW ( "mcu-4.bpr",  0x0800, 0x0400, 0xa2094a7f )
-	ROM_LOAD_NIB_HIGH( "mcu-7.bpr",  0x0c00, 0x0400, 0x0cd30d49 )
-	ROM_LOAD_NIB_LOW ( "mcu-8.bpr",  0x0c00, 0x0400, 0x3379bbff )
-
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
-	ROM_LOAD( "b02_07-1.rom",	0x00000, 0x04000, 0xe669f80e )
-	ROM_LOAD( "b02_06-1.rom",	0x04000, 0x04000, 0x5e53ae47 )
-	ROM_LOAD( "b02_05-1.rom",	0x08000, 0x04000, 0xa8b05bd0 )
-
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
-	ROM_LOAD( "b02_12.rom",		0x00000, 0x08000, 0x733b9997 )
-	ROM_LOAD( "b02_15.rom",		0x08000, 0x08000, 0x8b70ef32 )
-	ROM_LOAD( "b02_14.rom",		0x10000, 0x08000, 0xf711ba7d )
-	ROM_LOAD( "b02_13.rom",		0x18000, 0x08000, 0x62532cd3 )
-
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
-	ROM_LOAD( "b02_08.rom",		0x00000, 0x08000, 0xef0cf49c )
-	ROM_LOAD( "b02_11.rom",		0x08000, 0x08000, 0xf5799422 )
-	ROM_LOAD( "b02_10.rom",		0x10000, 0x08000, 0x4bd099ff )
-	ROM_LOAD( "b02_09.rom",		0x18000, 0x08000, 0x230f1582 )
-
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD( "b02_01.512",		0x00000, 0x10000, 0x2234b424 )
-	ROM_LOAD( "b02_02.512",		0x10000, 0x10000, 0x30d4c9a8 )
-	ROM_LOAD( "b02_03.512",		0x20000, 0x10000, 0x64f3d88f )
-	ROM_LOAD( "b02_04.512",		0x30000, 0x10000, 0x3b23a9fc )
-
-	ROM_REGION( 0x300, REGION_PROMS, 0 )	/* nibble bproms, lo/hi order to be determined */
-	ROM_LOAD( "clr2.bpr",	0x000, 0x100, 0x24e7d62f )	/* sprite priority control ?? */
-	ROM_LOAD( "clr1.bpr",	0x100, 0x100, 0xa50cef09 )	/* sprite priority control ?? */
-	ROM_LOAD( "clr3.bpr",	0x200, 0x100, 0x016fe2f7 )	/* ?? */
-ROM_END
-
-ROM_START( gulfwar2 )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* Main 68K code */
-	ROM_LOAD16_BYTE( "07-u92.bin",  0x00001, 0x20000, 0xb73e6b25 )
-	ROM_LOAD16_BYTE( "08-u119.bin", 0x00000, 0x20000, 0x41ebf9c0 )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
-	ROM_LOAD( "06-u51.bin",			0x00000, 0x08000, 0x75504f95 )
-
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* Co-Processor TMS320C10 MCU code */
-	ROM_LOAD16_BYTE( "02-u1.rom",	0x8001, 0x2000, 0xabefe4ca ) // Same code as Twin Cobra
-	ROM_LOAD16_BYTE( "01-u2.rom",	0x8000, 0x2000, 0x01399b65 ) // Same code as Twin Cobra
-
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
-	ROM_LOAD( "03-u9.bin",			0x00000, 0x04000, 0x1b7934b3 )
-	ROM_LOAD( "04-u10.bin",			0x04000, 0x04000, 0x6f7bfb58 )
-	ROM_LOAD( "05-u11.bin",			0x08000, 0x04000, 0x31814724 )
-
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
-	ROM_LOAD( "16-u202.bin",			0x00000, 0x10000, 0xd815d175 )
-	ROM_LOAD( "13-u199.bin",			0x10000, 0x10000, 0xd949b0d9 )
-	ROM_LOAD( "14-u200.bin",			0x20000, 0x10000, 0xc109a6ac )
-	ROM_LOAD( "15-u201.bin",			0x30000, 0x10000, 0xad21f2ab )
-
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
-	ROM_LOAD( "09-u195.bin",			0x00000, 0x08000, 0xb7be3a6d )
-	ROM_LOAD( "12-u198.bin",			0x08000, 0x08000, 0xfd7032a6 )
-	ROM_LOAD( "11-u197.bin",			0x10000, 0x08000, 0x7b721ed3 )
-	ROM_LOAD( "10-u196.rom",			0x18000, 0x08000, 0x160f38ab )
-
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD( "20-u262.bin",			0x00000, 0x10000, 0x10665ca0 )
-	ROM_LOAD( "19-u261.bin",			0x10000, 0x10000, 0xcfa6d417 )
-	ROM_LOAD( "18-u260.bin",			0x20000, 0x10000, 0x2e6a0c49 )
-	ROM_LOAD( "17-u259.bin",			0x30000, 0x10000, 0x66c1b0e6 )
-
-	ROM_REGION( 0x260, REGION_PROMS, 0 )
-	ROM_LOAD( "82s129.d3",	0x000, 0x100, 0x24e7d62f )	/* sprite priority control ?? */
-	ROM_LOAD( "82s129.d4",	0x100, 0x100, 0xa50cef09 )	/* sprite priority control ?? */
-	ROM_LOAD( "82s123.d2",	0x200, 0x020, 0xf72482db )	/* sprite control ?? */
-	ROM_LOAD( "82s123.e18",	0x220, 0x020, 0xbc88cced )	/* sprite attribute (flip/position) ?? */
-	ROM_LOAD( "82s123.b24",	0x240, 0x020, 0x4fb5df2a )	/* tile to sprite priority ?? */
-ROM_END
-
-static DRIVER_INIT( fshark )
-{
-	data8_t *source = memory_region(REGION_USER1);
-	data16_t *dest = (data16_t *)&memory_region(REGION_CPU3)[TMS32010_PGM_OFFSET];
-	int A;
-
-	/* The ROM loader fixes the nibble images. Here we fix the byte ordering. */
-	for (A = 0;A < 0x0800;A++)
-		dest[A] = (source[A] << 8) | source[A + 0x800];
-}
-
-
-
-GAME( 1987, twincobr, 0,        twincobr, twincobr, 0,      ROT270, "[Toaplan] Taito Corporation", "Twin Cobra (World)" )
-GAME( 1987, twincobu, twincobr, twincobr, twincobu, 0,      ROT270, "[Toaplan] Taito America Corporation (Romstar license)", "Twin Cobra (US)" )
-GAME( 1987, ktiger,   twincobr, twincobr, ktiger,   0,      ROT270, "[Toaplan] Taito Corporation", "Kyukyoku Tiger (Japan)" )
-GAME( 1987, fshark,   0,        twincobr, fshark,   fshark, ROT270, "[Toaplan] Taito Corporation", "Flying Shark (World)" )
-GAME( 1987, skyshark, fshark,   twincobr, skyshark, fshark, ROT270, "[Toaplan] Taito America Corporation (Romstar license)", "Sky Shark (US)" )
-GAME( 1987, hishouza, fshark,   twincobr, hishouza, fshark, ROT270, "[Toaplan] Taito Corporation", "Hishou Zame (Japan)" )
-GAME( 1987, fsharkbt, fshark,   twincobr, skyshark, fshark, ROT270, "bootleg", "Flying Shark (bootleg)" )
-GAME( 1991, gulfwar2, 0,        twincobr, gulfwar2, 0,      ROT270, "Comad", "Gulf War II" )

@@ -299,1732 +299,2467 @@
 *********************************************************************/
 
 
-#include "driver.h"
-#include "png.h"
-#include "artwork.h"
-#include "vidhrdw/vector.h"
-#include <ctype.h>
-#include <math.h>
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package mame;
 
-
-/***************************************************************************
-
-	Constants & macros
-
-***************************************************************************/
-
-/* maxima */
-#define MAX_PIECES				1024
-#define MAX_HINTS_PER_SCANLINE	4
-
-/* fixed-point fraction helpers */
-#define FRAC_BITS				24
-#define FRAC_ONE				(1 << FRAC_BITS)
-#define FRAC_MASK				(FRAC_ONE - 1)
-#define FRAC_HALF				(FRAC_ONE / 2)
-
-/* layer types */
-enum
+public class artwork
 {
-	LAYER_UNKNOWN,
-	LAYER_BACKDROP,
-	LAYER_OVERLAY,
-	LAYER_BEZEL,
-	LAYER_MARQUEE,
-	LAYER_PANEL,
-	LAYER_SIDE,
-	LAYER_FLYER
-};
-
-/* UI transparency hack */
-#define UI_TRANSPARENT_COLOR16	0xfffe
-#define UI_TRANSPARENT_COLOR32	0xfffffffe
-
-/* assemble ARGB components in the platform's preferred format */
-#define ASSEMBLE_ARGB(a,r,g,b)	(((a) << ashift) | ((r) << rshift) | ((g) << gshift) | ((b) << bshift))
-
-
-
-/***************************************************************************
-
-	Type definitions
-
-***************************************************************************/
-
-struct artwork_piece
-{
-	/* linkage */
-	struct artwork_piece *	next;
-
-	/* raw data from the .art file */
-	UINT8					layer;
-	UINT8					has_alpha;
-	int						priority;
-	float					alpha;
-	float					brightness;
-	float					top;
-	float					left;
-	float					bottom;
-	float					right;
-	char *					tag;
-	char *					filename;
-	char *					alpha_filename;
-
-	/* bitmaps */
-	struct mame_bitmap *	rawbitmap;
-	struct mame_bitmap *	prebitmap;
-	struct mame_bitmap *	yrgbbitmap;
-	UINT32 *				scanlinehint;
-	UINT8					blendflags;
-
-	/* derived/dynamic data */
-	int						intersects_game;
-	int						visible;
-	struct rectangle		bounds;
-};
-
-
-
-/***************************************************************************
-
-	Local variables
-
-***************************************************************************/
-
-static UINT8 rshift, gshift, bshift, ashift;
-static UINT32 nonalpha_mask;
-static UINT32 transparent_color;
-
-static struct artwork_piece *artwork_list;
-static int num_underlays, num_overlays, num_bezels;
-static int num_pieces;
-
-static struct mame_bitmap *underlay, *overlay, *overlay_yrgb, *bezel, *final;
-static struct rectangle underlay_invalid, overlay_invalid, bezel_invalid;
-static struct rectangle gamerect, screenrect;
-static int gamescale;
-
-static struct mame_bitmap *uioverlay;
-static UINT32 *uioverlayhint;
-static struct rectangle uibounds, last_uibounds;
-
-static UINT32 *palette_lookup;
-
-static int original_attributes;
-static UINT8 global_artwork_enable;
-
-static const struct overlay_piece *overlay_list;
-
-
-
-/***************************************************************************
-
-	Prototypes
-
-***************************************************************************/
-
-static int artwork_prep(void);
-static int artwork_load(const struct GameDriver *gamename, int width, int height);
-static int compute_rgb_components(int depth, UINT32 rgb_components[3], UINT32 rgb32_components[3]);
-static int load_bitmap(const char *gamename, struct artwork_piece *piece);
-static int load_alpha_bitmap(const char *gamename, struct artwork_piece *piece, const struct png_info *original);
-static int scale_bitmap(struct artwork_piece *piece, int newwidth, int newheight);
-static void trim_bitmap(struct artwork_piece *piece);
-static int parse_art_file(mame_file *file);
-static int validate_pieces(void);
-static void sort_pieces(void);
-static void update_palette_lookup(struct mame_display *display);
-static int update_layers(void);
-static void render_game_bitmap(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display);
-static void render_game_bitmap_underlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display);
-static void render_game_bitmap_overlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display);
-static void render_game_bitmap_underlay_overlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display);
-static void render_ui_overlay(struct mame_bitmap *bitmap, UINT32 *dirty, const rgb_t *palette, struct mame_display *display);
-static void erase_rect(struct mame_bitmap *bitmap, const struct rectangle *bounds, UINT32 color);
-static void alpha_blend_intersecting_rect(struct mame_bitmap *dstbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, const struct rectangle *srcbounds, const UINT32 *hintlist);
-static void add_intersecting_rect(struct mame_bitmap *dstbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, const struct rectangle *srcbounds);
-static void cmy_blend_intersecting_rect(struct mame_bitmap *dstbitmap, struct mame_bitmap *dstyrgbbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, struct mame_bitmap *srcyrgbbitmap, const struct rectangle *srcbounds, UINT8 blendflags);
-static int generate_overlay(const struct overlay_piece *list, int width, int height);
-static void add_range_to_hint(UINT32 *hintbase, int scanline, int startx, int endx);
-
-
-
-#if 0
-#pragma mark INLINES
-#endif
-
-/*-------------------------------------------------
-	union_rect - compute the union of two rects
--------------------------------------------------*/
-
-INLINE void union_rect(struct rectangle *dst, const struct rectangle *src)
-{
-	if (dst->max_x == 0)
-		*dst = *src;
-	else if (src->max_x != 0)
+	
+	
+	/***************************************************************************
+	
+		Constants & macros
+	
+	***************************************************************************/
+	
+	/* maxima */
+	#define MAX_PIECES				1024
+	#define MAX_HINTS_PER_SCANLINE	4
+	
+	/* fixed-point fraction helpers */
+	#define FRAC_BITS				24
+	#define FRAC_ONE				(1 << FRAC_BITS)
+	#define FRAC_MASK				(FRAC_ONE - 1)
+	#define FRAC_HALF				(FRAC_ONE / 2)
+	
+	/* layer types */
+	enum
 	{
-		dst->min_x = (src->min_x < dst->min_x) ? src->min_x : dst->min_x;
-		dst->max_x = (src->max_x > dst->max_x) ? src->max_x : dst->max_x;
-		dst->min_y = (src->min_y < dst->min_y) ? src->min_y : dst->min_y;
-		dst->max_y = (src->max_y > dst->max_y) ? src->max_y : dst->max_y;
-	}
-}
-
-
-
-/*-------------------------------------------------
-	compute_brightness - compute the effective
-	brightness for an RGB pixel
--------------------------------------------------*/
-
-INLINE UINT8 compute_brightness(rgb_t rgb)
-{
-	return (RGB_RED(rgb) * 222 + RGB_GREEN(rgb) * 707 + RGB_BLUE(rgb) * 71) / 1000;
-}
-
-
-
-/*-------------------------------------------------
-	compute_pre_pixel - compute a premultiplied
-	pixel
--------------------------------------------------*/
-
-INLINE UINT32 compute_pre_pixel(UINT8 a, UINT8 r, UINT8 g, UINT8 b)
-{
-	/* premultiply the RGB components with the pixel's alpha */
-	r = (r * a) / 0xff;
-	g = (g * a) / 0xff;
-	b = (b * a) / 0xff;
-
-	/* compute the inverted alpha */
-	a = 0xff - a;
-	return ASSEMBLE_ARGB(a,r,g,b);
-}
-
-
-
-/*-------------------------------------------------
-	compute_yrgb_pixel - compute a YRGB pixel
--------------------------------------------------*/
-
-INLINE UINT32 compute_yrgb_pixel(UINT8 a, UINT8 r, UINT8 g, UINT8 b)
-{
-	/* compute the premultiplied brightness */
-	int bright = (r * 222 + g * 707 + b * 71) / 1000;
-	bright = (bright * a) >> 8;
-
-	/* now assemble */
-	return MAKE_ARGB(bright,r,g,b);
-}
-
-
-
-/*-------------------------------------------------
-	add_and_clamp - add two pixels and clamp
-	each component to the max
--------------------------------------------------*/
-
-INLINE UINT32 add_and_clamp(UINT32 game, UINT32 underpix)
-{
-	UINT32 temp1 = game + underpix;
-	UINT32 temp2 = game ^ underpix ^ temp1;
-
-	/* handle overflow (carry out of top component */
-	if (temp1 < game)
-		temp1 |= 0xff000000;
-
-	/* handle carry out of next component */
-	if (temp2 & 0x01000000)
+		LAYER_UNKNOWN,
+		LAYER_BACKDROP,
+		LAYER_OVERLAY,
+		LAYER_BEZEL,
+		LAYER_MARQUEE,
+		LAYER_PANEL,
+		LAYER_SIDE,
+		LAYER_FLYER
+	};
+	
+	/* UI transparency hack */
+	#define UI_TRANSPARENT_COLOR16	0xfffe
+	#define UI_TRANSPARENT_COLOR32	0xfffffffe
+	
+	/* assemble ARGB components in the platform's preferred format */
+	#define ASSEMBLE_ARGB(a,r,g,b)	(((a) << ashift) | ((r) << rshift) | ((g) << gshift) | ((b) << bshift))
+	
+	
+	
+	/***************************************************************************
+	
+		Type definitions
+	
+	***************************************************************************/
+	
+	struct artwork_piece
 	{
-		temp1 -= 0x01000000;
-		temp1 |= 0x00ff0000;
-	}
-
-	/* handle carry out of next component */
-	if (temp2 & 0x00010000)
+		/* linkage */
+		struct artwork_piece *	next;
+	
+		/* raw data from the .art file */
+		UINT8					layer;
+		UINT8					has_alpha;
+		int						priority;
+		float					alpha;
+		float					brightness;
+		float					top;
+		float					left;
+		float					bottom;
+		float					right;
+		char *					tag;
+		char *					filename;
+		char *					alpha_filename;
+	
+		/* bitmaps */
+		struct mame_bitmap *	rawbitmap;
+		struct mame_bitmap *	prebitmap;
+		struct mame_bitmap *	yrgbbitmap;
+		UINT32 *				scanlinehint;
+		UINT8					blendflags;
+	
+		/* derived/dynamic data */
+		int						intersects_game;
+		int						visible;
+		struct rectangle		bounds;
+	};
+	
+	
+	
+	/***************************************************************************
+	
+		Local variables
+	
+	***************************************************************************/
+	
+	static UINT8 rshift, gshift, bshift, ashift;
+	static UINT32 nonalpha_mask;
+	static UINT32 transparent_color;
+	
+	static struct artwork_piece *artwork_list;
+	static int num_underlays, num_overlays, num_bezels;
+	static int num_pieces;
+	
+	static struct mame_bitmap *underlay, *overlay, *overlay_yrgb, *bezel, *final;
+	static struct rectangle underlay_invalid, overlay_invalid, bezel_invalid;
+	static struct rectangle gamerect, screenrect;
+	static int gamescale;
+	
+	static struct mame_bitmap *uioverlay;
+	static UINT32 *uioverlayhint;
+	static struct rectangle uibounds, last_uibounds;
+	
+	static UINT32 *palette_lookup;
+	
+	static int original_attributes;
+	static UINT8 global_artwork_enable;
+	
+	static const struct overlay_piece *overlay_list;
+	
+	
+	
+	/***************************************************************************
+	
+		Prototypes
+	
+	***************************************************************************/
+	
+	static static int artwork_load(const struct GameDriver *gamename, int width, int height);
+	static int compute_rgb_components(int depth, UINT32 rgb_components[3], UINT32 rgb32_components[3]);
+	static int load_bitmap(const char *gamename, struct artwork_piece *piece);
+	static int load_alpha_bitmap(const char *gamename, struct artwork_piece *piece, const struct png_info *original);
+	static int scale_bitmap(struct artwork_piece *piece, int newwidth, int newheight);
+	static void trim_bitmap(struct artwork_piece *piece);
+	static int parse_art_file(mame_file *file);
+	static static static void update_palette_lookup(struct mame_display *display);
+	static static void render_game_bitmap(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display);
+	static void render_game_bitmap_underlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display);
+	static void render_game_bitmap_overlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display);
+	static void render_game_bitmap_underlay_overlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display);
+	static void render_ui_overlay(struct mame_bitmap *bitmap, UINT32 *dirty, const rgb_t *palette, struct mame_display *display);
+	static void erase_rect(struct mame_bitmap *bitmap, const struct rectangle *bounds, UINT32 color);
+	static void alpha_blend_intersecting_rect(struct mame_bitmap *dstbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, const struct rectangle *srcbounds, const UINT32 *hintlist);
+	static void add_intersecting_rect(struct mame_bitmap *dstbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, const struct rectangle *srcbounds);
+	static void cmy_blend_intersecting_rect(struct mame_bitmap *dstbitmap, struct mame_bitmap *dstyrgbbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, struct mame_bitmap *srcyrgbbitmap, const struct rectangle *srcbounds, UINT8 blendflags);
+	static int generate_overlay(const struct overlay_piece *list, int width, int height);
+	static void add_range_to_hint(UINT32 *hintbase, int scanline, int startx, int endx);
+	
+	
+	
+	#if 0
+	#pragma mark INLINES
+	#endif
+	
+	/*-------------------------------------------------
+		union_rect - compute the union of two rects
+	-------------------------------------------------*/
+	
+	INLINE void union_rect(struct rectangle *dst, const struct rectangle *src)
 	{
-		temp1 -= 0x00010000;
-		temp1 |= 0x0000ff00;
-	}
-
-	/* handle carry out of final component */
-	if (temp2 & 0x00000100)
-	{
-		temp1 -= 0x00000100;
-		temp1 |= 0x000000ff;
-	}
-	return temp1;
-}
-
-
-
-/*-------------------------------------------------
-	blend_over - blend two pixels with overlay
--------------------------------------------------*/
-
-INLINE UINT32 blend_over(UINT32 game, UINT32 pre, UINT32 yrgb)
-{
-	/* case 1: no game pixels; just return the premultiplied pixel */
-	if ((game & nonalpha_mask) == 0)
-		return pre;
-
-	/* case 2: apply the effect */
-	else
-	{
-		UINT8 bright = RGB_GREEN(game);
-		UINT8 r, g, b;
-
-		yrgb -= pre;
-		r = (RGB_RED(yrgb) * bright) / 256;
-		g = (RGB_GREEN(yrgb) * bright) / 256;
-		b = (RGB_BLUE(yrgb) * bright) / 256;
-		return pre + ASSEMBLE_ARGB(0,r,g,b);
-	}
-}
-
-
-
-#if 0
-#pragma mark -
-#pragma mark OSD FRONTENDS
-#endif
-
-/*-------------------------------------------------
-	artwork_create_display - tweak the display
-	parameters based on artwork, and call through
-	to osd_create_display
--------------------------------------------------*/
-
-int artwork_create_display(struct osd_create_params *params, UINT32 *rgb_components)
-{
-	int original_width = params->width;
-	int original_height = params->height;
-	int original_depth = params->depth;
-	double min_x, min_y, max_x, max_y;
-	UINT32 rgb32_components[3];
-	struct artwork_piece *piece;
-
-	/* reset UI */
-	uioverlay = NULL;
-	uioverlayhint = NULL;
-
-	/* first load the artwork; if none, quit now */
-	artwork_list = NULL;
-	if (!artwork_load(Machine->gamedrv, original_width, original_height))
-		return 1;
-	if (!artwork_list)
-		return osd_create_display(params, rgb_components);
-
-	/* determine the game bitmap scale factor */
-	gamescale = options.artwork_res;
-	if (gamescale < 1 || (params->video_attributes & VIDEO_TYPE_VECTOR))
-		gamescale = 1;
-	else if (gamescale > 2)
-		gamescale = 2;
-
-	/* compute the extent of all the artwork */
-	min_x = min_y = 0.0;
-	max_x = max_y = 1.0;
-	if (!options.artwork_crop)
-		for (piece = artwork_list; piece; piece = piece->next)
+		if (dst->max_x == 0)
+			*dst = *src;
+		else if (src->max_x != 0)
 		{
-			/* compute the outermost bounds */
-			if (piece->left < min_x) min_x = piece->left;
-			if (piece->right > max_x) max_x = piece->right;
-			if (piece->top < min_y) min_y = piece->top;
-			if (piece->bottom > max_y) max_y = piece->bottom;
+			dst->min_x = (src->min_x < dst->min_x) ? src->min_x : dst->min_x;
+			dst->max_x = (src->max_x > dst->max_x) ? src->max_x : dst->max_x;
+			dst->min_y = (src->min_y < dst->min_y) ? src->min_y : dst->min_y;
+			dst->max_y = (src->max_y > dst->max_y) ? src->max_y : dst->max_y;
 		}
-
-	/* now compute the altered width/height and the new aspect ratio */
-	params->width = (int)((max_x - min_x) * (double)(original_width * gamescale) + 0.5);
-	params->height = (int)((max_y - min_y) * (double)(original_height * gamescale) + 0.5);
-	params->aspect_x = (int)((double)params->aspect_x * 100. * (max_x - min_x));
-	params->aspect_y = (int)((double)params->aspect_y * 100. * (max_y - min_y));
-
-	/* vector games need to fit inside the original bounds, so scale back down */
-	if (params->video_attributes & VIDEO_TYPE_VECTOR)
-	{
-		/* shrink the width/height if over */
-		if (params->width > original_width)
-		{
-			params->width = original_width;
-			params->height = original_width * params->aspect_y / params->aspect_x;
-		}
-		if (params->height > original_height)
-		{
-			params->height = original_height;
-			params->width = original_height * params->aspect_x / params->aspect_y;
-		}
-
-		/* compute the new raw width/height and update the vector info */
-		original_width = (int)((double)params->width / (max_x - min_x));
-		original_height = (int)((double)params->height / (max_y - min_y));
-		options.vector_width = original_width;
-		options.vector_height = original_height;
 	}
-
-	/* adjust the parameters */
-	original_attributes = params->video_attributes;
-	params->video_attributes |= VIDEO_RGB_DIRECT | VIDEO_NEEDS_6BITS_PER_GUN;
-	params->depth = 32;
-
-	/* allocate memory for the bitmaps */
-	underlay = auto_bitmap_alloc_depth(params->width, params->height, 32);
-	overlay = auto_bitmap_alloc_depth(params->width, params->height, 32);
-	overlay_yrgb = auto_bitmap_alloc_depth(params->width, params->height, 32);
-	bezel = auto_bitmap_alloc_depth(params->width, params->height, 32);
-	final = auto_bitmap_alloc_depth(params->width, params->height, 32);
-	if (!final || !overlay || !overlay_yrgb || !underlay || !bezel)
-		return 1;
-
-	/* allocate the UI overlay */
-	uioverlay = auto_bitmap_alloc_depth(params->width, params->height, Machine->color_depth);
-	if (uioverlay)
-		uioverlayhint = auto_malloc(uioverlay->height * MAX_HINTS_PER_SCANLINE * sizeof(uioverlayhint[0]));
-	if (!uioverlay || !uioverlayhint)
-		return 1;
-	fillbitmap(uioverlay, (Machine->color_depth == 32) ? UI_TRANSPARENT_COLOR32 : UI_TRANSPARENT_COLOR16, NULL);
-	memset(uioverlayhint, 0, uioverlay->height * MAX_HINTS_PER_SCANLINE * sizeof(uioverlayhint[0]));
-
-	/* compute the screen rect */
-	screenrect.min_x = screenrect.min_y = 0;
-	screenrect.max_x = params->width - 1;
-	screenrect.max_y = params->height - 1;
-
-	/* compute the game rect */
-	gamerect.min_x = (int)(-min_x * (double)(original_width * gamescale) + 0.5);
-	gamerect.min_y = (int)(-min_y * (double)(original_height * gamescale) + 0.5);
-	gamerect.max_x = gamerect.min_x + original_width * gamescale - 1;
-	gamerect.max_y = gamerect.min_y + original_height * gamescale - 1;
-
-	/* now try to create the display */
-	if (osd_create_display(params, rgb32_components))
-		return 1;
-
-	/* fill in our own RGB components */
-	if (compute_rgb_components(original_depth, rgb_components, rgb32_components))
+	
+	
+	
+	/*-------------------------------------------------
+		compute_brightness - compute the effective
+		brightness for an RGB pixel
+	-------------------------------------------------*/
+	
+	INLINE UINT8 compute_brightness(rgb_t rgb)
 	{
-		osd_close_display();
-		return 1;
+		return (RGB_RED(rgb) * 222 + RGB_GREEN(rgb) * 707 + RGB_BLUE(rgb) * 71) / 1000;
 	}
-
-	/* now compute all the artwork pieces' coordinates */
-	for (piece = artwork_list; piece; piece = piece->next)
+	
+	
+	
+	/*-------------------------------------------------
+		compute_pre_pixel - compute a premultiplied
+		pixel
+	-------------------------------------------------*/
+	
+	INLINE UINT32 compute_pre_pixel(UINT8 a, UINT8 r, UINT8 g, UINT8 b)
 	{
-		piece->bounds.min_x = (int)((piece->left - min_x) * (double)(original_width * gamescale) + 0.5);
-		piece->bounds.min_y = (int)((piece->top - min_y) * (double)(original_height * gamescale) + 0.5);
-		piece->bounds.max_x = (int)((piece->right - min_x) * (double)(original_width * gamescale) + 0.5) - 1;
-		piece->bounds.max_y = (int)((piece->bottom - min_y) * (double)(original_height * gamescale) + 0.5) - 1;
+		/* premultiply the RGB components with the pixel's alpha */
+		r = (r * a) / 0xff;
+		g = (g * a) / 0xff;
+		b = (b * a) / 0xff;
+	
+		/* compute the inverted alpha */
+		a = 0xff - a;
+		return ASSEMBLE_ARGB(a,r,g,b);
 	}
-
-	/* now do the final prep on the artwork */
-	return artwork_prep();
-}
-
-
-
-/*-------------------------------------------------
-	artwork_update_video_and_audio - update the
-	screen, adjusting for artwork
--------------------------------------------------*/
-
-void artwork_update_video_and_audio(struct mame_display *display)
-{
-	static struct rectangle ui_changed_bounds;
-	static int ui_changed;
-	int artwork_changed = 0, ui_visible = 0;
-
-	/* do nothing if no artwork */
-	if (!artwork_list)
+	
+	
+	
+	/*-------------------------------------------------
+		compute_yrgb_pixel - compute a YRGB pixel
+	-------------------------------------------------*/
+	
+	INLINE UINT32 compute_yrgb_pixel(UINT8 a, UINT8 r, UINT8 g, UINT8 b)
 	{
-		osd_update_video_and_audio(display);
-		return;
+		/* compute the premultiplied brightness */
+		int bright = (r * 222 + g * 707 + b * 71) / 1000;
+		bright = (bright * a) >> 8;
+	
+		/* now assemble */
+		return MAKE_ARGB(bright,r,g,b);
 	}
-
-	profiler_mark(PROFILER_ARTWORK);
-
-	/* update the palette */
-	if (display->changed_flags & GAME_PALETTE_CHANGED)
-		update_palette_lookup(display);
-
-	/* process the artwork and UI only if we're not frameskipping */
-	if (display->changed_flags & GAME_BITMAP_CHANGED)
+	
+	
+	
+	/*-------------------------------------------------
+		add_and_clamp - add two pixels and clamp
+		each component to the max
+	-------------------------------------------------*/
+	
+	INLINE UINT32 add_and_clamp(UINT32 game, UINT32 underpix)
 	{
-		/* see if there's any UI to display this frame */
-		ui_visible = (uibounds.max_x != 0);
-
-		/* if the UI bounds changed, refresh everything */
-		if (last_uibounds.min_x != uibounds.min_x || last_uibounds.min_y != uibounds.min_y ||
-			last_uibounds.max_x != uibounds.max_x || last_uibounds.max_y != uibounds.max_y)
+		UINT32 temp1 = game + underpix;
+		UINT32 temp2 = game ^ underpix ^ temp1;
+	
+		/* handle overflow (carry out of top component */
+		if (temp1 < game)
+			temp1 |= 0xff000000;
+	
+		/* handle carry out of next component */
+		if (temp2 & 0x01000000)
 		{
-			/* compute the union of the two rects */
-			ui_changed_bounds = last_uibounds;
-			union_rect(&ui_changed_bounds, &uibounds);
-			last_uibounds = uibounds;
-
-			/* track changes for a few frames */
-			ui_changed = 3;
+			temp1 -= 0x01000000;
+			temp1 |= 0x00ff0000;
 		}
-
-		/* if we have changed pending, mark the artwork dirty */
-		if (ui_changed)
+	
+		/* handle carry out of next component */
+		if (temp2 & 0x00010000)
 		{
-			union_rect(&underlay_invalid, &ui_changed_bounds);
-			union_rect(&overlay_invalid, &ui_changed_bounds);
-			union_rect(&bezel_invalid, &ui_changed_bounds);
-			ui_changed--;
+			temp1 -= 0x00010000;
+			temp1 |= 0x0000ff00;
 		}
-
-		/* artwork disabled case */
-		if (!global_artwork_enable)
+	
+		/* handle carry out of final component */
+		if (temp2 & 0x00000100)
 		{
-			fillbitmap(final, MAKE_ARGB(0,0,0,0), NULL);
-			union_rect(&underlay_invalid, &screenrect);
-			union_rect(&overlay_invalid, &screenrect);
-			union_rect(&bezel_invalid, &screenrect);
-			render_game_bitmap(display->game_bitmap, palette_lookup, display);
+			temp1 -= 0x00000100;
+			temp1 |= 0x000000ff;
 		}
-
-		/* artwork enabled */
+		return temp1;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		blend_over - blend two pixels with overlay
+	-------------------------------------------------*/
+	
+	INLINE UINT32 blend_over(UINT32 game, UINT32 pre, UINT32 yrgb)
+	{
+		/* case 1: no game pixels; just return the premultiplied pixel */
+		if ((game & nonalpha_mask) == 0)
+			return pre;
+	
+		/* case 2: apply the effect */
 		else
 		{
-			/* update the underlay and overlay */
-			artwork_changed = update_layers();
-
-			/* render to the final bitmap */
-			if (num_underlays && num_overlays)
-				render_game_bitmap_underlay_overlay(display->game_bitmap, palette_lookup, display);
-			else if (num_underlays)
-				render_game_bitmap_underlay(display->game_bitmap, palette_lookup, display);
-			else if (num_overlays)
-				render_game_bitmap_overlay(display->game_bitmap, palette_lookup, display);
-			else
+			UINT8 bright = RGB_GREEN(game);
+			UINT8 r, g, b;
+	
+			yrgb -= pre;
+			r = (RGB_RED(yrgb) * bright) / 256;
+			g = (RGB_GREEN(yrgb) * bright) / 256;
+			b = (RGB_BLUE(yrgb) * bright) / 256;
+			return pre + ASSEMBLE_ARGB(0,r,g,b);
+		}
+	}
+	
+	
+	
+	#if 0
+	#pragma mark -
+	#pragma mark OSD FRONTENDS
+	#endif
+	
+	/*-------------------------------------------------
+		artwork_create_display - tweak the display
+		parameters based on artwork, and call through
+		to osd_create_display
+	-------------------------------------------------*/
+	
+	int artwork_create_display(struct osd_create_params *params, UINT32 *rgb_components)
+	{
+		int original_width = params->width;
+		int original_height = params->height;
+		int original_depth = params->depth;
+		double min_x, min_y, max_x, max_y;
+		UINT32 rgb32_components[3];
+		struct artwork_piece *piece;
+	
+		/* reset UI */
+		uioverlay = NULL;
+		uioverlayhint = NULL;
+	
+		/* first load the artwork; if none, quit now */
+		artwork_list = NULL;
+		if (!artwork_load(Machine->gamedrv, original_width, original_height))
+			return 1;
+		if (artwork_list == 0)
+			return osd_create_display(params, rgb_components);
+	
+		/* determine the game bitmap scale factor */
+		gamescale = options.artwork_res;
+		if (gamescale < 1 || (params->video_attributes & VIDEO_TYPE_VECTOR))
+			gamescale = 1;
+		else if (gamescale > 2)
+			gamescale = 2;
+	
+		/* compute the extent of all the artwork */
+		min_x = min_y = 0.0;
+		max_x = max_y = 1.0;
+		if (!options.artwork_crop)
+			for (piece = artwork_list; piece; piece = piece->next)
+			{
+				/* compute the outermost bounds */
+				if (piece->left < min_x) min_x = piece->left;
+				if (piece->right > max_x) max_x = piece->right;
+				if (piece->top < min_y) min_y = piece->top;
+				if (piece->bottom > max_y) max_y = piece->bottom;
+			}
+	
+		/* now compute the altered width/height and the new aspect ratio */
+		params->width = (int)((max_x - min_x) * (double)(original_width * gamescale) + 0.5);
+		params->height = (int)((max_y - min_y) * (double)(original_height * gamescale) + 0.5);
+		params->aspect_x = (int)((double)params->aspect_x * 100. * (max_x - min_x));
+		params->aspect_y = (int)((double)params->aspect_y * 100. * (max_y - min_y));
+	
+		/* vector games need to fit inside the original bounds, so scale back down */
+		if (params->video_attributes & VIDEO_TYPE_VECTOR)
+		{
+			/* shrink the width/height if over */
+			if (params->width > original_width)
+			{
+				params->width = original_width;
+				params->height = original_width * params->aspect_y / params->aspect_x;
+			}
+			if (params->height > original_height)
+			{
+				params->height = original_height;
+				params->width = original_height * params->aspect_x / params->aspect_y;
+			}
+	
+			/* compute the new raw width/height and update the vector info */
+			original_width = (int)((double)params->width / (max_x - min_x));
+			original_height = (int)((double)params->height / (max_y - min_y));
+			options.vector_width = original_width;
+			options.vector_height = original_height;
+		}
+	
+		/* adjust the parameters */
+		original_attributes = params->video_attributes;
+		params->video_attributes |= VIDEO_RGB_DIRECT | VIDEO_NEEDS_6BITS_PER_GUN;
+		params->depth = 32;
+	
+		/* allocate memory for the bitmaps */
+		underlay = auto_bitmap_alloc_depth(params->width, params->height, 32);
+		overlay = auto_bitmap_alloc_depth(params->width, params->height, 32);
+		overlay_yrgb = auto_bitmap_alloc_depth(params->width, params->height, 32);
+		bezel = auto_bitmap_alloc_depth(params->width, params->height, 32);
+		final = auto_bitmap_alloc_depth(params->width, params->height, 32);
+		if (!final || !overlay || !overlay_yrgb || !underlay || !bezel)
+			return 1;
+	
+		/* allocate the UI overlay */
+		uioverlay = auto_bitmap_alloc_depth(params->width, params->height, Machine->color_depth);
+		if (uioverlay)
+			uioverlayhint = auto_malloc(uioverlay->height * MAX_HINTS_PER_SCANLINE * sizeof(uioverlayhint[0]));
+		if (!uioverlay || !uioverlayhint)
+			return 1;
+		fillbitmap(uioverlay, (Machine->color_depth == 32) ? UI_TRANSPARENT_COLOR32 : UI_TRANSPARENT_COLOR16, NULL);
+		memset(uioverlayhint, 0, uioverlay->height * MAX_HINTS_PER_SCANLINE * sizeof(uioverlayhint[0]));
+	
+		/* compute the screen rect */
+		screenrect.min_x = screenrect.min_y = 0;
+		screenrect.max_x = params->width - 1;
+		screenrect.max_y = params->height - 1;
+	
+		/* compute the game rect */
+		gamerect.min_x = (int)(-min_x * (double)(original_width * gamescale) + 0.5);
+		gamerect.min_y = (int)(-min_y * (double)(original_height * gamescale) + 0.5);
+		gamerect.max_x = gamerect.min_x + original_width * gamescale - 1;
+		gamerect.max_y = gamerect.min_y + original_height * gamescale - 1;
+	
+		/* now try to create the display */
+		if (osd_create_display(params, rgb32_components))
+			return 1;
+	
+		/* fill in our own RGB components */
+		if (compute_rgb_components(original_depth, rgb_components, rgb32_components))
+		{
+			osd_close_display();
+			return 1;
+		}
+	
+		/* now compute all the artwork pieces' coordinates */
+		for (piece = artwork_list; piece; piece = piece->next)
+		{
+			piece->bounds.min_x = (int)((piece->left - min_x) * (double)(original_width * gamescale) + 0.5);
+			piece->bounds.min_y = (int)((piece->top - min_y) * (double)(original_height * gamescale) + 0.5);
+			piece->bounds.max_x = (int)((piece->right - min_x) * (double)(original_width * gamescale) + 0.5) - 1;
+			piece->bounds.max_y = (int)((piece->bottom - min_y) * (double)(original_height * gamescale) + 0.5) - 1;
+		}
+	
+		/* now do the final prep on the artwork */
+		return artwork_prep();
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_update_video_and_audio - update the
+		screen, adjusting for artwork
+	-------------------------------------------------*/
+	
+	void artwork_update_video_and_audio(struct mame_display *display)
+	{
+		static struct rectangle ui_changed_bounds;
+		static int ui_changed;
+		int artwork_changed = 0, ui_visible = 0;
+	
+		/* do nothing if no artwork */
+		if (artwork_list == 0)
+		{
+			osd_update_video_and_audio(display);
+			return;
+		}
+	
+		profiler_mark(PROFILER_ARTWORK);
+	
+		/* update the palette */
+		if (display->changed_flags & GAME_PALETTE_CHANGED)
+			update_palette_lookup(display);
+	
+		/* process the artwork and UI only if we're not frameskipping */
+		if (display->changed_flags & GAME_BITMAP_CHANGED)
+		{
+			/* see if there's any UI to display this frame */
+			ui_visible = (uibounds.max_x != 0);
+	
+			/* if the UI bounds changed, refresh everything */
+			if (last_uibounds.min_x != uibounds.min_x || last_uibounds.min_y != uibounds.min_y ||
+				last_uibounds.max_x != uibounds.max_x || last_uibounds.max_y != uibounds.max_y)
+			{
+				/* compute the union of the two rects */
+				ui_changed_bounds = last_uibounds;
+				union_rect(&ui_changed_bounds, &uibounds);
+				last_uibounds = uibounds;
+	
+				/* track changes for a few frames */
+				ui_changed = 3;
+			}
+	
+			/* if we have changed pending, mark the artwork dirty */
+			if (ui_changed)
+			{
+				union_rect(&underlay_invalid, &ui_changed_bounds);
+				union_rect(&overlay_invalid, &ui_changed_bounds);
+				union_rect(&bezel_invalid, &ui_changed_bounds);
+				ui_changed--;
+			}
+	
+			/* artwork disabled case */
+			if (global_artwork_enable == 0)
+			{
+				fillbitmap(final, MAKE_ARGB(0,0,0,0), NULL);
+				union_rect(&underlay_invalid, &screenrect);
+				union_rect(&overlay_invalid, &screenrect);
+				union_rect(&bezel_invalid, &screenrect);
 				render_game_bitmap(display->game_bitmap, palette_lookup, display);
-
-			/* apply the bezel */
-			if (num_bezels)
-			{
-				struct artwork_piece *piece;
-				for (piece = artwork_list; piece; piece = piece->next)
-					if (piece->layer >= LAYER_BEZEL && piece->intersects_game)
-						alpha_blend_intersecting_rect(final, &gamerect, piece->prebitmap, &piece->bounds, piece->scanlinehint);
 			}
-		}
-
-		/* add UI */
-		if (ui_visible)
-			render_ui_overlay(uioverlay, uioverlayhint, palette_lookup, display);
-
-		/* if artwork changed, or there's UI, we can't use dirty pixels */
-		if (artwork_changed || ui_changed || ui_visible)
-		{
-			display->changed_flags &= ~VECTOR_PIXELS_CHANGED;
-			display->vector_dirty_pixels = NULL;
-		}
-	}
-	profiler_mark(PROFILER_END);
-
-	/* blit the union of the game/screen rect and the UI bounds */
-	display->game_bitmap_update = (artwork_changed || ui_changed) ? screenrect : gamerect;
-	union_rect(&display->game_bitmap_update, &uibounds);
-
-	/* force the visible area constant */
-	display->game_visible_area = screenrect;
-	display->game_bitmap = final;
-	osd_update_video_and_audio(display);
-
-	/* reset the UI bounds (but only if we rendered the UI) */
-	if (display->changed_flags & GAME_BITMAP_CHANGED)
-		uibounds.max_x = 0;
-}
-
-
-
-/*-------------------------------------------------
-	artwork_save_snapshot - save a snapshot
--------------------------------------------------*/
-
-void artwork_save_snapshot(struct mame_bitmap *bitmap)
-{
-	if ((bitmap == Machine->scrbitmap || bitmap == uioverlay) && artwork_list)
-	{
-		struct rectangle temprect = screenrect;
-		UINT32 saved_rgb_components[3];
-
-		/* snapshots require correct direct_rgb_components */
-		memcpy(saved_rgb_components, direct_rgb_components, sizeof(saved_rgb_components));
-		direct_rgb_components[0] = 0xff << rshift;
-		direct_rgb_components[1] = 0xff << gshift;
-		direct_rgb_components[2] = 0xff << bshift;
-
-		osd_save_snapshot(final, &temprect);
-
-		memcpy(direct_rgb_components, saved_rgb_components, sizeof(saved_rgb_components));
-	}
-	else
-		osd_save_snapshot(bitmap, &Machine->visible_area);
-}
-
-
-
-/*-------------------------------------------------
-	artwork_get_ui_bitmap - get the UI bitmap
--------------------------------------------------*/
-
-struct mame_bitmap *artwork_get_ui_bitmap(void)
-{
-	return uioverlay ? uioverlay : Machine->scrbitmap;
-}
-
-
-
-/*-------------------------------------------------
-	artwork_mark_ui_dirty - mark a portion of the
-	UI bitmap dirty
--------------------------------------------------*/
-
-void artwork_mark_ui_dirty(int minx, int miny, int maxx, int maxy)
-{
-	/* add to the UI overlay hint if it exists */
-	if (uioverlayhint)
-	{
-		struct rectangle rect;
-		int y;
-
-		/* clip to visible */
-		if (minx < 0)
-			minx = 0;
-		if (maxx >= uioverlay->width)
-			maxx = uioverlay->width - 1;
-		if (miny < 0)
-			miny = 0;
-		if (maxy >= uioverlay->height)
-			maxy = uioverlay->height - 1;
-
-		/* update the global rect */
-		rect.min_x = minx;
-		rect.max_x = maxx;
-		rect.min_y = miny;
-		rect.max_y = maxy;
-		union_rect(&uibounds, &rect);
-
-		/* add hints for each scanline */
-		if (minx <= maxx)
-			for (y = miny; y <= maxy; y++)
-				add_range_to_hint(uioverlayhint, y, minx, maxx);
-	}
-}
-
-
-
-/*-------------------------------------------------
-	artwork_get_screensize - get the real screen
-	size
--------------------------------------------------*/
-
-void artwork_get_screensize(int *width, int *height)
-{
-	if (artwork_list)
-	{
-		*width = screenrect.max_x - screenrect.min_x + 1;
-		*height = screenrect.max_y - screenrect.min_y + 1;
-	}
-	else
-	{
-		*width = Machine->drv->screen_width;
-		*height = Machine->drv->screen_height;
-	}
-}
-
-
-
-/*-------------------------------------------------
-	artwork_enable - globally enable/disable
-	artwork
--------------------------------------------------*/
-
-void artwork_enable(int enable)
-{
-	global_artwork_enable = enable;
-}
-
-
-
-/*-------------------------------------------------
-	artwork_set_overlay - set the hard-coded
-	overlay for this game
--------------------------------------------------*/
-
-void artwork_set_overlay(const struct overlay_piece *overlist)
-{
-	overlay_list = overlist;
-}
-
-
-
-/*-------------------------------------------------
-	artwork_show - show/hide a tagged piece of art
--------------------------------------------------*/
-
-void artwork_show(const char *tag, int show)
-{
-	struct artwork_piece *piece;
-
-	/* find all the pieces that match the tag */
-	for (piece = artwork_list; piece; piece = piece->next)
-		if (piece->tag && !strcmp(piece->tag, tag))
-		{
-			/* if the state is changing, invalidate that area */
-			if (piece->visible != show)
+	
+			/* artwork enabled */
+			else
 			{
-				piece->visible = show;
-
-				/* backdrop */
-				if (piece->layer == LAYER_BACKDROP)
-					union_rect(&underlay_invalid, &piece->bounds);
-
-				/* overlay */
-				else if (piece->layer == LAYER_OVERLAY)
-					union_rect(&overlay_invalid, &piece->bounds);
-
-				/* bezel */
-				else if (piece->layer >= LAYER_BEZEL)
-					union_rect(&bezel_invalid, &piece->bounds);
-			}
-		}
-}
-
-
-
-#if 0
-#pragma mark -
-#pragma mark LAYER PROCESSING
-#endif
-
-/*-------------------------------------------------
-	update_layers - update any dirty areas of
-	the layers
--------------------------------------------------*/
-
-static int update_layers(void)
-{
-	struct artwork_piece *piece = artwork_list;
-	struct rectangle combined;
-	int changed = 0;
-
-	/* update the underlays */
-	if (underlay_invalid.max_x != 0)
-	{
-		sect_rect(&underlay_invalid, &screenrect);
-		erase_rect(underlay, &underlay_invalid, 0);
-		for (piece = artwork_list; piece; piece = piece->next)
-			if (piece->layer == LAYER_BACKDROP && piece->visible && piece->prebitmap)
-				alpha_blend_intersecting_rect(underlay, &underlay_invalid, piece->prebitmap, &piece->bounds, piece->scanlinehint);
-	}
-
-	/* update the overlays */
-	if (overlay_invalid.max_x != 0)
-	{
-		sect_rect(&overlay_invalid, &screenrect);
-		erase_rect(overlay, &overlay_invalid, transparent_color);
-		erase_rect(overlay_yrgb, &overlay_invalid, ASSEMBLE_ARGB(0,0xff,0xff,0xff));
-		for (piece = artwork_list; piece; piece = piece->next)
-			if (piece->layer == LAYER_OVERLAY && piece->visible && piece->prebitmap)
-				cmy_blend_intersecting_rect(overlay, overlay_yrgb, &overlay_invalid, piece->prebitmap, piece->yrgbbitmap, &piece->bounds, piece->blendflags);
-	}
-
-	/* update the bezels */
-	if (bezel_invalid.max_x != 0)
-	{
-		sect_rect(&bezel_invalid, &screenrect);
-		erase_rect(bezel, &bezel_invalid, transparent_color);
-		for (piece = artwork_list; piece; piece = piece->next)
-			if (piece->layer >= LAYER_BEZEL && piece->visible && piece->prebitmap)
-				alpha_blend_intersecting_rect(bezel, &bezel_invalid, piece->prebitmap, &piece->bounds, piece->scanlinehint);
-	}
-
-	/* combine the invalid rects */
-	combined = underlay_invalid;
-	union_rect(&combined, &overlay_invalid);
-	union_rect(&combined, &bezel_invalid);
-	if (combined.max_x != 0)
-	{
-		/* blend into the final bitmap */
-		erase_rect(final, &combined, 0);
-		alpha_blend_intersecting_rect(final, &combined, underlay, &screenrect, NULL);
-		add_intersecting_rect(final, &combined, overlay, &screenrect);
-		alpha_blend_intersecting_rect(final, &combined, bezel, &screenrect, NULL);
-		changed = 1;
-	}
-
-	/* reset the invalid rects */
-	underlay_invalid.max_x = 0;
-	overlay_invalid.max_x = 0;
-	bezel_invalid.max_x = 0;
-	return changed;
-}
-
-
-
-/*-------------------------------------------------
-	erase_rect - erase the given bounds of a 32bpp
-	bitmap
--------------------------------------------------*/
-
-static void erase_rect(struct mame_bitmap *bitmap, const struct rectangle *bounds, UINT32 color)
-{
-	int x, y;
-
-	/* loop over rows */
-	for (y = bounds->min_y; y <= bounds->max_y; y++)
-	{
-		UINT32 *dest = (UINT32 *)bitmap->base + y * bitmap->rowpixels;
-		for (x = bounds->min_x; x <= bounds->max_x; x++)
-			dest[x] = color;
-	}
-}
-
-
-
-/*-------------------------------------------------
-	alpha_blend_intersecting_rect - alpha blend an
-	artwork piece into a bitmap
--------------------------------------------------*/
-
-static void alpha_blend_intersecting_rect(struct mame_bitmap *dstbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, const struct rectangle *srcbounds, const UINT32 *hintlist)
-{
-	struct rectangle sect = *srcbounds;
-	UINT32 dummy_range[2];
-	int lclip, rclip;
-	int x, y, h;
-
-	/* compute the intersection */
-	sect_rect(&sect, dstbounds);
-
-	/* compute the source-relative left/right clip */
-	lclip = sect.min_x - srcbounds->min_x;
-	rclip = sect.max_x - srcbounds->min_x;
-
-	/* set up a dummy range */
-	dummy_range[0] = srcbitmap->width - 1;
-	dummy_range[1] = 0;
-
-	/* adjust the hintlist for the starting offset */
-	if (hintlist)
-		hintlist -= srcbounds->min_y * MAX_HINTS_PER_SCANLINE;
-
-	/* loop over rows */
-	for (y = sect.min_y; y <= sect.max_y; y++)
-	{
-		UINT32 *src = (UINT32 *)srcbitmap->base + (y - srcbounds->min_y) * srcbitmap->rowpixels;
-		UINT32 *dest = (UINT32 *)dstbitmap->base + y * dstbitmap->rowpixels + srcbounds->min_x;
-		const UINT32 *hint = hintlist ? &hintlist[y * MAX_HINTS_PER_SCANLINE] : &dummy_range[0];
-
-		/* loop over hints */
-		for (h = 0; h < MAX_HINTS_PER_SCANLINE && hint[h] != 0; h++)
-		{
-			int start = hint[h] >> 16;
-			int stop = hint[h] & 0xffff;
-
-			/* clip to the sect rect */
-			if (start < lclip)
-				start = lclip;
-			else if (start > rclip)
-				continue;
-			if (stop > rclip)
-				stop = rclip;
-			else if (stop < lclip)
-				continue;
-
-			/* loop over columns */
-			for (x = start; x <= stop; x++)
-			{
-				/* we don't bother optimizing for transparent here because we hope that the */
-				/* hints have removed most of the need */
-				UINT32 pix = src[x];
-				UINT32 dpix = dest[x];
-				int alpha = (pix >> ashift) & 0xff;
-
-				/* alpha is inverted, so alpha 0 means fully opaque */
-				if (alpha == 0)
-					dest[x] = pix;
-
-				/* otherwise, we do a proper blend */
+				/* update the underlay and overlay */
+				artwork_changed = update_layers();
+	
+				/* render to the final bitmap */
+				if (num_underlays && num_overlays)
+					render_game_bitmap_underlay_overlay(display->game_bitmap, palette_lookup, display);
+				else if (num_underlays)
+					render_game_bitmap_underlay(display->game_bitmap, palette_lookup, display);
+				else if (num_overlays)
+					render_game_bitmap_overlay(display->game_bitmap, palette_lookup, display);
 				else
+					render_game_bitmap(display->game_bitmap, palette_lookup, display);
+	
+				/* apply the bezel */
+				if (num_bezels)
 				{
-					int r = ((pix >> rshift) & 0xff) + ((alpha * ((dpix >> rshift) & 0xff)) >> 8);
-					int g = ((pix >> gshift) & 0xff) + ((alpha * ((dpix >> gshift) & 0xff)) >> 8);
-					int b = ((pix >> bshift) & 0xff) + ((alpha * ((dpix >> bshift) & 0xff)) >> 8);
-
-					/* add the alpha values in inverted space (looks weird but is correct) */
-					int a = alpha + ((dpix >> ashift) & 0xff) - 0xff;
-					if (a < 0) a = 0;
-					dest[x] = ASSEMBLE_ARGB(a,r,g,b);
+					struct artwork_piece *piece;
+					for (piece = artwork_list; piece; piece = piece->next)
+						if (piece->layer >= LAYER_BEZEL && piece->intersects_game)
+							alpha_blend_intersecting_rect(final, &gamerect, piece->prebitmap, &piece->bounds, piece->scanlinehint);
+				}
+			}
+	
+			/* add UI */
+			if (ui_visible)
+				render_ui_overlay(uioverlay, uioverlayhint, palette_lookup, display);
+	
+			/* if artwork changed, or there's UI, we can't use dirty pixels */
+			if (artwork_changed || ui_changed || ui_visible)
+			{
+				display->changed_flags &= ~VECTOR_PIXELS_CHANGED;
+				display->vector_dirty_pixels = NULL;
+			}
+		}
+		profiler_mark(PROFILER_END);
+	
+		/* blit the union of the game/screen rect and the UI bounds */
+		display->game_bitmap_update = (artwork_changed || ui_changed) ? screenrect : gamerect;
+		union_rect(&display->game_bitmap_update, &uibounds);
+	
+		/* force the visible area constant */
+		display->game_visible_area = screenrect;
+		display->game_bitmap = final;
+		osd_update_video_and_audio(display);
+	
+		/* reset the UI bounds (but only if we rendered the UI) */
+		if (display->changed_flags & GAME_BITMAP_CHANGED)
+			uibounds.max_x = 0;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_save_snapshot - save a snapshot
+	-------------------------------------------------*/
+	
+	void artwork_save_snapshot(struct mame_bitmap *bitmap)
+	{
+		if ((bitmap == Machine->scrbitmap || bitmap == uioverlay) && artwork_list)
+		{
+			struct rectangle temprect = screenrect;
+			UINT32 saved_rgb_components[3];
+	
+			/* snapshots require correct direct_rgb_components */
+			memcpy(saved_rgb_components, direct_rgb_components, sizeof(saved_rgb_components));
+			direct_rgb_components[0] = 0xff << rshift;
+			direct_rgb_components[1] = 0xff << gshift;
+			direct_rgb_components[2] = 0xff << bshift;
+	
+			osd_save_snapshot(final, &temprect);
+	
+			memcpy(direct_rgb_components, saved_rgb_components, sizeof(saved_rgb_components));
+		}
+		else
+			osd_save_snapshot(bitmap, &Machine->visible_area);
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_get_ui_bitmap - get the UI bitmap
+	-------------------------------------------------*/
+	
+	struct mame_bitmap *artwork_get_ui_bitmap(void)
+	{
+		return uioverlay ? uioverlay : Machine->scrbitmap;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_mark_ui_dirty - mark a portion of the
+		UI bitmap dirty
+	-------------------------------------------------*/
+	
+	void artwork_mark_ui_dirty(int minx, int miny, int maxx, int maxy)
+	{
+		/* add to the UI overlay hint if it exists */
+		if (uioverlayhint)
+		{
+			struct rectangle rect;
+			int y;
+	
+			/* clip to visible */
+			if (minx < 0)
+				minx = 0;
+			if (maxx >= uioverlay->width)
+				maxx = uioverlay->width - 1;
+			if (miny < 0)
+				miny = 0;
+			if (maxy >= uioverlay->height)
+				maxy = uioverlay->height - 1;
+	
+			/* update the global rect */
+			rect.min_x = minx;
+			rect.max_x = maxx;
+			rect.min_y = miny;
+			rect.max_y = maxy;
+			union_rect(&uibounds, &rect);
+	
+			/* add hints for each scanline */
+			if (minx <= maxx)
+				for (y = miny; y <= maxy; y++)
+					add_range_to_hint(uioverlayhint, y, minx, maxx);
+		}
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_get_screensize - get the real screen
+		size
+	-------------------------------------------------*/
+	
+	void artwork_get_screensize(int *width, int *height)
+	{
+		if (artwork_list)
+		{
+			*width = screenrect.max_x - screenrect.min_x + 1;
+			*height = screenrect.max_y - screenrect.min_y + 1;
+		}
+		else
+		{
+			*width = Machine->drv->screen_width;
+			*height = Machine->drv->screen_height;
+		}
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_enable - globally enable/disable
+		artwork
+	-------------------------------------------------*/
+	
+	void artwork_enable(int enable)
+	{
+		global_artwork_enable = enable;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_set_overlay - set the hard-coded
+		overlay for this game
+	-------------------------------------------------*/
+	
+	void artwork_set_overlay(const struct overlay_piece *overlist)
+	{
+		overlay_list = overlist;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_show - show/hide a tagged piece of art
+	-------------------------------------------------*/
+	
+	void artwork_show(const char *tag, int show)
+	{
+		struct artwork_piece *piece;
+	
+		/* find all the pieces that match the tag */
+		for (piece = artwork_list; piece; piece = piece->next)
+			if (piece->tag && !strcmp(piece->tag, tag))
+			{
+				/* if the state is changing, invalidate that area */
+				if (piece->visible != show)
+				{
+					piece->visible = show;
+	
+					/* backdrop */
+					if (piece->layer == LAYER_BACKDROP)
+						union_rect(&underlay_invalid, &piece->bounds);
+	
+					/* overlay */
+					else if (piece->layer == LAYER_OVERLAY)
+						union_rect(&overlay_invalid, &piece->bounds);
+	
+					/* bezel */
+					else if (piece->layer >= LAYER_BEZEL)
+						union_rect(&bezel_invalid, &piece->bounds);
+				}
+			}
+	}
+	
+	
+	
+	#if 0
+	#pragma mark -
+	#pragma mark LAYER PROCESSING
+	#endif
+	
+	/*-------------------------------------------------
+		update_layers - update any dirty areas of
+		the layers
+	-------------------------------------------------*/
+	
+	static int update_layers(void)
+	{
+		struct artwork_piece *piece = artwork_list;
+		struct rectangle combined;
+		int changed = 0;
+	
+		/* update the underlays */
+		if (underlay_invalid.max_x != 0)
+		{
+			sect_rect(&underlay_invalid, &screenrect);
+			erase_rect(underlay, &underlay_invalid, 0);
+			for (piece = artwork_list; piece; piece = piece->next)
+				if (piece->layer == LAYER_BACKDROP && piece->visible && piece->prebitmap)
+					alpha_blend_intersecting_rect(underlay, &underlay_invalid, piece->prebitmap, &piece->bounds, piece->scanlinehint);
+		}
+	
+		/* update the overlays */
+		if (overlay_invalid.max_x != 0)
+		{
+			sect_rect(&overlay_invalid, &screenrect);
+			erase_rect(overlay, &overlay_invalid, transparent_color);
+			erase_rect(overlay_yrgb, &overlay_invalid, ASSEMBLE_ARGB(0,0xff,0xff,0xff));
+			for (piece = artwork_list; piece; piece = piece->next)
+				if (piece->layer == LAYER_OVERLAY && piece->visible && piece->prebitmap)
+					cmy_blend_intersecting_rect(overlay, overlay_yrgb, &overlay_invalid, piece->prebitmap, piece->yrgbbitmap, &piece->bounds, piece->blendflags);
+		}
+	
+		/* update the bezels */
+		if (bezel_invalid.max_x != 0)
+		{
+			sect_rect(&bezel_invalid, &screenrect);
+			erase_rect(bezel, &bezel_invalid, transparent_color);
+			for (piece = artwork_list; piece; piece = piece->next)
+				if (piece->layer >= LAYER_BEZEL && piece->visible && piece->prebitmap)
+					alpha_blend_intersecting_rect(bezel, &bezel_invalid, piece->prebitmap, &piece->bounds, piece->scanlinehint);
+		}
+	
+		/* combine the invalid rects */
+		combined = underlay_invalid;
+		union_rect(&combined, &overlay_invalid);
+		union_rect(&combined, &bezel_invalid);
+		if (combined.max_x != 0)
+		{
+			/* blend into the final bitmap */
+			erase_rect(final, &combined, 0);
+			alpha_blend_intersecting_rect(final, &combined, underlay, &screenrect, NULL);
+			add_intersecting_rect(final, &combined, overlay, &screenrect);
+			alpha_blend_intersecting_rect(final, &combined, bezel, &screenrect, NULL);
+			changed = 1;
+		}
+	
+		/* reset the invalid rects */
+		underlay_invalid.max_x = 0;
+		overlay_invalid.max_x = 0;
+		bezel_invalid.max_x = 0;
+		return changed;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		erase_rect - erase the given bounds of a 32bpp
+		bitmap
+	-------------------------------------------------*/
+	
+	static void erase_rect(struct mame_bitmap *bitmap, const struct rectangle *bounds, UINT32 color)
+	{
+		int x, y;
+	
+		/* loop over rows */
+		for (y = bounds->min_y; y <= bounds->max_y; y++)
+		{
+			UINT32 *dest = (UINT32 *)bitmap->base + y * bitmap->rowpixels;
+			for (x = bounds->min_x; x <= bounds->max_x; x++)
+				dest[x] = color;
+		}
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		alpha_blend_intersecting_rect - alpha blend an
+		artwork piece into a bitmap
+	-------------------------------------------------*/
+	
+	static void alpha_blend_intersecting_rect(struct mame_bitmap *dstbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, const struct rectangle *srcbounds, const UINT32 *hintlist)
+	{
+		struct rectangle sect = *srcbounds;
+		UINT32 dummy_range[2];
+		int lclip, rclip;
+		int x, y, h;
+	
+		/* compute the intersection */
+		sect_rect(&sect, dstbounds);
+	
+		/* compute the source-relative left/right clip */
+		lclip = sect.min_x - srcbounds->min_x;
+		rclip = sect.max_x - srcbounds->min_x;
+	
+		/* set up a dummy range */
+		dummy_range[0] = srcbitmap->width - 1;
+		dummy_range[1] = 0;
+	
+		/* adjust the hintlist for the starting offset */
+		if (hintlist)
+			hintlist -= srcbounds->min_y * MAX_HINTS_PER_SCANLINE;
+	
+		/* loop over rows */
+		for (y = sect.min_y; y <= sect.max_y; y++)
+		{
+			UINT32 *src = (UINT32 *)srcbitmap->base + (y - srcbounds->min_y) * srcbitmap->rowpixels;
+			UINT32 *dest = (UINT32 *)dstbitmap->base + y * dstbitmap->rowpixels + srcbounds->min_x;
+			const UINT32 *hint = hintlist ? &hintlist[y * MAX_HINTS_PER_SCANLINE] : &dummy_range[0];
+	
+			/* loop over hints */
+			for (h = 0; h < MAX_HINTS_PER_SCANLINE && hint[h] != 0; h++)
+			{
+				int start = hint[h] >> 16;
+				int stop = hint[h] & 0xffff;
+	
+				/* clip to the sect rect */
+				if (start < lclip)
+					start = lclip;
+				else if (start > rclip)
+					continue;
+				if (stop > rclip)
+					stop = rclip;
+				else if (stop < lclip)
+					continue;
+	
+				/* loop over columns */
+				for (x = start; x <= stop; x++)
+				{
+					/* we don't bother optimizing for transparent here because we hope that the */
+					/* hints have removed most of the need */
+					UINT32 pix = src[x];
+					UINT32 dpix = dest[x];
+					int alpha = (pix >> ashift) & 0xff;
+	
+					/* alpha is inverted, so alpha 0 means fully opaque */
+					if (alpha == 0)
+						dest[x] = pix;
+	
+					/* otherwise, we do a proper blend */
+					else
+					{
+						int r = ((pix >> rshift) & 0xff) + ((alpha * ((dpix >> rshift) & 0xff)) >> 8);
+						int g = ((pix >> gshift) & 0xff) + ((alpha * ((dpix >> gshift) & 0xff)) >> 8);
+						int b = ((pix >> bshift) & 0xff) + ((alpha * ((dpix >> bshift) & 0xff)) >> 8);
+	
+						/* add the alpha values in inverted space (looks weird but is correct) */
+						int a = alpha + ((dpix >> ashift) & 0xff) - 0xff;
+						if (a < 0) a = 0;
+						dest[x] = ASSEMBLE_ARGB(a,r,g,b);
+					}
 				}
 			}
 		}
 	}
-}
-
-
-
-/*-------------------------------------------------
-	add_intersecting_rect - add a
-	artwork piece into a bitmap
--------------------------------------------------*/
-
-static void add_intersecting_rect(struct mame_bitmap *dstbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, const struct rectangle *srcbounds)
-{
-	struct rectangle sect = *srcbounds;
-	int x, y, width;
-
-	/* compute the intersection and resulting width */
-	sect_rect(&sect, dstbounds);
-	width = sect.max_x - sect.min_x + 1;
-
-	/* loop over rows */
-	for (y = sect.min_y; y <= sect.max_y; y++)
+	
+	
+	
+	/*-------------------------------------------------
+		add_intersecting_rect - add a
+		artwork piece into a bitmap
+	-------------------------------------------------*/
+	
+	static void add_intersecting_rect(struct mame_bitmap *dstbitmap, const struct rectangle *dstbounds, struct mame_bitmap *srcbitmap, const struct rectangle *srcbounds)
 	{
-		UINT32 *src = (UINT32 *)srcbitmap->base + (y - srcbounds->min_y) * srcbitmap->rowpixels + (sect.min_x - srcbounds->min_x);
-		UINT32 *dest = (UINT32 *)dstbitmap->base + y * dstbitmap->rowpixels + sect.min_x;
-
-		/* loop over columns */
-		for (x = 0; x < width; x++)
+		struct rectangle sect = *srcbounds;
+		int x, y, width;
+	
+		/* compute the intersection and resulting width */
+		sect_rect(&sect, dstbounds);
+		width = sect.max_x - sect.min_x + 1;
+	
+		/* loop over rows */
+		for (y = sect.min_y; y <= sect.max_y; y++)
 		{
-			UINT32 pix = src[x];
-
-			/* just add and clamp */
-			if (pix != transparent_color)
-				dest[x] = add_and_clamp(pix, dest[x]);
+			UINT32 *src = (UINT32 *)srcbitmap->base + (y - srcbounds->min_y) * srcbitmap->rowpixels + (sect.min_x - srcbounds->min_x);
+			UINT32 *dest = (UINT32 *)dstbitmap->base + y * dstbitmap->rowpixels + sect.min_x;
+	
+			/* loop over columns */
+			for (x = 0; x < width; x++)
+			{
+				UINT32 pix = src[x];
+	
+				/* just add and clamp */
+				if (pix != transparent_color)
+					dest[x] = add_and_clamp(pix, dest[x]);
+			}
 		}
 	}
-}
-
-
-
-/*-------------------------------------------------
-	cmy_blend_intersecting_rect - CMY blend an
-	artwork piece into a bitmap
--------------------------------------------------*/
-
-static void cmy_blend_intersecting_rect(
-	struct mame_bitmap *dstprebitmap, struct mame_bitmap *dstyrgbbitmap, const struct rectangle *dstbounds,
-	struct mame_bitmap *srcprebitmap, struct mame_bitmap *srcyrgbbitmap, const struct rectangle *srcbounds,
-	UINT8 blendflags)
-{
-	struct rectangle sect = *srcbounds;
-	int x, y, width;
-
-	/* compute the intersection and resulting width */
-	sect_rect(&sect, dstbounds);
-	width = sect.max_x - sect.min_x + 1;
-
-	/* loop over rows */
-	for (y = sect.min_y; y <= sect.max_y; y++)
+	
+	
+	
+	/*-------------------------------------------------
+		cmy_blend_intersecting_rect - CMY blend an
+		artwork piece into a bitmap
+	-------------------------------------------------*/
+	
+	static void cmy_blend_intersecting_rect(
+		struct mame_bitmap *dstprebitmap, struct mame_bitmap *dstyrgbbitmap, const struct rectangle *dstbounds,
+		struct mame_bitmap *srcprebitmap, struct mame_bitmap *srcyrgbbitmap, const struct rectangle *srcbounds,
+		UINT8 blendflags)
 	{
-		UINT32 *srcpre = (UINT32 *)srcprebitmap->base + (y - srcbounds->min_y) * srcprebitmap->rowpixels + (sect.min_x - srcbounds->min_x);
-		UINT32 *srcyrgb = (UINT32 *)srcyrgbbitmap->base + (y - srcbounds->min_y) * srcyrgbbitmap->rowpixels + (sect.min_x - srcbounds->min_x);
-		UINT32 *destpre = (UINT32 *)dstprebitmap->base + y * dstprebitmap->rowpixels + sect.min_x;
-		UINT32 *destyrgb = (UINT32 *)dstyrgbbitmap->base + y * dstyrgbbitmap->rowpixels + sect.min_x;
-
-		/* loop over columns */
-		for (x = 0; x < width; x++)
+		struct rectangle sect = *srcbounds;
+		int x, y, width;
+	
+		/* compute the intersection and resulting width */
+		sect_rect(&sect, dstbounds);
+		width = sect.max_x - sect.min_x + 1;
+	
+		/* loop over rows */
+		for (y = sect.min_y; y <= sect.max_y; y++)
 		{
-			UINT32 spre = srcpre[x];
-			UINT32 dpre = destpre[x];
-			UINT32 syrgb = srcyrgb[x];
-			UINT32 dyrgb = destyrgb[x];
-
-			/* handle "non-blending" mode */
-			if (blendflags & OVERLAY_FLAG_NOBLEND)
+			UINT32 *srcpre = (UINT32 *)srcprebitmap->base + (y - srcbounds->min_y) * srcprebitmap->rowpixels + (sect.min_x - srcbounds->min_x);
+			UINT32 *srcyrgb = (UINT32 *)srcyrgbbitmap->base + (y - srcbounds->min_y) * srcyrgbbitmap->rowpixels + (sect.min_x - srcbounds->min_x);
+			UINT32 *destpre = (UINT32 *)dstprebitmap->base + y * dstprebitmap->rowpixels + sect.min_x;
+			UINT32 *destyrgb = (UINT32 *)dstyrgbbitmap->base + y * dstyrgbbitmap->rowpixels + sect.min_x;
+	
+			/* loop over columns */
+			for (x = 0; x < width; x++)
 			{
-				if ((spre & nonalpha_mask) && spre >= dpre)
+				UINT32 spre = srcpre[x];
+				UINT32 dpre = destpre[x];
+				UINT32 syrgb = srcyrgb[x];
+				UINT32 dyrgb = destyrgb[x];
+	
+				/* handle "non-blending" mode */
+				if (blendflags & OVERLAY_FLAG_NOBLEND)
+				{
+					if ((spre & nonalpha_mask) && spre >= dpre)
+					{
+						destpre[x] = spre;
+						destyrgb[x] = syrgb;
+					}
+				}
+	
+				/* simple copy if nothing at the dest */
+				else if (dpre == transparent_color && dyrgb == 0)
 				{
 					destpre[x] = spre;
 					destyrgb[x] = syrgb;
 				}
+				else
+				{
+					/* subtract CMY and alpha from each pixel */
+					int sc = (~syrgb >> rshift) & 0xff;
+					int sm = (~syrgb >> gshift) & 0xff;
+					int sy = (~syrgb >> bshift) & 0xff;
+					int sa = (~spre >> ashift) & 0xff;
+					int dc = (~dyrgb >> rshift) & 0xff;
+					int dm = (~dyrgb >> gshift) & 0xff;
+					int dy = (~dyrgb >> bshift) & 0xff;
+					int da = (~dpre >> ashift) & 0xff;
+					int dr, dg, db;
+					int max;
+	
+					/* add and clamp the alphas */
+					da += sa;
+					if (da > 0xff) da = 0xff;
+	
+					/* add the CMY */
+					dc += sc;
+					dm += sm;
+					dy += sy;
+	
+					/* compute the maximum intensity */
+					max = (dc > dm) ? dc : dm;
+					max = (dy > max) ? dy : max;
+	
+					/* if that's out of range, scale by it */
+					if (max > 0xff)
+					{
+						dc = (dc * 0xff) / max;
+						dm = (dm * 0xff) / max;
+						dy = (dy * 0xff) / max;
+					}
+	
+					/* convert back to RGB */
+					dr = dc ^ 0xff;
+					dg = dm ^ 0xff;
+					db = dy ^ 0xff;
+	
+					/* recompute the two pixels */
+					destpre[x] = compute_pre_pixel(da,dr,dg,db);
+					destyrgb[x] = compute_yrgb_pixel(da,dr,dg,db);
+				}
 			}
-
-			/* simple copy if nothing at the dest */
-			else if (dpre == transparent_color && dyrgb == 0)
+		}
+	}
+	
+	
+	
+	#if 0
+	#pragma mark -
+	#pragma mark GAME BITMAP PROCESSING
+	#endif
+	
+	/*-------------------------------------------------
+		update_palette - update any dirty palette
+		entries
+	-------------------------------------------------*/
+	
+	static void update_palette_lookup(struct mame_display *display)
+	{
+		int i, j;
+	
+		/* loop over dirty colors in batches of 32 */
+		for (i = 0; i < display->game_palette_entries; i += 32)
+		{
+			UINT32 dirtyflags = display->game_palette_dirty[i / 32];
+			if (dirtyflags)
 			{
-				destpre[x] = spre;
-				destyrgb[x] = syrgb;
+				display->game_palette_dirty[i / 32] = 0;
+	
+				/* loop over all 32 bits and update dirty entries */
+				for (j = 0; j < 32; j++, dirtyflags >>= 1)
+					if (dirtyflags & 1)
+					{
+						/* extract the RGB values */
+						rgb_t rgbvalue = display->game_palette[i + j];
+						int r = RGB_RED(rgbvalue);
+						int g = RGB_GREEN(rgbvalue);
+						int b = RGB_BLUE(rgbvalue);
+	
+						/* update the lookup table */
+						palette_lookup[i + j] = ASSEMBLE_ARGB(0, r, g, b);
+					}
 			}
+		}
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		render_game_bitmap - render the game bitmap
+		raw
+	-------------------------------------------------*/
+	
+	#define PIXEL(x,y,srcdstbase,srcdstrpix,bits)	(*((UINT##bits *)srcdstbase##base + (y) * srcdstrpix##rowpixels + (x)))
+	
+	static void render_game_bitmap(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display)
+	{
+		int srcrowpixels = bitmap->rowpixels;
+		int dstrowpixels = final->rowpixels;
+		void *srcbase, *dstbase;
+		int width, height;
+		int x, y;
+	
+		/* compute common parameters */
+		width = Machine->absolute_visible_area.max_x - Machine->absolute_visible_area.min_x + 1;
+		height = Machine->absolute_visible_area.max_y - Machine->absolute_visible_area.min_y + 1;
+		srcbase = (UINT8 *)bitmap->base + Machine->absolute_visible_area.min_y * bitmap->rowbytes;
+		dstbase = (UINT8 *)final->base + gamerect.min_y * final->rowbytes + gamerect.min_x * sizeof(UINT32);
+	
+		/* vector case */
+		if (display->changed_flags & VECTOR_PIXELS_CHANGED)
+		{
+			vector_pixel_t offset = VECTOR_PIXEL(gamerect.min_x, gamerect.min_y);
+			vector_pixel_t *list = display->vector_dirty_pixels;
+	
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
+			{
+				while (*list != VECTOR_PIXEL_END)
+				{
+					vector_pixel_t coords = *list;
+					x = VECTOR_PIXEL_X(coords);
+					y = VECTOR_PIXEL_Y(coords);
+					*list++ = coords + offset;
+					PIXEL(x,y,dst,dst,32) = palette[PIXEL(x,y,src,src,16)];
+				}
+			}
+	
+			/* 32bpp case */
 			else
 			{
-				/* subtract CMY and alpha from each pixel */
-				int sc = (~syrgb >> rshift) & 0xff;
-				int sm = (~syrgb >> gshift) & 0xff;
-				int sy = (~syrgb >> bshift) & 0xff;
-				int sa = (~spre >> ashift) & 0xff;
-				int dc = (~dyrgb >> rshift) & 0xff;
-				int dm = (~dyrgb >> gshift) & 0xff;
-				int dy = (~dyrgb >> bshift) & 0xff;
-				int da = (~dpre >> ashift) & 0xff;
-				int dr, dg, db;
-				int max;
-
-				/* add and clamp the alphas */
-				da += sa;
-				if (da > 0xff) da = 0xff;
-
-				/* add the CMY */
-				dc += sc;
-				dm += sm;
-				dy += sy;
-
-				/* compute the maximum intensity */
-				max = (dc > dm) ? dc : dm;
-				max = (dy > max) ? dy : max;
-
-				/* if that's out of range, scale by it */
-				if (max > 0xff)
+				while (*list != VECTOR_PIXEL_END)
 				{
-					dc = (dc * 0xff) / max;
-					dm = (dm * 0xff) / max;
-					dy = (dy * 0xff) / max;
-				}
-
-				/* convert back to RGB */
-				dr = dc ^ 0xff;
-				dg = dm ^ 0xff;
-				db = dy ^ 0xff;
-
-				/* recompute the two pixels */
-				destpre[x] = compute_pre_pixel(da,dr,dg,db);
-				destyrgb[x] = compute_yrgb_pixel(da,dr,dg,db);
-			}
-		}
-	}
-}
-
-
-
-#if 0
-#pragma mark -
-#pragma mark GAME BITMAP PROCESSING
-#endif
-
-/*-------------------------------------------------
-	update_palette - update any dirty palette
-	entries
--------------------------------------------------*/
-
-static void update_palette_lookup(struct mame_display *display)
-{
-	int i, j;
-
-	/* loop over dirty colors in batches of 32 */
-	for (i = 0; i < display->game_palette_entries; i += 32)
-	{
-		UINT32 dirtyflags = display->game_palette_dirty[i / 32];
-		if (dirtyflags)
-		{
-			display->game_palette_dirty[i / 32] = 0;
-
-			/* loop over all 32 bits and update dirty entries */
-			for (j = 0; j < 32; j++, dirtyflags >>= 1)
-				if (dirtyflags & 1)
-				{
-					/* extract the RGB values */
-					rgb_t rgbvalue = display->game_palette[i + j];
-					int r = RGB_RED(rgbvalue);
-					int g = RGB_GREEN(rgbvalue);
-					int b = RGB_BLUE(rgbvalue);
-
-					/* update the lookup table */
-					palette_lookup[i + j] = ASSEMBLE_ARGB(0, r, g, b);
-				}
-		}
-	}
-}
-
-
-
-/*-------------------------------------------------
-	render_game_bitmap - render the game bitmap
-	raw
--------------------------------------------------*/
-
-#define PIXEL(x,y,srcdstbase,srcdstrpix,bits)	(*((UINT##bits *)srcdstbase##base + (y) * srcdstrpix##rowpixels + (x)))
-
-static void render_game_bitmap(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display)
-{
-	int srcrowpixels = bitmap->rowpixels;
-	int dstrowpixels = final->rowpixels;
-	void *srcbase, *dstbase;
-	int width, height;
-	int x, y;
-
-	/* compute common parameters */
-	width = Machine->absolute_visible_area.max_x - Machine->absolute_visible_area.min_x + 1;
-	height = Machine->absolute_visible_area.max_y - Machine->absolute_visible_area.min_y + 1;
-	srcbase = (UINT8 *)bitmap->base + Machine->absolute_visible_area.min_y * bitmap->rowbytes;
-	dstbase = (UINT8 *)final->base + gamerect.min_y * final->rowbytes + gamerect.min_x * sizeof(UINT32);
-
-	/* vector case */
-	if (display->changed_flags & VECTOR_PIXELS_CHANGED)
-	{
-		vector_pixel_t offset = VECTOR_PIXEL(gamerect.min_x, gamerect.min_y);
-		vector_pixel_t *list = display->vector_dirty_pixels;
-
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			while (*list != VECTOR_PIXEL_END)
-			{
-				vector_pixel_t coords = *list;
-				x = VECTOR_PIXEL_X(coords);
-				y = VECTOR_PIXEL_Y(coords);
-				*list++ = coords + offset;
-				PIXEL(x,y,dst,dst,32) = palette[PIXEL(x,y,src,src,16)];
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			while (*list != VECTOR_PIXEL_END)
-			{
-				vector_pixel_t coords = *list;
-				x = VECTOR_PIXEL_X(coords);
-				y = VECTOR_PIXEL_Y(coords);
-				*list++ = coords + offset;
-				PIXEL(x,y,dst,dst,32) = PIXEL(x,y,src,src,32);
-			}
-		}
-	}
-
-	/* 1x scale */
-	else if (gamescale == 1)
-	{
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-				for (x = 0; x < width; x++)
-					*dst++ = palette[*src++];
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-				for (x = 0; x < width; x++)
-					*dst++ = *src++;
-			}
-		}
-	}
-
-	/* 2x scale */
-	else if (gamescale == 2)
-	{
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
-				for (x = 0; x < width; x++)
-				{
-					UINT32 val = palette[*src++];
-					dst[0] = val;
-					dst[1] = val;
-					dst[dstrowpixels] = val;
-					dst[dstrowpixels + 1] = val;
-					dst += 2;
+					vector_pixel_t coords = *list;
+					x = VECTOR_PIXEL_X(coords);
+					y = VECTOR_PIXEL_Y(coords);
+					*list++ = coords + offset;
+					PIXEL(x,y,dst,dst,32) = PIXEL(x,y,src,src,32);
 				}
 			}
 		}
-
-		/* 32bpp case */
-		else
+	
+		/* 1x scale */
+		else if (gamescale == 1)
 		{
-			for (y = 0; y < height; y++)
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
 			{
-				UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
-				for (x = 0; x < width; x++)
+				for (y = 0; y < height; y++)
 				{
-					UINT32 val = *src++;
-					dst[0] = val;
-					dst[1] = val;
-					dst[dstrowpixels] = val;
-					dst[dstrowpixels + 1] = val;
-					dst += 2;
+					UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+					for (x = 0; x < width; x++)
+						*dst++ = palette[*src++];
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+					for (x = 0; x < width; x++)
+						*dst++ = *src++;
 				}
 			}
 		}
-	}
-}
-
-
-
-/*-------------------------------------------------
-	render_game_bitmap_underlay - render the game
-	bitmap on top of an underlay
--------------------------------------------------*/
-
-static void render_game_bitmap_underlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display)
-{
-	int srcrowpixels = bitmap->rowpixels;
-	int dstrowpixels = final->rowpixels;
-	void *srcbase, *dstbase, *undbase;
-	int width, height;
-	int x, y;
-
-	/* compute common parameters */
-	width = Machine->absolute_visible_area.max_x - Machine->absolute_visible_area.min_x + 1;
-	height = Machine->absolute_visible_area.max_y - Machine->absolute_visible_area.min_y + 1;
-	srcbase = (UINT8 *)bitmap->base + Machine->absolute_visible_area.min_y * bitmap->rowbytes;
-	dstbase = (UINT8 *)final->base + gamerect.min_y * final->rowbytes + gamerect.min_x * sizeof(UINT32);
-	undbase = (UINT8 *)underlay->base + gamerect.min_y * underlay->rowbytes + gamerect.min_x * sizeof(UINT32);
-
-	/* vector case */
-	if (display->changed_flags & VECTOR_PIXELS_CHANGED)
-	{
-		vector_pixel_t offset = VECTOR_PIXEL(gamerect.min_x, gamerect.min_y);
-		vector_pixel_t *list = display->vector_dirty_pixels;
-
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
+	
+		/* 2x scale */
+		else if (gamescale == 2)
 		{
-			while (*list != VECTOR_PIXEL_END)
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
 			{
-				vector_pixel_t coords = *list;
-				x = VECTOR_PIXEL_X(coords);
-				y = VECTOR_PIXEL_Y(coords);
-				*list++ = coords + offset;
-				PIXEL(x,y,dst,dst,32) = add_and_clamp(palette[PIXEL(x,y,src,src,16)], PIXEL(x,y,und,dst,32));
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			while (*list != VECTOR_PIXEL_END)
-			{
-				vector_pixel_t coords = *list;
-				x = VECTOR_PIXEL_X(coords);
-				y = VECTOR_PIXEL_Y(coords);
-				*list++ = coords + offset;
-				PIXEL(x,y,dst,dst,32) = add_and_clamp(PIXEL(x,y,src,src,32), PIXEL(x,y,und,dst,32));
-			}
-		}
-	}
-
-	/* 1x scale */
-	else if (gamescale == 1)
-	{
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-				UINT32 *und = (UINT32 *)undbase + y * dstrowpixels;
-				for (x = 0; x < width; x++)
-					*dst++ = add_and_clamp(palette[*src++], *und++);
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-				UINT32 *und = (UINT32 *)undbase + y * dstrowpixels;
-				for (x = 0; x < width; x++)
-					*dst++ = add_and_clamp(*src++, *und++);
-			}
-		}
-	}
-
-	/* 2x scale */
-	else if (gamescale == 2)
-	{
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
-				UINT32 *und = (UINT32 *)undbase + y * 2 * dstrowpixels;
-				for (x = 0; x < width; x++)
+				for (y = 0; y < height; y++)
 				{
-					UINT32 val = palette[*src++];
-					dst[0] = add_and_clamp(val, und[0]);
-					dst[1] = add_and_clamp(val, und[1]);
-					dst[dstrowpixels] = add_and_clamp(val, und[dstrowpixels]);
-					dst[dstrowpixels + 1] = add_and_clamp(val, und[dstrowpixels + 1]);
-					dst += 2;
-					und += 2;
-				}
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
-				UINT32 *und = (UINT32 *)undbase + y * 2 * dstrowpixels;
-				for (x = 0; x < width; x++)
-				{
-					UINT32 val = *src++;
-					dst[0] = add_and_clamp(val, und[0]);
-					dst[1] = add_and_clamp(val, und[1]);
-					dst[dstrowpixels] = add_and_clamp(val, und[dstrowpixels]);
-					dst[dstrowpixels + 1] = add_and_clamp(val, und[dstrowpixels + 1]);
-					dst += 2;
-					und += 2;
-				}
-			}
-		}
-	}
-}
-
-
-
-/*-------------------------------------------------
-	render_game_bitmap_overlay - render the game
-	bitmap blended with an overlay
--------------------------------------------------*/
-
-static void render_game_bitmap_overlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display)
-{
-	int srcrowpixels = bitmap->rowpixels;
-	int dstrowpixels = final->rowpixels;
-	void *srcbase, *dstbase, *overbase, *overyrgbbase;
-	int width, height;
-	int x, y;
-
-	/* compute common parameters */
-	width = Machine->absolute_visible_area.max_x - Machine->absolute_visible_area.min_x + 1;
-	height = Machine->absolute_visible_area.max_y - Machine->absolute_visible_area.min_y + 1;
-	srcbase = (UINT8 *)bitmap->base + Machine->absolute_visible_area.min_y * bitmap->rowbytes;
-	dstbase = (UINT8 *)final->base + gamerect.min_y * final->rowbytes + gamerect.min_x * sizeof(UINT32);
-	overbase = (UINT8 *)overlay->base + gamerect.min_y * overlay->rowbytes + gamerect.min_x * sizeof(UINT32);
-	overyrgbbase = (UINT8 *)overlay_yrgb->base + gamerect.min_y * overlay_yrgb->rowbytes + gamerect.min_x * sizeof(UINT32);
-
-	/* vector case */
-	if (display->changed_flags & VECTOR_PIXELS_CHANGED)
-	{
-		vector_pixel_t offset = VECTOR_PIXEL(gamerect.min_x, gamerect.min_y);
-		vector_pixel_t *list = display->vector_dirty_pixels;
-
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			while (*list != VECTOR_PIXEL_END)
-			{
-				vector_pixel_t coords = *list;
-				x = VECTOR_PIXEL_X(coords);
-				y = VECTOR_PIXEL_Y(coords);
-				*list++ = coords + offset;
-				PIXEL(x,y,dst,dst,32) = blend_over(palette[PIXEL(x,y,src,src,16)], PIXEL(x,y,over,dst,32), PIXEL(x,y,overyrgb,dst,32));
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			while (*list != VECTOR_PIXEL_END)
-			{
-				vector_pixel_t coords = *list;
-				x = VECTOR_PIXEL_X(coords);
-				y = VECTOR_PIXEL_Y(coords);
-				*list++ = coords + offset;
-				PIXEL(x,y,dst,dst,32) = blend_over(PIXEL(x,y,src,src,32), PIXEL(x,y,over,dst,32), PIXEL(x,y,overyrgb,dst,32));
-			}
-		}
-	}
-
-	/* 1x scale */
-	else if (gamescale == 1)
-	{
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-				UINT32 *over = (UINT32 *)overbase + y * dstrowpixels;
-				UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * dstrowpixels;
-				for (x = 0; x < width; x++)
-					*dst++ = blend_over(palette[*src++], *over++, *overyrgb++);
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-				UINT32 *over = (UINT32 *)overbase + y * dstrowpixels;
-				UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * dstrowpixels;
-				for (x = 0; x < width; x++)
-					*dst++ = blend_over(*src++, *over++, *overyrgb++);
-			}
-		}
-	}
-
-	/* 2x scale */
-	else if (gamescale == 2)
-	{
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
-				UINT32 *over = (UINT32 *)overbase + y * 2 * dstrowpixels;
-				UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * 2 * dstrowpixels;
-				for (x = 0; x < width; x++)
-				{
-					UINT32 val = palette[*src++];
-					dst[0] = blend_over(val, over[0], overyrgb[0]);
-					dst[1] = blend_over(val, over[1], overyrgb[1]);
-					dst[dstrowpixels] = blend_over(val, over[dstrowpixels], overyrgb[dstrowpixels]);
-					dst[dstrowpixels + 1] = blend_over(val, over[dstrowpixels + 1], overyrgb[dstrowpixels + 1]);
-					dst += 2;
-					over += 2;
-					overyrgb += 2;
-				}
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
-				UINT32 *over = (UINT32 *)overbase + y * 2 * dstrowpixels;
-				UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * 2 * dstrowpixels;
-				for (x = 0; x < width; x++)
-				{
-					UINT32 val = *src++;
-					dst[0] = blend_over(val, over[0], overyrgb[0]);
-					dst[1] = blend_over(val, over[1], overyrgb[1]);
-					dst[dstrowpixels] = blend_over(val, over[dstrowpixels], overyrgb[dstrowpixels]);
-					dst[dstrowpixels + 1] = blend_over(val, over[dstrowpixels + 1], overyrgb[dstrowpixels + 1]);
-					dst += 2;
-					over += 2;
-					overyrgb += 2;
-				}
-			}
-		}
-	}
-}
-
-
-
-/*-------------------------------------------------
-	render_game_bitmap_underlay_overlay - render
-	the game bitmap blended with an overlay and
-	added to an underlay
--------------------------------------------------*/
-
-static void render_game_bitmap_underlay_overlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display)
-{
-	int srcrowpixels = bitmap->rowpixels;
-	int dstrowpixels = final->rowpixels;
-	void *srcbase, *dstbase, *undbase, *overbase, *overyrgbbase;
-	int width, height;
-	int x, y;
-
-	/* compute common parameters */
-	width = Machine->absolute_visible_area.max_x - Machine->absolute_visible_area.min_x + 1;
-	height = Machine->absolute_visible_area.max_y - Machine->absolute_visible_area.min_y + 1;
-	srcbase = (UINT8 *)bitmap->base + Machine->absolute_visible_area.min_y * bitmap->rowbytes;
-	dstbase = (UINT8 *)final->base + gamerect.min_y * final->rowbytes + gamerect.min_x * sizeof(UINT32);
-	undbase = (UINT8 *)underlay->base + gamerect.min_y * underlay->rowbytes + gamerect.min_x * sizeof(UINT32);
-	overbase = (UINT8 *)overlay->base + gamerect.min_y * overlay->rowbytes + gamerect.min_x * sizeof(UINT32);
-	overyrgbbase = (UINT8 *)overlay_yrgb->base + gamerect.min_y * overlay_yrgb->rowbytes + gamerect.min_x * sizeof(UINT32);
-
-	/* vector case */
-	if (display->changed_flags & VECTOR_PIXELS_CHANGED)
-	{
-		vector_pixel_t offset = VECTOR_PIXEL(gamerect.min_x, gamerect.min_y);
-		vector_pixel_t *list = display->vector_dirty_pixels;
-
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			while (*list != VECTOR_PIXEL_END)
-			{
-				vector_pixel_t coords = *list;
-				x = VECTOR_PIXEL_X(coords);
-				y = VECTOR_PIXEL_Y(coords);
-				*list++ = coords + offset;
-				PIXEL(x,y,dst,dst,32) = add_and_clamp(blend_over(palette[PIXEL(x,y,src,src,16)], PIXEL(x,y,over,dst,32), PIXEL(x,y,overyrgb,dst,32)), PIXEL(x,y,und,dst,32));
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			while (*list != VECTOR_PIXEL_END)
-			{
-				vector_pixel_t coords = *list;
-				x = VECTOR_PIXEL_X(coords);
-				y = VECTOR_PIXEL_Y(coords);
-				*list++ = coords + offset;
-				PIXEL(x,y,dst,dst,32) = add_and_clamp(blend_over(PIXEL(x,y,src,src,32), PIXEL(x,y,over,dst,32), PIXEL(x,y,overyrgb,dst,32)), PIXEL(x,y,und,dst,32));
-			}
-		}
-	}
-
-	/* 1x scale */
-	else if (gamescale == 1)
-	{
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-				UINT32 *und = (UINT32 *)undbase + y * dstrowpixels;
-				UINT32 *over = (UINT32 *)overbase + y * dstrowpixels;
-				UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * dstrowpixels;
-				for (x = 0; x < width; x++)
-					*dst++ = add_and_clamp(blend_over(palette[*src++], *over++, *overyrgb++), *und++);
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-				UINT32 *und = (UINT32 *)undbase + y * dstrowpixels;
-				UINT32 *over = (UINT32 *)overbase + y * dstrowpixels;
-				UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * dstrowpixels;
-				for (x = 0; x < width; x++)
-					*dst++ = add_and_clamp(blend_over(*src++, *over++, *overyrgb++), *und++);
-			}
-		}
-	}
-
-	/* 2x scale */
-	else if (gamescale == 2)
-	{
-		/* 16/15bpp case */
-		if (bitmap->depth != 32)
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
-				UINT32 *und = (UINT32 *)undbase + y * 2 * dstrowpixels;
-				UINT32 *over = (UINT32 *)overbase + y * 2 * dstrowpixels;
-				UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * 2 * dstrowpixels;
-				for (x = 0; x < width; x++)
-				{
-					UINT32 val = palette[*src++];
-					dst[0] = add_and_clamp(blend_over(val, over[0], overyrgb[0]), und[0]);
-					dst[1] = add_and_clamp(blend_over(val, over[1], overyrgb[1]), und[1]);
-					dst[dstrowpixels] = add_and_clamp(blend_over(val, over[dstrowpixels], overyrgb[dstrowpixels]), und[dstrowpixels]);
-					dst[dstrowpixels + 1] = add_and_clamp(blend_over(val, over[dstrowpixels + 1], overyrgb[dstrowpixels + 1]), und[dstrowpixels + 1]);
-					dst += 2;
-					und += 2;
-					over += 2;
-					overyrgb += 2;
-				}
-			}
-		}
-
-		/* 32bpp case */
-		else
-		{
-			for (y = 0; y < height; y++)
-			{
-				UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
-				UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
-				UINT32 *und = (UINT32 *)undbase + y * 2 * dstrowpixels;
-				UINT32 *over = (UINT32 *)overbase + y * 2 * dstrowpixels;
-				UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * 2 * dstrowpixels;
-				for (x = 0; x < width; x++)
-				{
-					UINT32 val = *src++;
-					dst[0] = add_and_clamp(blend_over(val, over[0], overyrgb[0]), und[0]);
-					dst[1] = add_and_clamp(blend_over(val, over[1], overyrgb[1]), und[1]);
-					dst[dstrowpixels] = add_and_clamp(blend_over(val, over[dstrowpixels], overyrgb[dstrowpixels]), und[dstrowpixels]);
-					dst[dstrowpixels + 1] = add_and_clamp(blend_over(val, over[dstrowpixels + 1], overyrgb[dstrowpixels + 1]), und[dstrowpixels + 1]);
-					dst += 2;
-					und += 2;
-					over += 2;
-					overyrgb += 2;
-				}
-			}
-		}
-	}
-}
-
-
-
-/*-------------------------------------------------
-	render_ui_overlay - render the UI overlay
--------------------------------------------------*/
-
-static void render_ui_overlay(struct mame_bitmap *bitmap, UINT32 *dirty, const rgb_t *palette, struct mame_display *display)
-{
-	int srcrowpixels = bitmap->rowpixels;
-	int dstrowpixels = final->rowpixels;
-	void *srcbase, *dstbase;
-	int width, height;
-	int x, y, h;
-
-	/* compute common parameters */
-	width = bitmap->width;
-	height = bitmap->height;
-	srcbase = bitmap->base;
-	dstbase = final->base;
-
-	/* 16/15bpp case */
-	if (bitmap->depth != 32)
-	{
-		for (y = 0; y < height; y++)
-		{
-			UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels;
-			UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-			UINT32 *hint = &dirty[y * MAX_HINTS_PER_SCANLINE];
-			for (h = 0; h < MAX_HINTS_PER_SCANLINE && hint[h] != 0; h++)
-			{
-				int start = hint[h] >> 16;
-				int stop = hint[h] & 0xffff;
-				hint[h] = 0;
-
-				for (x = start; x <= stop; x++)
-				{
-					int pix = src[x];
-					if (pix != UI_TRANSPARENT_COLOR16)
+					UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
+					for (x = 0; x < width; x++)
 					{
-						dst[x] = palette[pix];
-						src[x] = UI_TRANSPARENT_COLOR16;
+						UINT32 val = palette[*src++];
+						dst[0] = val;
+						dst[1] = val;
+						dst[dstrowpixels] = val;
+						dst[dstrowpixels + 1] = val;
+						dst += 2;
+					}
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
+					for (x = 0; x < width; x++)
+					{
+						UINT32 val = *src++;
+						dst[0] = val;
+						dst[1] = val;
+						dst[dstrowpixels] = val;
+						dst[dstrowpixels + 1] = val;
+						dst += 2;
 					}
 				}
 			}
 		}
 	}
-
-	/* 32bpp case */
-	else
+	
+	
+	
+	/*-------------------------------------------------
+		render_game_bitmap_underlay - render the game
+		bitmap on top of an underlay
+	-------------------------------------------------*/
+	
+	static void render_game_bitmap_underlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display)
 	{
-		for (y = 0; y < height; y++)
+		int srcrowpixels = bitmap->rowpixels;
+		int dstrowpixels = final->rowpixels;
+		void *srcbase, *dstbase, *undbase;
+		int width, height;
+		int x, y;
+	
+		/* compute common parameters */
+		width = Machine->absolute_visible_area.max_x - Machine->absolute_visible_area.min_x + 1;
+		height = Machine->absolute_visible_area.max_y - Machine->absolute_visible_area.min_y + 1;
+		srcbase = (UINT8 *)bitmap->base + Machine->absolute_visible_area.min_y * bitmap->rowbytes;
+		dstbase = (UINT8 *)final->base + gamerect.min_y * final->rowbytes + gamerect.min_x * sizeof(UINT32);
+		undbase = (UINT8 *)underlay->base + gamerect.min_y * underlay->rowbytes + gamerect.min_x * sizeof(UINT32);
+	
+		/* vector case */
+		if (display->changed_flags & VECTOR_PIXELS_CHANGED)
 		{
-			UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels;
-			UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
-			UINT32 *hint = &dirty[y * MAX_HINTS_PER_SCANLINE];
-			for (h = 0; h < MAX_HINTS_PER_SCANLINE && hint[h] != 0; h++)
+			vector_pixel_t offset = VECTOR_PIXEL(gamerect.min_x, gamerect.min_y);
+			vector_pixel_t *list = display->vector_dirty_pixels;
+	
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
 			{
-				int start = hint[h] >> 16;
-				int stop = hint[h] & 0xffff;
-				hint[h] = 0;
-
-				for (x = start; x <= stop; x++)
+				while (*list != VECTOR_PIXEL_END)
 				{
-					int pix = src[x];
-					if (pix != UI_TRANSPARENT_COLOR32)
+					vector_pixel_t coords = *list;
+					x = VECTOR_PIXEL_X(coords);
+					y = VECTOR_PIXEL_Y(coords);
+					*list++ = coords + offset;
+					PIXEL(x,y,dst,dst,32) = add_and_clamp(palette[PIXEL(x,y,src,src,16)], PIXEL(x,y,und,dst,32));
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				while (*list != VECTOR_PIXEL_END)
+				{
+					vector_pixel_t coords = *list;
+					x = VECTOR_PIXEL_X(coords);
+					y = VECTOR_PIXEL_Y(coords);
+					*list++ = coords + offset;
+					PIXEL(x,y,dst,dst,32) = add_and_clamp(PIXEL(x,y,src,src,32), PIXEL(x,y,und,dst,32));
+				}
+			}
+		}
+	
+		/* 1x scale */
+		else if (gamescale == 1)
+		{
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+					UINT32 *und = (UINT32 *)undbase + y * dstrowpixels;
+					for (x = 0; x < width; x++)
+						*dst++ = add_and_clamp(palette[*src++], *und++);
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+					UINT32 *und = (UINT32 *)undbase + y * dstrowpixels;
+					for (x = 0; x < width; x++)
+						*dst++ = add_and_clamp(*src++, *und++);
+				}
+			}
+		}
+	
+		/* 2x scale */
+		else if (gamescale == 2)
+		{
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
+					UINT32 *und = (UINT32 *)undbase + y * 2 * dstrowpixels;
+					for (x = 0; x < width; x++)
 					{
-						dst[x] = pix;
-						src[x] = UI_TRANSPARENT_COLOR32;
+						UINT32 val = palette[*src++];
+						dst[0] = add_and_clamp(val, und[0]);
+						dst[1] = add_and_clamp(val, und[1]);
+						dst[dstrowpixels] = add_and_clamp(val, und[dstrowpixels]);
+						dst[dstrowpixels + 1] = add_and_clamp(val, und[dstrowpixels + 1]);
+						dst += 2;
+						und += 2;
+					}
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
+					UINT32 *und = (UINT32 *)undbase + y * 2 * dstrowpixels;
+					for (x = 0; x < width; x++)
+					{
+						UINT32 val = *src++;
+						dst[0] = add_and_clamp(val, und[0]);
+						dst[1] = add_and_clamp(val, und[1]);
+						dst[dstrowpixels] = add_and_clamp(val, und[dstrowpixels]);
+						dst[dstrowpixels + 1] = add_and_clamp(val, und[dstrowpixels + 1]);
+						dst += 2;
+						und += 2;
 					}
 				}
 			}
 		}
 	}
-}
-
-
-
-#if 0
-#pragma mark -
-#pragma mark BITMAP LOADING/MANIPULATING
-#endif
-
-/*-------------------------------------------------
-	artwork_load - locate the .art file and
-	read all the bitmaps
--------------------------------------------------*/
-
-static int artwork_load(const struct GameDriver *driver, int width, int height)
-{
-	const struct overlay_piece *list = overlay_list;
-	struct artwork_piece *piece;
-	char filename[100];
-	mame_file *artfile = NULL;
-	int result;
-
-	/* reset the list of artwork */
-	num_pieces = 0;
-	num_underlays = 0;
-	num_overlays = 0;
-	num_bezels = 0;
-	overlay_list = NULL;
-
-	/* if the user turned artwork off, bail */
-	if (!options.use_artwork)
+	
+	
+	
+	/*-------------------------------------------------
+		render_game_bitmap_overlay - render the game
+		bitmap blended with an overlay
+	-------------------------------------------------*/
+	
+	static void render_game_bitmap_overlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display)
+	{
+		int srcrowpixels = bitmap->rowpixels;
+		int dstrowpixels = final->rowpixels;
+		void *srcbase, *dstbase, *overbase, *overyrgbbase;
+		int width, height;
+		int x, y;
+	
+		/* compute common parameters */
+		width = Machine->absolute_visible_area.max_x - Machine->absolute_visible_area.min_x + 1;
+		height = Machine->absolute_visible_area.max_y - Machine->absolute_visible_area.min_y + 1;
+		srcbase = (UINT8 *)bitmap->base + Machine->absolute_visible_area.min_y * bitmap->rowbytes;
+		dstbase = (UINT8 *)final->base + gamerect.min_y * final->rowbytes + gamerect.min_x * sizeof(UINT32);
+		overbase = (UINT8 *)overlay->base + gamerect.min_y * overlay->rowbytes + gamerect.min_x * sizeof(UINT32);
+		overyrgbbase = (UINT8 *)overlay_yrgb->base + gamerect.min_y * overlay_yrgb->rowbytes + gamerect.min_x * sizeof(UINT32);
+	
+		/* vector case */
+		if (display->changed_flags & VECTOR_PIXELS_CHANGED)
+		{
+			vector_pixel_t offset = VECTOR_PIXEL(gamerect.min_x, gamerect.min_y);
+			vector_pixel_t *list = display->vector_dirty_pixels;
+	
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
+			{
+				while (*list != VECTOR_PIXEL_END)
+				{
+					vector_pixel_t coords = *list;
+					x = VECTOR_PIXEL_X(coords);
+					y = VECTOR_PIXEL_Y(coords);
+					*list++ = coords + offset;
+					PIXEL(x,y,dst,dst,32) = blend_over(palette[PIXEL(x,y,src,src,16)], PIXEL(x,y,over,dst,32), PIXEL(x,y,overyrgb,dst,32));
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				while (*list != VECTOR_PIXEL_END)
+				{
+					vector_pixel_t coords = *list;
+					x = VECTOR_PIXEL_X(coords);
+					y = VECTOR_PIXEL_Y(coords);
+					*list++ = coords + offset;
+					PIXEL(x,y,dst,dst,32) = blend_over(PIXEL(x,y,src,src,32), PIXEL(x,y,over,dst,32), PIXEL(x,y,overyrgb,dst,32));
+				}
+			}
+		}
+	
+		/* 1x scale */
+		else if (gamescale == 1)
+		{
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+					UINT32 *over = (UINT32 *)overbase + y * dstrowpixels;
+					UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * dstrowpixels;
+					for (x = 0; x < width; x++)
+						*dst++ = blend_over(palette[*src++], *over++, *overyrgb++);
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+					UINT32 *over = (UINT32 *)overbase + y * dstrowpixels;
+					UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * dstrowpixels;
+					for (x = 0; x < width; x++)
+						*dst++ = blend_over(*src++, *over++, *overyrgb++);
+				}
+			}
+		}
+	
+		/* 2x scale */
+		else if (gamescale == 2)
+		{
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
+					UINT32 *over = (UINT32 *)overbase + y * 2 * dstrowpixels;
+					UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * 2 * dstrowpixels;
+					for (x = 0; x < width; x++)
+					{
+						UINT32 val = palette[*src++];
+						dst[0] = blend_over(val, over[0], overyrgb[0]);
+						dst[1] = blend_over(val, over[1], overyrgb[1]);
+						dst[dstrowpixels] = blend_over(val, over[dstrowpixels], overyrgb[dstrowpixels]);
+						dst[dstrowpixels + 1] = blend_over(val, over[dstrowpixels + 1], overyrgb[dstrowpixels + 1]);
+						dst += 2;
+						over += 2;
+						overyrgb += 2;
+					}
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
+					UINT32 *over = (UINT32 *)overbase + y * 2 * dstrowpixels;
+					UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * 2 * dstrowpixels;
+					for (x = 0; x < width; x++)
+					{
+						UINT32 val = *src++;
+						dst[0] = blend_over(val, over[0], overyrgb[0]);
+						dst[1] = blend_over(val, over[1], overyrgb[1]);
+						dst[dstrowpixels] = blend_over(val, over[dstrowpixels], overyrgb[dstrowpixels]);
+						dst[dstrowpixels + 1] = blend_over(val, over[dstrowpixels + 1], overyrgb[dstrowpixels + 1]);
+						dst += 2;
+						over += 2;
+						overyrgb += 2;
+					}
+				}
+			}
+		}
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		render_game_bitmap_underlay_overlay - render
+		the game bitmap blended with an overlay and
+		added to an underlay
+	-------------------------------------------------*/
+	
+	static void render_game_bitmap_underlay_overlay(struct mame_bitmap *bitmap, const rgb_t *palette, struct mame_display *display)
+	{
+		int srcrowpixels = bitmap->rowpixels;
+		int dstrowpixels = final->rowpixels;
+		void *srcbase, *dstbase, *undbase, *overbase, *overyrgbbase;
+		int width, height;
+		int x, y;
+	
+		/* compute common parameters */
+		width = Machine->absolute_visible_area.max_x - Machine->absolute_visible_area.min_x + 1;
+		height = Machine->absolute_visible_area.max_y - Machine->absolute_visible_area.min_y + 1;
+		srcbase = (UINT8 *)bitmap->base + Machine->absolute_visible_area.min_y * bitmap->rowbytes;
+		dstbase = (UINT8 *)final->base + gamerect.min_y * final->rowbytes + gamerect.min_x * sizeof(UINT32);
+		undbase = (UINT8 *)underlay->base + gamerect.min_y * underlay->rowbytes + gamerect.min_x * sizeof(UINT32);
+		overbase = (UINT8 *)overlay->base + gamerect.min_y * overlay->rowbytes + gamerect.min_x * sizeof(UINT32);
+		overyrgbbase = (UINT8 *)overlay_yrgb->base + gamerect.min_y * overlay_yrgb->rowbytes + gamerect.min_x * sizeof(UINT32);
+	
+		/* vector case */
+		if (display->changed_flags & VECTOR_PIXELS_CHANGED)
+		{
+			vector_pixel_t offset = VECTOR_PIXEL(gamerect.min_x, gamerect.min_y);
+			vector_pixel_t *list = display->vector_dirty_pixels;
+	
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
+			{
+				while (*list != VECTOR_PIXEL_END)
+				{
+					vector_pixel_t coords = *list;
+					x = VECTOR_PIXEL_X(coords);
+					y = VECTOR_PIXEL_Y(coords);
+					*list++ = coords + offset;
+					PIXEL(x,y,dst,dst,32) = add_and_clamp(blend_over(palette[PIXEL(x,y,src,src,16)], PIXEL(x,y,over,dst,32), PIXEL(x,y,overyrgb,dst,32)), PIXEL(x,y,und,dst,32));
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				while (*list != VECTOR_PIXEL_END)
+				{
+					vector_pixel_t coords = *list;
+					x = VECTOR_PIXEL_X(coords);
+					y = VECTOR_PIXEL_Y(coords);
+					*list++ = coords + offset;
+					PIXEL(x,y,dst,dst,32) = add_and_clamp(blend_over(PIXEL(x,y,src,src,32), PIXEL(x,y,over,dst,32), PIXEL(x,y,overyrgb,dst,32)), PIXEL(x,y,und,dst,32));
+				}
+			}
+		}
+	
+		/* 1x scale */
+		else if (gamescale == 1)
+		{
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+					UINT32 *und = (UINT32 *)undbase + y * dstrowpixels;
+					UINT32 *over = (UINT32 *)overbase + y * dstrowpixels;
+					UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * dstrowpixels;
+					for (x = 0; x < width; x++)
+						*dst++ = add_and_clamp(blend_over(palette[*src++], *over++, *overyrgb++), *und++);
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+					UINT32 *und = (UINT32 *)undbase + y * dstrowpixels;
+					UINT32 *over = (UINT32 *)overbase + y * dstrowpixels;
+					UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * dstrowpixels;
+					for (x = 0; x < width; x++)
+						*dst++ = add_and_clamp(blend_over(*src++, *over++, *overyrgb++), *und++);
+				}
+			}
+		}
+	
+		/* 2x scale */
+		else if (gamescale == 2)
+		{
+			/* 16/15bpp case */
+			if (bitmap->depth != 32)
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
+					UINT32 *und = (UINT32 *)undbase + y * 2 * dstrowpixels;
+					UINT32 *over = (UINT32 *)overbase + y * 2 * dstrowpixels;
+					UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * 2 * dstrowpixels;
+					for (x = 0; x < width; x++)
+					{
+						UINT32 val = palette[*src++];
+						dst[0] = add_and_clamp(blend_over(val, over[0], overyrgb[0]), und[0]);
+						dst[1] = add_and_clamp(blend_over(val, over[1], overyrgb[1]), und[1]);
+						dst[dstrowpixels] = add_and_clamp(blend_over(val, over[dstrowpixels], overyrgb[dstrowpixels]), und[dstrowpixels]);
+						dst[dstrowpixels + 1] = add_and_clamp(blend_over(val, over[dstrowpixels + 1], overyrgb[dstrowpixels + 1]), und[dstrowpixels + 1]);
+						dst += 2;
+						und += 2;
+						over += 2;
+						overyrgb += 2;
+					}
+				}
+			}
+	
+			/* 32bpp case */
+			else
+			{
+				for (y = 0; y < height; y++)
+				{
+					UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels + Machine->absolute_visible_area.min_x;
+					UINT32 *dst = (UINT32 *)dstbase + y * 2 * dstrowpixels;
+					UINT32 *und = (UINT32 *)undbase + y * 2 * dstrowpixels;
+					UINT32 *over = (UINT32 *)overbase + y * 2 * dstrowpixels;
+					UINT32 *overyrgb = (UINT32 *)overyrgbbase + y * 2 * dstrowpixels;
+					for (x = 0; x < width; x++)
+					{
+						UINT32 val = *src++;
+						dst[0] = add_and_clamp(blend_over(val, over[0], overyrgb[0]), und[0]);
+						dst[1] = add_and_clamp(blend_over(val, over[1], overyrgb[1]), und[1]);
+						dst[dstrowpixels] = add_and_clamp(blend_over(val, over[dstrowpixels], overyrgb[dstrowpixels]), und[dstrowpixels]);
+						dst[dstrowpixels + 1] = add_and_clamp(blend_over(val, over[dstrowpixels + 1], overyrgb[dstrowpixels + 1]), und[dstrowpixels + 1]);
+						dst += 2;
+						und += 2;
+						over += 2;
+						overyrgb += 2;
+					}
+				}
+			}
+		}
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		render_ui_overlay - render the UI overlay
+	-------------------------------------------------*/
+	
+	static void render_ui_overlay(struct mame_bitmap *bitmap, UINT32 *dirty, const rgb_t *palette, struct mame_display *display)
+	{
+		int srcrowpixels = bitmap->rowpixels;
+		int dstrowpixels = final->rowpixels;
+		void *srcbase, *dstbase;
+		int width, height;
+		int x, y, h;
+	
+		/* compute common parameters */
+		width = bitmap->width;
+		height = bitmap->height;
+		srcbase = bitmap->base;
+		dstbase = final->base;
+	
+		/* 16/15bpp case */
+		if (bitmap->depth != 32)
+		{
+			for (y = 0; y < height; y++)
+			{
+				UINT16 *src = (UINT16 *)srcbase + y * srcrowpixels;
+				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+				UINT32 *hint = &dirty[y * MAX_HINTS_PER_SCANLINE];
+				for (h = 0; h < MAX_HINTS_PER_SCANLINE && hint[h] != 0; h++)
+				{
+					int start = hint[h] >> 16;
+					int stop = hint[h] & 0xffff;
+					hint[h] = 0;
+	
+					for (x = start; x <= stop; x++)
+					{
+						int pix = src[x];
+						if (pix != UI_TRANSPARENT_COLOR16)
+						{
+							dst[x] = palette[pix];
+							src[x] = UI_TRANSPARENT_COLOR16;
+						}
+					}
+				}
+			}
+		}
+	
+		/* 32bpp case */
+		else
+		{
+			for (y = 0; y < height; y++)
+			{
+				UINT32 *src = (UINT32 *)srcbase + y * srcrowpixels;
+				UINT32 *dst = (UINT32 *)dstbase + y * dstrowpixels;
+				UINT32 *hint = &dirty[y * MAX_HINTS_PER_SCANLINE];
+				for (h = 0; h < MAX_HINTS_PER_SCANLINE && hint[h] != 0; h++)
+				{
+					int start = hint[h] >> 16;
+					int stop = hint[h] & 0xffff;
+					hint[h] = 0;
+	
+					for (x = start; x <= stop; x++)
+					{
+						int pix = src[x];
+						if (pix != UI_TRANSPARENT_COLOR32)
+						{
+							dst[x] = pix;
+							src[x] = UI_TRANSPARENT_COLOR32;
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	
+	
+	#if 0
+	#pragma mark -
+	#pragma mark BITMAP LOADING/MANIPULATING
+	#endif
+	
+	/*-------------------------------------------------
+		artwork_load - locate the .art file and
+		read all the bitmaps
+	-------------------------------------------------*/
+	
+	static int artwork_load(const struct GameDriver *driver, int width, int height)
+	{
+		const struct overlay_piece *list = overlay_list;
+		struct artwork_piece *piece;
+		char filename[100];
+		mame_file *artfile = NULL;
+		int result;
+	
+		/* reset the list of artwork */
+		num_pieces = 0;
+		num_underlays = 0;
+		num_overlays = 0;
+		num_bezels = 0;
+		overlay_list = NULL;
+	
+		/* if the user turned artwork off, bail */
+		if (!options.use_artwork)
+			return 1;
+	
+		/* first process any hard-coded overlays */
+		if (list && !generate_overlay(list, width, height))
+			return 0;
+	
+		/* attempt to open the .ART file; if none, that's okay */
+		while (driver)
+		{
+			if (driver->name)
+			{
+				sprintf(filename, "%s.art", driver->name);
+				artfile = mame_fopen(driver->name, filename, FILETYPE_ARTWORK, 0);
+				if (artfile)
+					break;
+			}
+			driver = driver->clone_of;
+		}
+		if (!artfile && !list)
+			return 1;
+	
+		/* parse the file into pieces */
+		if (artfile)
+		{
+			result = parse_art_file(artfile);
+			mame_fclose(artfile);
+			if (result == 0)
+				return 0;
+		}
+	
+		/* sort the pieces */
+		sort_pieces();
+	
+		/* now read the artwork files */
+		for (piece = artwork_list; piece; piece = piece->next)
+		{
+			/* convert from pixel coordinates if necessary */
+			if (fabs(piece->left) > 4.0 || fabs(piece->right) > 4.0 ||
+				fabs(piece->top) > 4.0 || fabs(piece->bottom) > 4.0)
+			{
+				piece->left /= (double)width;
+				piece->right /= (double)width;
+				piece->top /= (double)height;
+				piece->bottom /= (double)height;
+			}
+	
+			/* assign to one of the categories */
+			if (piece->layer == LAYER_BACKDROP)
+				num_underlays++;
+			else if (piece->layer == LAYER_OVERLAY)
+				num_overlays++;
+			else if (piece->layer >= LAYER_BEZEL)
+				num_bezels++;
+	
+			/* load the graphics */
+			if (driver)
+				load_bitmap(driver->name, piece);
+		}
+	// debugging
+	//	fprintf(stderr, "backdrops=%d overlays=%d bezels=%d\n", num_underlays, num_overlays, num_bezels);
+	
 		return 1;
-
-	/* first process any hard-coded overlays */
-	if (list && !generate_overlay(list, width, height))
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		open_and_read_png - open a PNG file, read it
+		in, and verify that we can do something with
+		it
+	-------------------------------------------------*/
+	
+	static int open_and_read_png(const char *gamename, const char *filename, struct png_info *png)
+	{
+		int result;
+		mame_file *file;
+	
+		/* open the file */
+		file = mame_fopen(gamename, filename, FILETYPE_ARTWORK, 0);
+		if (file == 0)
+			return 0;
+	
+		/* read the PNG data */
+		result = png_read_file(file, png);
+		mame_fclose(file);
+		if (result == 0)
+			return 0;
+	
+		/* verify we can handle this PNG */
+		if (png->bit_depth > 8)
+		{
+			logerror("Unsupported bit depth %d (8 bit max)\n", png->bit_depth);
+			free(png->image);
+			return 0;
+		}
+		if (png->interlace_method != 0)
+		{
+			logerror("Interlace unsupported\n");
+			free(png->image);
+			return 0;
+		}
+		if (png->color_type != 0 && png->color_type != 3 && png->color_type != 2 && png->color_type != 6)
+		{
+			logerror("Unsupported color type %d\n", png->color_type);
+			free(png->image);
+			return 0;
+		}
+	
+		/* if less than 8 bits, upsample */
+		png_expand_buffer_8bit(png);
+		return 1;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		load_bitmap - load the artwork into a bitmap
+	-------------------------------------------------*/
+	
+	static int load_bitmap(const char *gamename, struct artwork_piece *piece)
+	{
+		struct png_info png;
+		UINT8 *src;
+		int x, y;
+	
+		/* if we already have a bitmap, don't bother trying to read a file */
+		if (piece->rawbitmap)
+			return 1;
+	
+		/* open and read the main png file */
+		if (!open_and_read_png(gamename, piece->filename, &png))
+		{
+			logerror("Can't load PNG file: %s\n", piece->filename);
+			return 0;
+		}
+	
+		/* allocate the rawbitmap and erase it */
+		piece->rawbitmap = auto_bitmap_alloc_depth(png.width, png.height, 32);
+		if (!piece->rawbitmap)
+			return 0;
+		fillbitmap(piece->rawbitmap, 0, NULL);
+	
+		/* handle 8bpp palettized case */
+		if (png.color_type == 3)
+		{
+			/* loop over width/height */
+			src = png.image;
+			for (y = 0; y < png.height; y++)
+				for (x = 0; x < png.width; x++, src++)
+				{
+					/* determine alpha */
+					UINT8 alpha = (*src < png.num_trans) ? png.trans[*src] : 0xff;
+					if (alpha != 0xff)
+						piece->has_alpha = 1;
+	
+					/* expand to 32bpp */
+					plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(alpha, png.palette[*src * 3], png.palette[*src * 3 + 1], png.palette[*src * 3 + 2]));
+				}
+	
+			/* free memory for the palette */
+			free(png.palette);
+		}
+	
+		/* handle 8bpp grayscale case */
+		else if (png.color_type == 0)
+		{
+			/* loop over width/height */
+			src = png.image;
+			for (y = 0; y < png.height; y++)
+				for (x = 0; x < png.width; x++, src++)
+					plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(0xff, *src, *src, *src));
+		}
+	
+		/* handle 32bpp non-alpha case */
+		else if (png.color_type == 2)
+		{
+			/* loop over width/height */
+			src = png.image;
+			for (y = 0; y < png.height; y++)
+				for (x = 0; x < png.width; x++, src += 3)
+					plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(0xff, src[0], src[1], src[2]));
+		}
+	
+		/* handle 32bpp alpha case */
+		else
+		{
+			/* loop over width/height */
+			src = png.image;
+			for (y = 0; y < png.height; y++)
+				for (x = 0; x < png.width; x++, src += 4)
+					plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(src[3], src[0], src[1], src[2]));
+			piece->has_alpha = 1;
+		}
+	
+		/* free the raw image data and return after loading any alpha map */
+		free(png.image);
+		return load_alpha_bitmap(gamename, piece, &png);
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		load_alpha_bitmap - load the external alpha
+		mask
+	-------------------------------------------------*/
+	
+	static int load_alpha_bitmap(const char *gamename, struct artwork_piece *piece, const struct png_info *original)
+	{
+		struct png_info png;
+		UINT8 *src;
+		int x, y;
+	
+		/* if no file, we succeeded */
+		if (!piece->alpha_filename)
+			return 1;
+	
+		/* open and read the alpha png file */
+		if (!open_and_read_png(gamename, piece->alpha_filename, &png))
+		{
+			logerror("Can't load PNG file: %s\n", piece->alpha_filename);
+			return 0;
+		}
+	
+		/* must be the same size */
+		if (png.height != original->height || png.width != original->width)
+		{
+			logerror("Alpha PNG must match original's dimensions: %s\n", piece->alpha_filename);
+			return 0;
+		}
+	
+		/* okay, we have alpha */
+		piece->has_alpha = 1;
+	
+		/* handle 8bpp palettized case */
+		if (png.color_type == 3)
+		{
+			/* loop over width/height */
+			src = png.image;
+			for (y = 0; y < png.height; y++)
+				for (x = 0; x < png.width; x++, src++)
+				{
+					rgb_t pixel = read_pixel(piece->rawbitmap, x, y);
+					UINT8 alpha = compute_brightness(MAKE_RGB(png.palette[*src * 3], png.palette[*src * 3 + 1], png.palette[*src * 3 + 2]));
+					plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(alpha, RGB_RED(pixel), RGB_GREEN(pixel), RGB_BLUE(pixel)));
+				}
+	
+			/* free memory for the palette */
+			free(png.palette);
+		}
+	
+		/* handle 8bpp grayscale case */
+		else if (png.color_type == 0)
+		{
+			/* loop over width/height */
+			src = png.image;
+			for (y = 0; y < png.height; y++)
+				for (x = 0; x < png.width; x++, src++)
+				{
+					rgb_t pixel = read_pixel(piece->rawbitmap, x, y);
+					plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(*src, RGB_RED(pixel), RGB_GREEN(pixel), RGB_BLUE(pixel)));
+				}
+		}
+	
+		/* handle 32bpp non-alpha case */
+		else if (png.color_type == 2)
+		{
+			/* loop over width/height */
+			src = png.image;
+			for (y = 0; y < png.height; y++)
+				for (x = 0; x < png.width; x++, src += 3)
+				{
+					rgb_t pixel = read_pixel(piece->rawbitmap, x, y);
+					UINT8 alpha = compute_brightness(MAKE_RGB(src[0], src[1], src[2]));
+					plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(alpha, RGB_RED(pixel), RGB_GREEN(pixel), RGB_BLUE(pixel)));
+				}
+		}
+	
+		/* handle 32bpp alpha case */
+		else
+		{
+			/* loop over width/height */
+			src = png.image;
+			for (y = 0; y < png.height; y++)
+				for (x = 0; x < png.width; x++, src += 4)
+				{
+					rgb_t pixel = read_pixel(piece->rawbitmap, x, y);
+					UINT8 alpha = compute_brightness(MAKE_RGB(src[0], src[1], src[2]));
+					plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(alpha, RGB_RED(pixel), RGB_GREEN(pixel), RGB_BLUE(pixel)));
+				}
+		}
+	
+		/* free the raw image data */
+		free(png.image);
+		return 1;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_prep - prepare the artwork
+	-------------------------------------------------*/
+	
+	static int artwork_prep(void)
+	{
+		struct artwork_piece *piece;
+	
+		/* mark everything dirty */
+		underlay_invalid = screenrect;
+		overlay_invalid = screenrect;
+		bezel_invalid = screenrect;
+	
+		/* loop through all the pieces, generating the scaled bitmaps */
+		for (piece = artwork_list; piece; piece = piece->next)
+		{
+			/* scale to the artwork's intended dimensions */
+			if (!scale_bitmap(piece, piece->bounds.max_x - piece->bounds.min_x + 1, piece->bounds.max_y - piece->bounds.min_y + 1))
+				return 1;
+	
+			/* trim the bitmap down if transparent */
+			trim_bitmap(piece);
+	
+			/* do we intersect the game rect? */
+			piece->intersects_game = 0;
+			if (piece->bounds.max_x > gamerect.min_x && piece->bounds.min_x < gamerect.max_x &&
+				piece->bounds.max_y > gamerect.min_y && piece->bounds.min_y < gamerect.max_y)
+				piece->intersects_game = 1;
+		}
 		return 0;
-
-	/* attempt to open the .ART file; if none, that's okay */
-	while (driver)
-	{
-		if (driver->name)
-		{
-			sprintf(filename, "%s.art", driver->name);
-			artfile = mame_fopen(driver->name, filename, FILETYPE_ARTWORK, 0);
-			if (artfile)
-				break;
-		}
-		driver = driver->clone_of;
 	}
-	if (!artfile && !list)
-		return 1;
-
-	/* parse the file into pieces */
-	if (artfile)
+	
+	
+	
+	/*-------------------------------------------------
+		scale_bitmap - scale the bitmap for a
+		given piece of artwork
+	-------------------------------------------------*/
+	
+	static int scale_bitmap(struct artwork_piece *piece, int newwidth, int newheight)
 	{
-		result = parse_art_file(artfile);
-		mame_fclose(artfile);
-		if (!result)
+		UINT32 sx, sxfrac, sxstep, sy, syfrac, systep;
+		UINT32 global_brightness, global_alpha;
+		int x, y;
+	
+		/* skip if no bitmap */
+		if (!piece->rawbitmap)
+			return 1;
+	
+		/* allocate two new bitmaps */
+		piece->prebitmap = auto_bitmap_alloc_depth(newwidth, newheight, -32);
+		piece->yrgbbitmap = auto_bitmap_alloc_depth(newwidth, newheight, -32);
+		if (!piece->prebitmap || !piece->yrgbbitmap)
+			return 0;
+	
+		/* also allocate memory for the scanline hints */
+		piece->scanlinehint = auto_malloc(newheight * MAX_HINTS_PER_SCANLINE * sizeof(piece->scanlinehint[0]));
+		if (!piece->scanlinehint)
+			return 0;
+		memset(piece->scanlinehint, 0, newheight * MAX_HINTS_PER_SCANLINE * sizeof(piece->scanlinehint[0]));
+	
+		/* convert global brightness and alpha to fixed point */
+		global_brightness = (int)(piece->brightness * 65536.0);
+		global_alpha = (int)(piece->alpha * 65536.0);
+	
+		/* compute the step values */
+		sxstep = (UINT32)((double)piece->rawbitmap->width * (double)(1 << 24) / (double)newwidth);
+		systep = (UINT32)((double)piece->rawbitmap->height * (double)(1 << 24) / (double)newheight);
+		sxfrac = (sxstep / 2) & FRAC_MASK;
+		sx = (sxstep / 2) >> FRAC_BITS;
+		syfrac = (systep / 2) & FRAC_MASK;
+		sy = (systep / 2) >> FRAC_BITS;
+	
+		/* now do the scaling, using 4-point sampling */
+		for (y = 0; y < newheight; y++)
+		{
+			int prevstate = 0, statex = 0;
+	
+			sxfrac = (sxstep / 2) & FRAC_MASK;
+			sx = (sxstep / 2) >> FRAC_BITS;
+	
+			/* loop over columns */
+			for (x = 0; x < newwidth; x++)
+			{
+				rgb_t pix1, pix2, pix3, pix4;
+				int xweight, dx;
+				int yweight, dy;
+				int r, g, b, a;
+				int newstate;
+	
+				/* determine the weights and which pixels to fetch */
+				if (sxfrac <= FRAC_HALF)
+				{
+					dx = -1;
+					xweight = FRAC_HALF - sxfrac;
+				}
+				else
+				{
+					dx = 0;
+					xweight = FRAC_ONE - (sxfrac - FRAC_HALF);
+				}
+	
+				if (syfrac <= FRAC_HALF)
+				{
+					dy = -1;
+					yweight = FRAC_HALF - syfrac;
+				}
+				else
+				{
+					dy = 0;
+					yweight = FRAC_ONE - (syfrac - FRAC_HALF);
+				}
+	
+				/* reduce the resolution down to 8 bits for scaling */
+				xweight >>= FRAC_BITS - 8;
+				yweight >>= FRAC_BITS - 8;
+	
+				/* fetch the pixels */
+				pix1 = *((UINT32 *)piece->rawbitmap->base + (sy + dy + 0) * piece->rawbitmap->rowpixels + (sx + dx + 0));
+				pix2 = *((UINT32 *)piece->rawbitmap->base + (sy + dy + 0) * piece->rawbitmap->rowpixels + (sx + dx + 1));
+				pix3 = *((UINT32 *)piece->rawbitmap->base + (sy + dy + 1) * piece->rawbitmap->rowpixels + (sx + dx + 0));
+				pix4 = *((UINT32 *)piece->rawbitmap->base + (sy + dy + 1) * piece->rawbitmap->rowpixels + (sx + dx + 1));
+	
+				/* blend red */
+				r = xweight * yweight * RGB_RED(pix1);
+				r += (0x100 - xweight) * yweight * RGB_RED(pix2);
+				r += xweight * (0x100 - yweight) * RGB_RED(pix3);
+				r += (0x100 - xweight) * (0x100 - yweight) * RGB_RED(pix4);
+				r >>= 16;
+				r = (r * global_brightness) >> 16;
+				if (r > 0xff) r = 0xff;
+	
+				/* blend green */
+				g = xweight * yweight * RGB_GREEN(pix1);
+				g += (0x100 - xweight) * yweight * RGB_GREEN(pix2);
+				g += xweight * (0x100 - yweight) * RGB_GREEN(pix3);
+				g += (0x100 - xweight) * (0x100 - yweight) * RGB_GREEN(pix4);
+				g >>= 16;
+				g = (g * global_brightness) >> 16;
+				if (g > 0xff) g = 0xff;
+	
+				/* blend blue */
+				b = xweight * yweight * RGB_BLUE(pix1);
+				b += (0x100 - xweight) * yweight * RGB_BLUE(pix2);
+				b += xweight * (0x100 - yweight) * RGB_BLUE(pix3);
+				b += (0x100 - xweight) * (0x100 - yweight) * RGB_BLUE(pix4);
+				b >>= 16;
+				b = (b * global_brightness) >> 16;
+				if (b > 0xff) b = 0xff;
+	
+				/* blend alpha */
+				a = xweight * yweight * RGB_ALPHA(pix1);
+				a += (0x100 - xweight) * yweight * RGB_ALPHA(pix2);
+				a += xweight * (0x100 - yweight) * RGB_ALPHA(pix3);
+				a += (0x100 - xweight) * (0x100 - yweight) * RGB_ALPHA(pix4);
+				a >>= 16;
+				a = (a * global_alpha) >> 16;
+				if (a > 0xff) a = 0xff;
+	
+				/* compute the two pixel types */
+				*((UINT32 *)piece->prebitmap->base + y * piece->prebitmap->rowpixels + x) = compute_pre_pixel(a,r,g,b);
+				*((UINT32 *)piece->yrgbbitmap->base + y * piece->yrgbbitmap->rowpixels + x) = compute_yrgb_pixel(a,r,g,b);
+	
+				/* advance pointers */
+				sxfrac += sxstep;
+				sx += sxfrac >> FRAC_BITS;
+				sxfrac &= FRAC_MASK;
+	
+				/* look for state changes */
+				newstate = (a != 0);
+				if (newstate != prevstate)
+				{
+					prevstate = newstate;
+	
+					/* if starting a new run of non-transparent pixels, remember the start point */
+					if (newstate)
+						statex = x;
+	
+					/* otherwise, add the current run */
+					else
+						add_range_to_hint(piece->scanlinehint, y, statex, x - 1);
+				}
+			}
+	
+			/* add the final range */
+			if (prevstate)
+				add_range_to_hint(piece->scanlinehint, y, statex, x - 1);
+	
+			/* advance pointers */
+			syfrac += systep;
+			sy += syfrac >> FRAC_BITS;
+			syfrac &= FRAC_MASK;
+		}
+	
+		/* guess it worked! */
+		return 1;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		trim_bitmap - remove any transparent borders
+		from a scaled image
+	-------------------------------------------------*/
+	
+	static void trim_bitmap(struct artwork_piece *piece)
+	{
+		UINT32 *hintbase = piece->scanlinehint;
+		int top, bottom, left, right;
+		int x, y, height, width;
+	
+		/* skip if no bitmap */
+		if (!piece->rawbitmap)
+			return;
+	
+		/* don't trim overlay bitmaps */
+		if (piece->layer == LAYER_OVERLAY)
+			return;
+	
+		/* scan from the top down, looking for empty rows */
+		height = piece->prebitmap->height;
+		width = piece->prebitmap->width;
+		for (top = 0; top < height; top++)
+			if (hintbase[top * MAX_HINTS_PER_SCANLINE] != 0)
+				break;
+	
+		/* scan from the bottom up, looking for empty rows */
+		for (bottom = height - 1; bottom >= top; bottom--)
+			if (hintbase[bottom * MAX_HINTS_PER_SCANLINE] != 0)
+				break;
+	
+		/* now find the min/max */
+		left = width - 1;
+		right = 0;
+		for (y = top; y <= bottom; y++)
+		{
+			const UINT32 *hintdata = &hintbase[y * MAX_HINTS_PER_SCANLINE];
+	
+			/* check the minimum against the left */
+			if (hintdata[0] && (hintdata[0] >> 16) < left)
+				left = hintdata[0] >> 16;
+	
+			/* find the maximum */
+			for (x = 0; x < MAX_HINTS_PER_SCANLINE; x++)
+				if (hintdata[x] && (hintdata[x] & 0xffff) > right)
+					right = hintdata[x] & 0xffff;
+		}
+	
+		logerror("Trimming bitmap from (%d,%d)-(%d,%d) to (%d,%d)-(%d,%d)\n",
+				piece->bounds.min_x, piece->bounds.min_y, piece->bounds.max_x, piece->bounds.max_y,
+				piece->bounds.min_x + left, piece->bounds.min_y + top, piece->bounds.min_x + right, piece->bounds.min_y + bottom);
+	
+		/* skip if all is normal */
+		if (left == 0 && top == 0 && right == width - 1 && bottom == height - 1)
+			return;
+	
+		/* now shift the bitmap data */
+		for (y = top; y <= bottom; y++)
+		{
+			UINT32 *hintsrc = &hintbase[y * MAX_HINTS_PER_SCANLINE];
+			UINT32 *hintdst = &hintbase[(y - top) * MAX_HINTS_PER_SCANLINE];
+			UINT32 *dst1 = (UINT32 *)piece->prebitmap->base + (y - top) * piece->prebitmap->rowpixels;
+			UINT32 *dst2 = (UINT32 *)piece->yrgbbitmap->base + (y - top) * piece->yrgbbitmap->rowpixels;
+			UINT32 *src1 = (UINT32 *)piece->prebitmap->base + y * piece->prebitmap->rowpixels + left;
+			UINT32 *src2 = (UINT32 *)piece->yrgbbitmap->base + y * piece->yrgbbitmap->rowpixels + left;
+	
+			memmove(dst1, src1, (right - left + 1) * sizeof(UINT32));
+			memmove(dst2, src2, (right - left + 1) * sizeof(UINT32));
+	
+			/* adjust the hints */
+			for (x = 0; x < MAX_HINTS_PER_SCANLINE; x++)
+			{
+				UINT32 data = hintsrc[x];
+				if (data)
+					data -= (left << 16) | left;
+				hintdst[x] = data;
+			}
+		}
+	
+		/* and adjust the info */
+		piece->bounds.max_x = piece->bounds.min_x + right;
+		piece->bounds.min_x += left;
+		piece->bounds.max_y = piece->bounds.min_y + bottom;
+		piece->bounds.min_y += top;
+	}
+	
+	
+	
+	
+	#if 0
+	#pragma mark -
+	#pragma mark PIECE LIST MANAGEMENT
+	#endif
+	
+	/*-------------------------------------------------
+		create_new_piece - allocate a new piece
+		entry
+	-------------------------------------------------*/
+	
+	static struct artwork_piece *create_new_piece(const char *tag)
+	{
+		/* allocate a new piece */
+		struct artwork_piece *newpiece = auto_malloc(sizeof(struct artwork_piece));
+		if (newpiece == 0)
+			return NULL;
+		num_pieces++;
+	
+		/* initialize to default values */
+		memset(newpiece, 0, sizeof(*newpiece));
+		newpiece->layer = LAYER_UNKNOWN;
+		newpiece->has_alpha = 0;
+		newpiece->priority = 0;
+		newpiece->alpha = 1.0;
+		newpiece->brightness = 1.0;
+		newpiece->filename = NULL;
+		newpiece->alpha_filename = NULL;
+		newpiece->intersects_game = 0;
+		newpiece->visible = 1;
+	
+		/* allocate space for the filename */
+		newpiece->tag = auto_malloc(strlen(tag) + 1);
+		if (!newpiece->tag)
+			return NULL;
+		strcpy(newpiece->tag, tag);
+	
+		/* link into the list */
+		newpiece->next = artwork_list;
+		artwork_list = newpiece;
+		return newpiece;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		artwork_sort_compare - qsort compare function
+		to sort pieces by priority
+	-------------------------------------------------*/
+	
+	static int CLIB_DECL artwork_sort_compare(const void *item1, const void *item2)
+	{
+		const struct artwork_piece *piece1 = *((const struct artwork_piece **)item1);
+		const struct artwork_piece *piece2 = *((const struct artwork_piece **)item2);
+		if (piece1->layer < piece2->layer)
+			return -1;
+		else if (piece1->layer > piece2->layer)
+			return 1;
+		else if (piece1->priority < piece2->priority)
+			return -1;
+		else if (piece1->priority > piece2->priority)
+			return 1;
+		else
 			return 0;
 	}
-
-	/* sort the pieces */
-	sort_pieces();
-
-	/* now read the artwork files */
-	for (piece = artwork_list; piece; piece = piece->next)
+	
+	
+	
+	/*-------------------------------------------------
+		sort_pieces - sort the pieces by priority
+	-------------------------------------------------*/
+	
+	static void sort_pieces(void)
 	{
+		struct artwork_piece *array[MAX_PIECES];
+		struct artwork_piece *piece;
+		int i = 0;
+	
+		/* copy the list into the array, filtering as we go */
+		for (piece = artwork_list; piece; piece = piece->next)
+		{
+			switch (piece->layer)
+			{
+				case LAYER_BACKDROP:
+					if (options.use_artwork & ARTWORK_USE_BACKDROPS)
+						array[i++] = piece;
+					break;
+	
+				case LAYER_OVERLAY:
+					if (options.use_artwork & ARTWORK_USE_OVERLAYS)
+						array[i++] = piece;
+					break;
+	
+				default:
+					if (options.use_artwork & ARTWORK_USE_BEZELS)
+						array[i++] = piece;
+					break;
+			}
+		}
+		num_pieces = i;
+		if (num_pieces == 0)
+		{
+			artwork_list = NULL;
+			return;
+		}
+	
+		/* now sort it */
+		if (num_pieces > 1)
+			qsort(array, num_pieces, sizeof(array[0]), artwork_sort_compare);
+	
+		/* now reassemble the list */
+		artwork_list = piece = array[0];
+		for (i = 1; i < num_pieces; i++)
+		{
+			piece->next = array[i];
+			piece = piece->next;
+		}
+		piece->next = NULL;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		validate_pieces - make sure we got valid data
+	-------------------------------------------------*/
+	
+	static int validate_pieces(void)
+	{
+		struct artwork_piece *piece;
+	
+		/* verify each one */
+		for (piece = artwork_list; piece; piece = piece->next)
+		{
+			/* make sure we have a filename */
+			if ((!piece->filename || strlen(piece->filename) == 0) && !piece->rawbitmap)
+			{
+				logerror("Artwork piece '%s' has no file!\n", piece->tag);
+				return 0;
+			}
+	
+			/* make sure we have a layer */
+			if (piece->layer == LAYER_UNKNOWN)
+			{
+				logerror("Artwork piece '%s' has no layer!\n", piece->tag);
+				return 0;
+			}
+	
+			/* make sure we have a position */
+			if (piece->left == 0 && piece->right == 0)
+			{
+				logerror("Artwork piece '%s' has no position!\n", piece->tag);
+				return 0;
+			}
+	
+			/* make sure the position is valid */
+			if (piece->left >= piece->right || piece->top >= piece->bottom)
+			{
+				logerror("Artwork piece '%s' has invalid position data!\n", piece->tag);
+				return 0;
+			}
+		}
+	
+		return 1;
+	}
+	
+	
+	
+	#if 0
+	#pragma mark -
+	#pragma mark OVERLAY GENERATION
+	#endif
+	
+	/*-------------------------------------------------
+		generate_rect_piece - generate a rectangular
+		overlay piece
+	-------------------------------------------------*/
+	
+	static int generate_rect_piece(struct artwork_piece *piece, const struct overlay_piece *data, int width, int height)
+	{
+		int gfxwidth, gfxheight;
+	
+		/* extract coordinates */
+		piece->top = data->top;
+		piece->left = data->left;
+		piece->bottom = data->bottom;
+		piece->right = data->right;
+	
 		/* convert from pixel coordinates if necessary */
 		if (fabs(piece->left) > 4.0 || fabs(piece->right) > 4.0 ||
 			fabs(piece->top) > 4.0 || fabs(piece->bottom) > 4.0)
@@ -2034,1203 +2769,467 @@ static int artwork_load(const struct GameDriver *driver, int width, int height)
 			piece->top /= (double)height;
 			piece->bottom /= (double)height;
 		}
-
-		/* assign to one of the categories */
-		if (piece->layer == LAYER_BACKDROP)
-			num_underlays++;
-		else if (piece->layer == LAYER_OVERLAY)
-			num_overlays++;
-		else if (piece->layer >= LAYER_BEZEL)
-			num_bezels++;
-
-		/* load the graphics */
-		if (driver)
-			load_bitmap(driver->name, piece);
-	}
-// debugging
-//	fprintf(stderr, "backdrops=%d overlays=%d bezels=%d\n", num_underlays, num_overlays, num_bezels);
-
-	return 1;
-}
-
-
-
-/*-------------------------------------------------
-	open_and_read_png - open a PNG file, read it
-	in, and verify that we can do something with
-	it
--------------------------------------------------*/
-
-static int open_and_read_png(const char *gamename, const char *filename, struct png_info *png)
-{
-	int result;
-	mame_file *file;
-
-	/* open the file */
-	file = mame_fopen(gamename, filename, FILETYPE_ARTWORK, 0);
-	if (!file)
-		return 0;
-
-	/* read the PNG data */
-	result = png_read_file(file, png);
-	mame_fclose(file);
-	if (!result)
-		return 0;
-
-	/* verify we can handle this PNG */
-	if (png->bit_depth > 8)
-	{
-		logerror("Unsupported bit depth %d (8 bit max)\n", png->bit_depth);
-		free(png->image);
-		return 0;
-	}
-	if (png->interlace_method != 0)
-	{
-		logerror("Interlace unsupported\n");
-		free(png->image);
-		return 0;
-	}
-	if (png->color_type != 0 && png->color_type != 3 && png->color_type != 2 && png->color_type != 6)
-	{
-		logerror("Unsupported color type %d\n", png->color_type);
-		free(png->image);
-		return 0;
-	}
-
-	/* if less than 8 bits, upsample */
-	png_expand_buffer_8bit(png);
-	return 1;
-}
-
-
-
-/*-------------------------------------------------
-	load_bitmap - load the artwork into a bitmap
--------------------------------------------------*/
-
-static int load_bitmap(const char *gamename, struct artwork_piece *piece)
-{
-	struct png_info png;
-	UINT8 *src;
-	int x, y;
-
-	/* if we already have a bitmap, don't bother trying to read a file */
-	if (piece->rawbitmap)
+	
+		/* compute the effective width/height */
+		gfxwidth = (int)((piece->right - piece->left) * (double)width * 2.0 + 0.5);
+		gfxheight = (int)((piece->bottom - piece->top) * (double)height * 2.0 + 0.5);
+	
+		/* allocate a source bitmap 2x the game bitmap's size */
+		piece->rawbitmap = auto_bitmap_alloc_depth(gfxwidth, gfxheight, 32);
+		if (!piece->rawbitmap)
+			return 0;
+	
+		/* fill the bitmap */
+		fillbitmap(piece->rawbitmap, data->color, NULL);
 		return 1;
-
-	/* open and read the main png file */
-	if (!open_and_read_png(gamename, piece->filename, &png))
-	{
-		logerror("Can't load PNG file: %s\n", piece->filename);
-		return 0;
 	}
-
-	/* allocate the rawbitmap and erase it */
-	piece->rawbitmap = auto_bitmap_alloc_depth(png.width, png.height, 32);
-	if (!piece->rawbitmap)
-		return 0;
-	fillbitmap(piece->rawbitmap, 0, NULL);
-
-	/* handle 8bpp palettized case */
-	if (png.color_type == 3)
+	
+	
+	
+	/*-------------------------------------------------
+		generate_disk_piece - generate a disk-shaped
+		overlay piece
+	-------------------------------------------------*/
+	
+	static void render_disk(struct mame_bitmap *bitmap, int r, UINT32 color)
 	{
-		/* loop over width/height */
-		src = png.image;
-		for (y = 0; y < png.height; y++)
-			for (x = 0; x < png.width; x++, src++)
-			{
-				/* determine alpha */
-				UINT8 alpha = (*src < png.num_trans) ? png.trans[*src] : 0xff;
-				if (alpha != 0xff)
-					piece->has_alpha = 1;
-
-				/* expand to 32bpp */
-				plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(alpha, png.palette[*src * 3], png.palette[*src * 3 + 1], png.palette[*src * 3 + 2]));
-			}
-
-		/* free memory for the palette */
-		free(png.palette);
-	}
-
-	/* handle 8bpp grayscale case */
-	else if (png.color_type == 0)
-	{
-		/* loop over width/height */
-		src = png.image;
-		for (y = 0; y < png.height; y++)
-			for (x = 0; x < png.width; x++, src++)
-				plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(0xff, *src, *src, *src));
-	}
-
-	/* handle 32bpp non-alpha case */
-	else if (png.color_type == 2)
-	{
-		/* loop over width/height */
-		src = png.image;
-		for (y = 0; y < png.height; y++)
-			for (x = 0; x < png.width; x++, src += 3)
-				plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(0xff, src[0], src[1], src[2]));
-	}
-
-	/* handle 32bpp alpha case */
-	else
-	{
-		/* loop over width/height */
-		src = png.image;
-		for (y = 0; y < png.height; y++)
-			for (x = 0; x < png.width; x++, src += 4)
-				plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(src[3], src[0], src[1], src[2]));
-		piece->has_alpha = 1;
-	}
-
-	/* free the raw image data and return after loading any alpha map */
-	free(png.image);
-	return load_alpha_bitmap(gamename, piece, &png);
-}
-
-
-
-/*-------------------------------------------------
-	load_alpha_bitmap - load the external alpha
-	mask
--------------------------------------------------*/
-
-static int load_alpha_bitmap(const char *gamename, struct artwork_piece *piece, const struct png_info *original)
-{
-	struct png_info png;
-	UINT8 *src;
-	int x, y;
-
-	/* if no file, we succeeded */
-	if (!piece->alpha_filename)
-		return 1;
-
-	/* open and read the alpha png file */
-	if (!open_and_read_png(gamename, piece->alpha_filename, &png))
-	{
-		logerror("Can't load PNG file: %s\n", piece->alpha_filename);
-		return 0;
-	}
-
-	/* must be the same size */
-	if (png.height != original->height || png.width != original->width)
-	{
-		logerror("Alpha PNG must match original's dimensions: %s\n", piece->alpha_filename);
-		return 0;
-	}
-
-	/* okay, we have alpha */
-	piece->has_alpha = 1;
-
-	/* handle 8bpp palettized case */
-	if (png.color_type == 3)
-	{
-		/* loop over width/height */
-		src = png.image;
-		for (y = 0; y < png.height; y++)
-			for (x = 0; x < png.width; x++, src++)
-			{
-				rgb_t pixel = read_pixel(piece->rawbitmap, x, y);
-				UINT8 alpha = compute_brightness(MAKE_RGB(png.palette[*src * 3], png.palette[*src * 3 + 1], png.palette[*src * 3 + 2]));
-				plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(alpha, RGB_RED(pixel), RGB_GREEN(pixel), RGB_BLUE(pixel)));
-			}
-
-		/* free memory for the palette */
-		free(png.palette);
-	}
-
-	/* handle 8bpp grayscale case */
-	else if (png.color_type == 0)
-	{
-		/* loop over width/height */
-		src = png.image;
-		for (y = 0; y < png.height; y++)
-			for (x = 0; x < png.width; x++, src++)
-			{
-				rgb_t pixel = read_pixel(piece->rawbitmap, x, y);
-				plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(*src, RGB_RED(pixel), RGB_GREEN(pixel), RGB_BLUE(pixel)));
-			}
-	}
-
-	/* handle 32bpp non-alpha case */
-	else if (png.color_type == 2)
-	{
-		/* loop over width/height */
-		src = png.image;
-		for (y = 0; y < png.height; y++)
-			for (x = 0; x < png.width; x++, src += 3)
-			{
-				rgb_t pixel = read_pixel(piece->rawbitmap, x, y);
-				UINT8 alpha = compute_brightness(MAKE_RGB(src[0], src[1], src[2]));
-				plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(alpha, RGB_RED(pixel), RGB_GREEN(pixel), RGB_BLUE(pixel)));
-			}
-	}
-
-	/* handle 32bpp alpha case */
-	else
-	{
-		/* loop over width/height */
-		src = png.image;
-		for (y = 0; y < png.height; y++)
-			for (x = 0; x < png.width; x++, src += 4)
-			{
-				rgb_t pixel = read_pixel(piece->rawbitmap, x, y);
-				UINT8 alpha = compute_brightness(MAKE_RGB(src[0], src[1], src[2]));
-				plot_pixel(piece->rawbitmap, x, y, MAKE_ARGB(alpha, RGB_RED(pixel), RGB_GREEN(pixel), RGB_BLUE(pixel)));
-			}
-	}
-
-	/* free the raw image data */
-	free(png.image);
-	return 1;
-}
-
-
-
-/*-------------------------------------------------
-	artwork_prep - prepare the artwork
--------------------------------------------------*/
-
-static int artwork_prep(void)
-{
-	struct artwork_piece *piece;
-
-	/* mark everything dirty */
-	underlay_invalid = screenrect;
-	overlay_invalid = screenrect;
-	bezel_invalid = screenrect;
-
-	/* loop through all the pieces, generating the scaled bitmaps */
-	for (piece = artwork_list; piece; piece = piece->next)
-	{
-		/* scale to the artwork's intended dimensions */
-		if (!scale_bitmap(piece, piece->bounds.max_x - piece->bounds.min_x + 1, piece->bounds.max_y - piece->bounds.min_y + 1))
-			return 1;
-
-		/* trim the bitmap down if transparent */
-		trim_bitmap(piece);
-
-		/* do we intersect the game rect? */
-		piece->intersects_game = 0;
-		if (piece->bounds.max_x > gamerect.min_x && piece->bounds.min_x < gamerect.max_x &&
-			piece->bounds.max_y > gamerect.min_y && piece->bounds.min_y < gamerect.max_y)
-			piece->intersects_game = 1;
-	}
-	return 0;
-}
-
-
-
-/*-------------------------------------------------
-	scale_bitmap - scale the bitmap for a
-	given piece of artwork
--------------------------------------------------*/
-
-static int scale_bitmap(struct artwork_piece *piece, int newwidth, int newheight)
-{
-	UINT32 sx, sxfrac, sxstep, sy, syfrac, systep;
-	UINT32 global_brightness, global_alpha;
-	int x, y;
-
-	/* skip if no bitmap */
-	if (!piece->rawbitmap)
-		return 1;
-
-	/* allocate two new bitmaps */
-	piece->prebitmap = auto_bitmap_alloc_depth(newwidth, newheight, -32);
-	piece->yrgbbitmap = auto_bitmap_alloc_depth(newwidth, newheight, -32);
-	if (!piece->prebitmap || !piece->yrgbbitmap)
-		return 0;
-
-	/* also allocate memory for the scanline hints */
-	piece->scanlinehint = auto_malloc(newheight * MAX_HINTS_PER_SCANLINE * sizeof(piece->scanlinehint[0]));
-	if (!piece->scanlinehint)
-		return 0;
-	memset(piece->scanlinehint, 0, newheight * MAX_HINTS_PER_SCANLINE * sizeof(piece->scanlinehint[0]));
-
-	/* convert global brightness and alpha to fixed point */
-	global_brightness = (int)(piece->brightness * 65536.0);
-	global_alpha = (int)(piece->alpha * 65536.0);
-
-	/* compute the step values */
-	sxstep = (UINT32)((double)piece->rawbitmap->width * (double)(1 << 24) / (double)newwidth);
-	systep = (UINT32)((double)piece->rawbitmap->height * (double)(1 << 24) / (double)newheight);
-	sxfrac = (sxstep / 2) & FRAC_MASK;
-	sx = (sxstep / 2) >> FRAC_BITS;
-	syfrac = (systep / 2) & FRAC_MASK;
-	sy = (systep / 2) >> FRAC_BITS;
-
-	/* now do the scaling, using 4-point sampling */
-	for (y = 0; y < newheight; y++)
-	{
-		int prevstate = 0, statex = 0;
-
-		sxfrac = (sxstep / 2) & FRAC_MASK;
-		sx = (sxstep / 2) >> FRAC_BITS;
-
-		/* loop over columns */
-		for (x = 0; x < newwidth; x++)
+		int xc = bitmap->width / 2, yc = bitmap->height / 2;
+		int x = 0, twox = 0;
+		int y = r;
+		int twoy = r+r;
+		int p = 1 - r;
+		int i;
+	
+		while (x < y)
 		{
-			rgb_t pix1, pix2, pix3, pix4;
-			int xweight, dx;
-			int yweight, dy;
-			int r, g, b, a;
-			int newstate;
-
-			/* determine the weights and which pixels to fetch */
-			if (sxfrac <= FRAC_HALF)
-			{
-				dx = -1;
-				xweight = FRAC_HALF - sxfrac;
-			}
+			x++;
+			twox +=2;
+			if (p < 0)
+				p += twox + 1;
 			else
 			{
-				dx = 0;
-				xweight = FRAC_ONE - (sxfrac - FRAC_HALF);
+				y--;
+				twoy -= 2;
+				p += twox - twoy + 1;
 			}
-
-			if (syfrac <= FRAC_HALF)
+	
+			for (i = 0; i < twox; i++)
 			{
-				dy = -1;
-				yweight = FRAC_HALF - syfrac;
+				plot_pixel(bitmap, xc-x+i, yc-y, color);
+				plot_pixel(bitmap, xc-x+i, yc+y-1, color);
 			}
-			else
+	
+			for (i = 0; i < twoy; i++)
 			{
-				dy = 0;
-				yweight = FRAC_ONE - (syfrac - FRAC_HALF);
-			}
-
-			/* reduce the resolution down to 8 bits for scaling */
-			xweight >>= FRAC_BITS - 8;
-			yweight >>= FRAC_BITS - 8;
-
-			/* fetch the pixels */
-			pix1 = *((UINT32 *)piece->rawbitmap->base + (sy + dy + 0) * piece->rawbitmap->rowpixels + (sx + dx + 0));
-			pix2 = *((UINT32 *)piece->rawbitmap->base + (sy + dy + 0) * piece->rawbitmap->rowpixels + (sx + dx + 1));
-			pix3 = *((UINT32 *)piece->rawbitmap->base + (sy + dy + 1) * piece->rawbitmap->rowpixels + (sx + dx + 0));
-			pix4 = *((UINT32 *)piece->rawbitmap->base + (sy + dy + 1) * piece->rawbitmap->rowpixels + (sx + dx + 1));
-
-			/* blend red */
-			r = xweight * yweight * RGB_RED(pix1);
-			r += (0x100 - xweight) * yweight * RGB_RED(pix2);
-			r += xweight * (0x100 - yweight) * RGB_RED(pix3);
-			r += (0x100 - xweight) * (0x100 - yweight) * RGB_RED(pix4);
-			r >>= 16;
-			r = (r * global_brightness) >> 16;
-			if (r > 0xff) r = 0xff;
-
-			/* blend green */
-			g = xweight * yweight * RGB_GREEN(pix1);
-			g += (0x100 - xweight) * yweight * RGB_GREEN(pix2);
-			g += xweight * (0x100 - yweight) * RGB_GREEN(pix3);
-			g += (0x100 - xweight) * (0x100 - yweight) * RGB_GREEN(pix4);
-			g >>= 16;
-			g = (g * global_brightness) >> 16;
-			if (g > 0xff) g = 0xff;
-
-			/* blend blue */
-			b = xweight * yweight * RGB_BLUE(pix1);
-			b += (0x100 - xweight) * yweight * RGB_BLUE(pix2);
-			b += xweight * (0x100 - yweight) * RGB_BLUE(pix3);
-			b += (0x100 - xweight) * (0x100 - yweight) * RGB_BLUE(pix4);
-			b >>= 16;
-			b = (b * global_brightness) >> 16;
-			if (b > 0xff) b = 0xff;
-
-			/* blend alpha */
-			a = xweight * yweight * RGB_ALPHA(pix1);
-			a += (0x100 - xweight) * yweight * RGB_ALPHA(pix2);
-			a += xweight * (0x100 - yweight) * RGB_ALPHA(pix3);
-			a += (0x100 - xweight) * (0x100 - yweight) * RGB_ALPHA(pix4);
-			a >>= 16;
-			a = (a * global_alpha) >> 16;
-			if (a > 0xff) a = 0xff;
-
-			/* compute the two pixel types */
-			*((UINT32 *)piece->prebitmap->base + y * piece->prebitmap->rowpixels + x) = compute_pre_pixel(a,r,g,b);
-			*((UINT32 *)piece->yrgbbitmap->base + y * piece->yrgbbitmap->rowpixels + x) = compute_yrgb_pixel(a,r,g,b);
-
-			/* advance pointers */
-			sxfrac += sxstep;
-			sx += sxfrac >> FRAC_BITS;
-			sxfrac &= FRAC_MASK;
-
-			/* look for state changes */
-			newstate = (a != 0);
-			if (newstate != prevstate)
-			{
-				prevstate = newstate;
-
-				/* if starting a new run of non-transparent pixels, remember the start point */
-				if (newstate)
-					statex = x;
-
-				/* otherwise, add the current run */
-				else
-					add_range_to_hint(piece->scanlinehint, y, statex, x - 1);
+				plot_pixel(bitmap, xc-y+i, yc-x, color);
+				plot_pixel(bitmap, xc-y+i, yc+x-1, color);
 			}
 		}
-
-		/* add the final range */
-		if (prevstate)
-			add_range_to_hint(piece->scanlinehint, y, statex, x - 1);
-
-		/* advance pointers */
-		syfrac += systep;
-		sy += syfrac >> FRAC_BITS;
-		syfrac &= FRAC_MASK;
 	}
-
-	/* guess it worked! */
-	return 1;
-}
-
-
-
-/*-------------------------------------------------
-	trim_bitmap - remove any transparent borders
-	from a scaled image
--------------------------------------------------*/
-
-static void trim_bitmap(struct artwork_piece *piece)
-{
-	UINT32 *hintbase = piece->scanlinehint;
-	int top, bottom, left, right;
-	int x, y, height, width;
-
-	/* skip if no bitmap */
-	if (!piece->rawbitmap)
-		return;
-
-	/* don't trim overlay bitmaps */
-	if (piece->layer == LAYER_OVERLAY)
-		return;
-
-	/* scan from the top down, looking for empty rows */
-	height = piece->prebitmap->height;
-	width = piece->prebitmap->width;
-	for (top = 0; top < height; top++)
-		if (hintbase[top * MAX_HINTS_PER_SCANLINE] != 0)
-			break;
-
-	/* scan from the bottom up, looking for empty rows */
-	for (bottom = height - 1; bottom >= top; bottom--)
-		if (hintbase[bottom * MAX_HINTS_PER_SCANLINE] != 0)
-			break;
-
-	/* now find the min/max */
-	left = width - 1;
-	right = 0;
-	for (y = top; y <= bottom; y++)
+	
+	
+	static int generate_disk_piece(struct artwork_piece *piece, const struct overlay_piece *data, int width, int height)
 	{
-		const UINT32 *hintdata = &hintbase[y * MAX_HINTS_PER_SCANLINE];
-
-		/* check the minimum against the left */
-		if (hintdata[0] && (hintdata[0] >> 16) < left)
-			left = hintdata[0] >> 16;
-
-		/* find the maximum */
-		for (x = 0; x < MAX_HINTS_PER_SCANLINE; x++)
-			if (hintdata[x] && (hintdata[x] & 0xffff) > right)
-				right = hintdata[x] & 0xffff;
-	}
-
-	logerror("Trimming bitmap from (%d,%d)-(%d,%d) to (%d,%d)-(%d,%d)\n",
-			piece->bounds.min_x, piece->bounds.min_y, piece->bounds.max_x, piece->bounds.max_y,
-			piece->bounds.min_x + left, piece->bounds.min_y + top, piece->bounds.min_x + right, piece->bounds.min_y + bottom);
-
-	/* skip if all is normal */
-	if (left == 0 && top == 0 && right == width - 1 && bottom == height - 1)
-		return;
-
-	/* now shift the bitmap data */
-	for (y = top; y <= bottom; y++)
-	{
-		UINT32 *hintsrc = &hintbase[y * MAX_HINTS_PER_SCANLINE];
-		UINT32 *hintdst = &hintbase[(y - top) * MAX_HINTS_PER_SCANLINE];
-		UINT32 *dst1 = (UINT32 *)piece->prebitmap->base + (y - top) * piece->prebitmap->rowpixels;
-		UINT32 *dst2 = (UINT32 *)piece->yrgbbitmap->base + (y - top) * piece->yrgbbitmap->rowpixels;
-		UINT32 *src1 = (UINT32 *)piece->prebitmap->base + y * piece->prebitmap->rowpixels + left;
-		UINT32 *src2 = (UINT32 *)piece->yrgbbitmap->base + y * piece->yrgbbitmap->rowpixels + left;
-
-		memmove(dst1, src1, (right - left + 1) * sizeof(UINT32));
-		memmove(dst2, src2, (right - left + 1) * sizeof(UINT32));
-
-		/* adjust the hints */
-		for (x = 0; x < MAX_HINTS_PER_SCANLINE; x++)
+		double x = data->left, y = data->top, r = data->right;
+		struct rectangle temprect;
+		int gfxwidth, gfxradius;
+	
+		/* convert from pixel coordinates if necessary */
+		if (fabs(x) > 4.0 || fabs(y) > 4.0 || fabs(r) > 4.0)
 		{
-			UINT32 data = hintsrc[x];
-			if (data)
-				data -= (left << 16) | left;
-			hintdst[x] = data;
+			x /= (double)width;
+			y /= (double)height;
+			r /= (double)width;
 		}
-	}
-
-	/* and adjust the info */
-	piece->bounds.max_x = piece->bounds.min_x + right;
-	piece->bounds.min_x += left;
-	piece->bounds.max_y = piece->bounds.min_y + bottom;
-	piece->bounds.min_y += top;
-}
-
-
-
-
-#if 0
-#pragma mark -
-#pragma mark PIECE LIST MANAGEMENT
-#endif
-
-/*-------------------------------------------------
-	create_new_piece - allocate a new piece
-	entry
--------------------------------------------------*/
-
-static struct artwork_piece *create_new_piece(const char *tag)
-{
-	/* allocate a new piece */
-	struct artwork_piece *newpiece = auto_malloc(sizeof(struct artwork_piece));
-	if (!newpiece)
-		return NULL;
-	num_pieces++;
-
-	/* initialize to default values */
-	memset(newpiece, 0, sizeof(*newpiece));
-	newpiece->layer = LAYER_UNKNOWN;
-	newpiece->has_alpha = 0;
-	newpiece->priority = 0;
-	newpiece->alpha = 1.0;
-	newpiece->brightness = 1.0;
-	newpiece->filename = NULL;
-	newpiece->alpha_filename = NULL;
-	newpiece->intersects_game = 0;
-	newpiece->visible = 1;
-
-	/* allocate space for the filename */
-	newpiece->tag = auto_malloc(strlen(tag) + 1);
-	if (!newpiece->tag)
-		return NULL;
-	strcpy(newpiece->tag, tag);
-
-	/* link into the list */
-	newpiece->next = artwork_list;
-	artwork_list = newpiece;
-	return newpiece;
-}
-
-
-
-/*-------------------------------------------------
-	artwork_sort_compare - qsort compare function
-	to sort pieces by priority
--------------------------------------------------*/
-
-static int CLIB_DECL artwork_sort_compare(const void *item1, const void *item2)
-{
-	const struct artwork_piece *piece1 = *((const struct artwork_piece **)item1);
-	const struct artwork_piece *piece2 = *((const struct artwork_piece **)item2);
-	if (piece1->layer < piece2->layer)
-		return -1;
-	else if (piece1->layer > piece2->layer)
-		return 1;
-	else if (piece1->priority < piece2->priority)
-		return -1;
-	else if (piece1->priority > piece2->priority)
-		return 1;
-	else
-		return 0;
-}
-
-
-
-/*-------------------------------------------------
-	sort_pieces - sort the pieces by priority
--------------------------------------------------*/
-
-static void sort_pieces(void)
-{
-	struct artwork_piece *array[MAX_PIECES];
-	struct artwork_piece *piece;
-	int i = 0;
-
-	/* copy the list into the array, filtering as we go */
-	for (piece = artwork_list; piece; piece = piece->next)
-	{
-		switch (piece->layer)
-		{
-			case LAYER_BACKDROP:
-				if (options.use_artwork & ARTWORK_USE_BACKDROPS)
-					array[i++] = piece;
-				break;
-
-			case LAYER_OVERLAY:
-				if (options.use_artwork & ARTWORK_USE_OVERLAYS)
-					array[i++] = piece;
-				break;
-
-			default:
-				if (options.use_artwork & ARTWORK_USE_BEZELS)
-					array[i++] = piece;
-				break;
-		}
-	}
-	num_pieces = i;
-	if (num_pieces == 0)
-	{
-		artwork_list = NULL;
-		return;
-	}
-
-	/* now sort it */
-	if (num_pieces > 1)
-		qsort(array, num_pieces, sizeof(array[0]), artwork_sort_compare);
-
-	/* now reassemble the list */
-	artwork_list = piece = array[0];
-	for (i = 1; i < num_pieces; i++)
-	{
-		piece->next = array[i];
-		piece = piece->next;
-	}
-	piece->next = NULL;
-}
-
-
-
-/*-------------------------------------------------
-	validate_pieces - make sure we got valid data
--------------------------------------------------*/
-
-static int validate_pieces(void)
-{
-	struct artwork_piece *piece;
-
-	/* verify each one */
-	for (piece = artwork_list; piece; piece = piece->next)
-	{
-		/* make sure we have a filename */
-		if ((!piece->filename || strlen(piece->filename) == 0) && !piece->rawbitmap)
-		{
-			logerror("Artwork piece '%s' has no file!\n", piece->tag);
+	
+		/* generate coordinates */
+		piece->top = y - r * (double)width / (double)height;
+		piece->left = x - r;
+		piece->bottom = y + r * (double)width / (double)height;
+		piece->right = x + r;
+	
+		/* compute the effective width/height */
+		gfxwidth = (int)((piece->right - piece->left) * (double)width * 2.0 + 0.5);
+		gfxradius = (int)(r * (double)width * 2.0 + 0.5);
+	
+		/* allocate a source bitmap 2x the game bitmap's size */
+		piece->rawbitmap = auto_bitmap_alloc_depth(gfxwidth, gfxwidth, 32);
+		if (!piece->rawbitmap)
 			return 0;
-		}
-
-		/* make sure we have a layer */
-		if (piece->layer == LAYER_UNKNOWN)
-		{
-			logerror("Artwork piece '%s' has no layer!\n", piece->tag);
-			return 0;
-		}
-
-		/* make sure we have a position */
-		if (piece->left == 0 && piece->right == 0)
-		{
-			logerror("Artwork piece '%s' has no position!\n", piece->tag);
-			return 0;
-		}
-
-		/* make sure the position is valid */
-		if (piece->left >= piece->right || piece->top >= piece->bottom)
-		{
-			logerror("Artwork piece '%s' has invalid position data!\n", piece->tag);
-			return 0;
-		}
-	}
-
-	return 1;
-}
-
-
-
-#if 0
-#pragma mark -
-#pragma mark OVERLAY GENERATION
-#endif
-
-/*-------------------------------------------------
-	generate_rect_piece - generate a rectangular
-	overlay piece
--------------------------------------------------*/
-
-static int generate_rect_piece(struct artwork_piece *piece, const struct overlay_piece *data, int width, int height)
-{
-	int gfxwidth, gfxheight;
-
-	/* extract coordinates */
-	piece->top = data->top;
-	piece->left = data->left;
-	piece->bottom = data->bottom;
-	piece->right = data->right;
-
-	/* convert from pixel coordinates if necessary */
-	if (fabs(piece->left) > 4.0 || fabs(piece->right) > 4.0 ||
-		fabs(piece->top) > 4.0 || fabs(piece->bottom) > 4.0)
-	{
-		piece->left /= (double)width;
-		piece->right /= (double)width;
-		piece->top /= (double)height;
-		piece->bottom /= (double)height;
-	}
-
-	/* compute the effective width/height */
-	gfxwidth = (int)((piece->right - piece->left) * (double)width * 2.0 + 0.5);
-	gfxheight = (int)((piece->bottom - piece->top) * (double)height * 2.0 + 0.5);
-
-	/* allocate a source bitmap 2x the game bitmap's size */
-	piece->rawbitmap = auto_bitmap_alloc_depth(gfxwidth, gfxheight, 32);
-	if (!piece->rawbitmap)
-		return 0;
-
-	/* fill the bitmap */
-	fillbitmap(piece->rawbitmap, data->color, NULL);
-	return 1;
-}
-
-
-
-/*-------------------------------------------------
-	generate_disk_piece - generate a disk-shaped
-	overlay piece
--------------------------------------------------*/
-
-static void render_disk(struct mame_bitmap *bitmap, int r, UINT32 color)
-{
-	int xc = bitmap->width / 2, yc = bitmap->height / 2;
-	int x = 0, twox = 0;
-	int y = r;
-	int twoy = r+r;
-	int p = 1 - r;
-	int i;
-
-	while (x < y)
-	{
-		x++;
-		twox +=2;
-		if (p < 0)
-			p += twox + 1;
-		else
-		{
-			y--;
-			twoy -= 2;
-			p += twox - twoy + 1;
-		}
-
-		for (i = 0; i < twox; i++)
-		{
-			plot_pixel(bitmap, xc-x+i, yc-y, color);
-			plot_pixel(bitmap, xc-x+i, yc+y-1, color);
-		}
-
-		for (i = 0; i < twoy; i++)
-		{
-			plot_pixel(bitmap, xc-y+i, yc-x, color);
-			plot_pixel(bitmap, xc-y+i, yc+x-1, color);
-		}
-	}
-}
-
-
-static int generate_disk_piece(struct artwork_piece *piece, const struct overlay_piece *data, int width, int height)
-{
-	double x = data->left, y = data->top, r = data->right;
-	struct rectangle temprect;
-	int gfxwidth, gfxradius;
-
-	/* convert from pixel coordinates if necessary */
-	if (fabs(x) > 4.0 || fabs(y) > 4.0 || fabs(r) > 4.0)
-	{
-		x /= (double)width;
-		y /= (double)height;
-		r /= (double)width;
-	}
-
-	/* generate coordinates */
-	piece->top = y - r * (double)width / (double)height;
-	piece->left = x - r;
-	piece->bottom = y + r * (double)width / (double)height;
-	piece->right = x + r;
-
-	/* compute the effective width/height */
-	gfxwidth = (int)((piece->right - piece->left) * (double)width * 2.0 + 0.5);
-	gfxradius = (int)(r * (double)width * 2.0 + 0.5);
-
-	/* allocate a source bitmap 2x the game bitmap's size */
-	piece->rawbitmap = auto_bitmap_alloc_depth(gfxwidth, gfxwidth, 32);
-	if (!piece->rawbitmap)
-		return 0;
-
-	/* fill the bitmap with white */
-	temprect.min_x = temprect.min_y = 0;
-	temprect.max_x = piece->rawbitmap->width - 1;
-	temprect.max_y = piece->rawbitmap->height - 1;
-	erase_rect(piece->rawbitmap, &temprect, MAKE_ARGB(0,0xff,0xff,0xff));
-
-	/* now render the disk */
-	render_disk(piece->rawbitmap, gfxradius, data->color);
-	return 1;
-}
-
-
-
-/*-------------------------------------------------
-	generate_overlay - generate an overlay with
-	the given pieces
--------------------------------------------------*/
-
-static int generate_overlay(const struct overlay_piece *list, int width, int height)
-{
-	struct artwork_piece *piece;
-	int priority = 0;
-
-	/* loop until done */
-	while (list->type != OVERLAY_TYPE_END)
-	{
-		/* first create a new piece to use */
-		piece = create_new_piece(OVERLAY_TAG);
-		if (!piece)
-			return 0;
-
-		/* fill in the basics */
-		piece->has_alpha = 1;
-		piece->layer = LAYER_OVERLAY;
-		piece->priority = priority++;
-		piece->blendflags = list->type & OVERLAY_FLAG_MASK;
-
-		/* switch off the type */
-		switch (list->type & ~OVERLAY_FLAG_MASK)
-		{
-			case OVERLAY_TYPE_RECTANGLE:
-				if (!generate_rect_piece(piece, list, width, height))
-					return 0;
-				break;
-
-			case OVERLAY_TYPE_DISK:
-				if (!generate_disk_piece(piece, list, width, height))
-					return 0;
-				break;
-		}
-
-		/* next */
-		list++;
-	}
-
-	return 1;
-}
-
-
-
-#if 0
-#pragma mark -
-#pragma mark ART FILE PARSING
-#endif
-
-/*-------------------------------------------------
-	strip_space - strip leading/trailing spaces
--------------------------------------------------*/
-
-static char *strip_space(char *string)
-{
-	char *start, *end;
-
-	/* skip over leading space */
-	for (start = string; *start && isspace(*start); start++) ;
-
-	/* NULL terminate over trailing space */
-	for (end = start + strlen(start) - 1; end > start && isspace(*end); end--) *end = 0;
-	return start;
-}
-
-
-
-/*-------------------------------------------------
-	parse_tag_value - parse a tag/value pair
--------------------------------------------------*/
-
-static int parse_tag_value(struct artwork_piece *piece, const char *tag, const char *value)
-{
-	/* handle the various tags */
-	if (!strcmp(tag, "layer"))
-	{
-		if (!strcmp(value, "backdrop"))
-			piece->layer = LAYER_BACKDROP;
-		else if (!strcmp(value, "overlay"))
-			piece->layer = LAYER_OVERLAY;
-		else if (!strcmp(value, "bezel"))
-			piece->layer = LAYER_BEZEL;
-		else if (!strcmp(value, "marquee"))
-			piece->layer = LAYER_MARQUEE;
-		else if (!strcmp(value, "panel"))
-			piece->layer = LAYER_PANEL;
-		else if (!strcmp(value, "side"))
-			piece->layer = LAYER_SIDE;
-		else if (!strcmp(value, "flyer"))
-			piece->layer = LAYER_FLYER;
-		else
-			return 0;
+	
+		/* fill the bitmap with white */
+		temprect.min_x = temprect.min_y = 0;
+		temprect.max_x = piece->rawbitmap->width - 1;
+		temprect.max_y = piece->rawbitmap->height - 1;
+		erase_rect(piece->rawbitmap, &temprect, MAKE_ARGB(0,0xff,0xff,0xff));
+	
+		/* now render the disk */
+		render_disk(piece->rawbitmap, gfxradius, data->color);
 		return 1;
 	}
-	else if (!strcmp(tag, "priority"))
+	
+	
+	
+	/*-------------------------------------------------
+		generate_overlay - generate an overlay with
+		the given pieces
+	-------------------------------------------------*/
+	
+	static int generate_overlay(const struct overlay_piece *list, int width, int height)
 	{
-		return (sscanf(value, "%d", &piece->priority) == 1);
-	}
-	else if (!strcmp(tag, "visible"))
-	{
-		return (sscanf(value, "%d", &piece->visible) == 1);
-	}
-	else if (!strcmp(tag, "alpha"))
-	{
-		return (sscanf(value, "%f", &piece->alpha) == 1);
-	}
-	else if (!strcmp(tag, "brightness"))
-	{
-		return (sscanf(value, "%f", &piece->brightness) == 1);
-	}
-	else if (!strcmp(tag, "position"))
-	{
-		return (sscanf(value, "%f,%f,%f,%f", &piece->left, &piece->top, &piece->right, &piece->bottom) == 4);
-	}
-	else if (!strcmp(tag, "file"))
-	{
-		piece->filename = auto_malloc(strlen(value) + 1);
-		if (piece->filename)
-			strcpy(piece->filename, value);
-		return (piece->filename != NULL);
-	}
-	else if (!strcmp(tag, "alphafile"))
-	{
-		piece->alpha_filename = auto_malloc(strlen(value) + 1);
-		if (piece->alpha_filename)
-			strcpy(piece->alpha_filename, value);
-		return (piece->alpha_filename != NULL);
-	}
-	return 0;
-}
-
-
-
-/*-------------------------------------------------
-	parse_art_file - parse a .art file
--------------------------------------------------*/
-
-static int parse_art_file(mame_file *file)
-{
-	struct artwork_piece *current = NULL;
-	char *tag, *value, *p;
-	char buffer[1000];
-
-	/* loop until we run out of lines */
-	while (mame_fgets(buffer, sizeof(buffer), file))
-	{
-		/* strip off any comments */
-		p = strstr(buffer, "//");
-		if (p)
-			*p = 0;
-
-		/* strip off leading/trailing spaces */
-		tag = strip_space(buffer);
-
-		/* anything left? */
-		if (tag[0] == 0)
-			continue;
-
-		/* is this the start of a new entry? */
-		if (tag[strlen(tag) - 1] == ':')
+		struct artwork_piece *piece;
+		int priority = 0;
+	
+		/* loop until done */
+		while (list->type != OVERLAY_TYPE_END)
 		{
-			/* strip the space off the rest */
-			tag[strlen(tag) - 1] = 0;
-			tag = strip_space(tag);
-
-			/* create an entry for the new piece */
-			current = create_new_piece(tag);
-			if (!current)
+			/* first create a new piece to use */
+			piece = create_new_piece(OVERLAY_TAG);
+			if (piece == 0)
 				return 0;
-			continue;
+	
+			/* fill in the basics */
+			piece->has_alpha = 1;
+			piece->layer = LAYER_OVERLAY;
+			piece->priority = priority++;
+			piece->blendflags = list->type & OVERLAY_FLAG_MASK;
+	
+			/* switch off the type */
+			switch (list->type & ~OVERLAY_FLAG_MASK)
+			{
+				case OVERLAY_TYPE_RECTANGLE:
+					if (!generate_rect_piece(piece, list, width, height))
+						return 0;
+					break;
+	
+				case OVERLAY_TYPE_DISK:
+					if (!generate_disk_piece(piece, list, width, height))
+						return 0;
+					break;
+			}
+	
+			/* next */
+			list++;
 		}
-
-		/* is this a tag/value pair? */
-		value = strchr(tag, '=');
-		if (value)
-		{
-			/* strip spaces off of both parts */
-			*value++ = 0;
-			tag = strip_space(tag);
-			value = strip_space(value);
-
-			/* convert both strings to lowercase */
-			for (p = tag; *p; p++) *p = tolower(*p);
-			for (p = value; *p; p++) *p = tolower(*p);
-
-			/* now parse the result */
-			if (current && parse_tag_value(current, tag, value))
-				continue;
-		}
-
-		/* what the heck is it? */
-		logerror("Invalid line in .ART file:\n%s\n", buffer);
-	}
-
-	/* validate the artwork */
-	return validate_pieces();
-}
-
-
-
-#if 0
-#pragma mark -
-#pragma mark MISC UTILITIES
-#endif
-
-/*-------------------------------------------------
-	compute_rgb_components - compute the RGB
-	components
--------------------------------------------------*/
-
-static int compute_rgb_components(int depth, UINT32 rgb_components[3], UINT32 rgb32_components[3])
-{
-	UINT32 temp;
-	int r, g, b;
-
-	/* first convert the RGB components we got back into shifts */
-	for (temp = rgb32_components[0], rshift = 0; !(temp & 1); temp >>= 1)
-		rshift++;
-	for (temp = rgb32_components[1], gshift = 0; !(temp & 1); temp >>= 1)
-		gshift++;
-	for (temp = rgb32_components[2], bshift = 0; !(temp & 1); temp >>= 1)
-		bshift++;
-
-	/* compute the alpha shift for the leftover byte */
-	nonalpha_mask = rgb32_components[0] | rgb32_components[1] | rgb32_components[2];
-	temp = ~nonalpha_mask;
-	for (ashift = 0; !(temp & 1); temp >>= 1)
-		ashift++;
-
-	/* compute a transparent color; this is in the premultiplied space, so alpha is inverted */
-	transparent_color = ASSEMBLE_ARGB(0xff,0x00,0x00,0x00);
-
-	/* allocate a palette lookup */
-	palette_lookup = auto_malloc(65536 * sizeof(palette_lookup[0]));
-	if (!palette_lookup)
+	
 		return 1;
-
-	/* switch off the depth */
-	switch (depth)
-	{
-		case 16:
-			/* do nothing */
-			break;
-
-		case 32:
-			/* copy original components */
-			memcpy(rgb_components, rgb32_components, sizeof(rgb_components));
-			break;
-
-		case 15:
-			/* make up components */
-			rgb_components[0] = 0x7c00;
-			rgb_components[1] = 0x03e0;
-			rgb_components[2] = 0x001f;
-
-			/* now build up the palette */
-			for (r = 0; r < 32; r++)
-				for (g = 0; g < 32; g++)
-					for (b = 0; b < 32; b++)
-					{
-						int rr = (r << 3) | (r >> 2);
-						int gg = (g << 3) | (g >> 2);
-						int bb = (b << 3) | (b >> 2);
-						palette_lookup[(r << 10) | (g << 5) | b] = ASSEMBLE_ARGB(0, rr, gg, bb);
-					}
-			break;
 	}
-
-	return 0;
-}
-
-
-
-/*-------------------------------------------------
-	add_range_to_hint - add a given range to the
-	hint record for the specified scanline
--------------------------------------------------*/
-
-static void add_range_to_hint(UINT32 *hintbase, int scanline, int startx, int endx)
-{
-	int closestdiff = 100000, closestindex = -1;
-	int i;
-
-	/* first address the correct hint */
-	hintbase += scanline * MAX_HINTS_PER_SCANLINE;
-
-	/* first, look for an intersection */
-	for (i = 0; i < MAX_HINTS_PER_SCANLINE; i++)
+	
+	
+	
+	#if 0
+	#pragma mark -
+	#pragma mark ART FILE PARSING
+	#endif
+	
+	/*-------------------------------------------------
+		strip_space - strip leading/trailing spaces
+	-------------------------------------------------*/
+	
+	static char *strip_space(char *string)
 	{
-		UINT32 hint = hintbase[i];
-		int hintstart = hint >> 16;
-		int hintend = hint & 0xffff;
-		int diff;
-
-		/* stop if we hit a 0 */
-		if (hint == 0)
-			break;
-
-		/* do we intersect? */
-		if (startx <= hintend && endx >= hintstart)
-		{
-			closestindex = i;
-			goto intersect;
-		}
-
-		/* see how close we are to this entry */
-		if (hintend < startx)
-			diff = startx - hintend;
-		else
-			diff = hintstart - endx;
-
-		/* if this is the closest, remember it */
-		if (diff < closestdiff)
-		{
-			closestdiff = diff;
-			closestindex = i;
-		}
+		char *start, *end;
+	
+		/* skip over leading space */
+		for (start = string; *start && isspace(*start); start++) ;
+	
+		/* NULL terminate over trailing space */
+		for (end = start + strlen(start) - 1; end > start && isspace(*end); end--) *end = 0;
+		return start;
 	}
-
-	/* okay, we didn't find an intersection; do we have room to add? */
-	if (i < MAX_HINTS_PER_SCANLINE)
+	
+	
+	
+	/*-------------------------------------------------
+		parse_tag_value - parse a tag/value pair
+	-------------------------------------------------*/
+	
+	static int parse_tag_value(struct artwork_piece *piece, const char *tag, const char *value)
 	{
-		UINT32 newhint = (startx << 16) | endx;
-
-		/* if there's nothing there yet, just assign to the first entry */
-		if (i == 0)
-			hintbase[0] = newhint;
-
-		/* otherwise, shuffle the existing entries to make room for us */
-		else
+		/* handle the various tags */
+		if (!strcmp(tag, "layer"))
 		{
-			/* determine our new index */
-			i = closestindex;
-			if (hintbase[i] < newhint)
-				i++;
-
-			/* shift things over */
-			if (i < MAX_HINTS_PER_SCANLINE - 1)
-				memmove(&hintbase[i+1], &hintbase[i], (MAX_HINTS_PER_SCANLINE - (i+1)) * sizeof(hintbase[0]));
-			hintbase[i] = newhint;
+			if (!strcmp(value, "backdrop"))
+				piece->layer = LAYER_BACKDROP;
+			else if (!strcmp(value, "overlay"))
+				piece->layer = LAYER_OVERLAY;
+			else if (!strcmp(value, "bezel"))
+				piece->layer = LAYER_BEZEL;
+			else if (!strcmp(value, "marquee"))
+				piece->layer = LAYER_MARQUEE;
+			else if (!strcmp(value, "panel"))
+				piece->layer = LAYER_PANEL;
+			else if (!strcmp(value, "side"))
+				piece->layer = LAYER_SIDE;
+			else if (!strcmp(value, "flyer"))
+				piece->layer = LAYER_FLYER;
+			else
+				return 0;
+			return 1;
 		}
-		return;
+		else if (!strcmp(tag, "priority"))
+		{
+			return (sscanf(value, "%d", &piece->priority) == 1);
+		}
+		else if (!strcmp(tag, "visible"))
+		{
+			return (sscanf(value, "%d", &piece->visible) == 1);
+		}
+		else if (!strcmp(tag, "alpha"))
+		{
+			return (sscanf(value, "%f", &piece->alpha) == 1);
+		}
+		else if (!strcmp(tag, "brightness"))
+		{
+			return (sscanf(value, "%f", &piece->brightness) == 1);
+		}
+		else if (!strcmp(tag, "position"))
+		{
+			return (sscanf(value, "%f,%f,%f,%f", &piece->left, &piece->top, &piece->right, &piece->bottom) == 4);
+		}
+		else if (!strcmp(tag, "file"))
+		{
+			piece->filename = auto_malloc(strlen(value) + 1);
+			if (piece->filename)
+				strcpy(piece->filename, value);
+			return (piece->filename != NULL);
+		}
+		else if (!strcmp(tag, "alphafile"))
+		{
+			piece->alpha_filename = auto_malloc(strlen(value) + 1);
+			if (piece->alpha_filename)
+				strcpy(piece->alpha_filename, value);
+			return (piece->alpha_filename != NULL);
+		}
+		return 0;
 	}
-
-intersect:
-	/* intersect with the closest entry */
+	
+	
+	
+	/*-------------------------------------------------
+		parse_art_file - parse a .art file
+	-------------------------------------------------*/
+	
+	static int parse_art_file(mame_file *file)
 	{
-		UINT32 hint = hintbase[closestindex];
-		int hintstart = hint >> 16;
-		int hintend = hint & 0xffff;
-
-		/* compute the intersection */
-		if (startx < hintstart)
-			hintstart = startx;
-		if (endx > hintend)
-			hintend = endx;
-		hintbase[closestindex] = (hintstart << 16) | hintend;
+		struct artwork_piece *current = NULL;
+		char *tag, *value, *p;
+		char buffer[1000];
+	
+		/* loop until we run out of lines */
+		while (mame_fgets(buffer, sizeof(buffer), file))
+		{
+			/* strip off any comments */
+			p = strstr(buffer, "//");
+			if (p)
+				*p = 0;
+	
+			/* strip off leading/trailing spaces */
+			tag = strip_space(buffer);
+	
+			/* anything left? */
+			if (tag[0] == 0)
+				continue;
+	
+			/* is this the start of a new entry? */
+			if (tag[strlen(tag) - 1] == ':')
+			{
+				/* strip the space off the rest */
+				tag[strlen(tag) - 1] = 0;
+				tag = strip_space(tag);
+	
+				/* create an entry for the new piece */
+				current = create_new_piece(tag);
+				if (current == 0)
+					return 0;
+				continue;
+			}
+	
+			/* is this a tag/value pair? */
+			value = strchr(tag, '=');
+			if (value)
+			{
+				/* strip spaces off of both parts */
+				*value++ = 0;
+				tag = strip_space(tag);
+				value = strip_space(value);
+	
+				/* convert both strings to lowercase */
+				for (p = tag; *p; p++) *p = tolower(*p);
+				for (p = value; *p; p++) *p = tolower(*p);
+	
+				/* now parse the result */
+				if (current && parse_tag_value(current, tag, value))
+					continue;
+			}
+	
+			/* what the heck is it? */
+			logerror("Invalid line in .ART file:\n%s\n", buffer);
+		}
+	
+		/* validate the artwork */
+		return validate_pieces();
+	}
+	
+	
+	
+	#if 0
+	#pragma mark -
+	#pragma mark MISC UTILITIES
+	#endif
+	
+	/*-------------------------------------------------
+		compute_rgb_components - compute the RGB
+		components
+	-------------------------------------------------*/
+	
+	static int compute_rgb_components(int depth, UINT32 rgb_components[3], UINT32 rgb32_components[3])
+	{
+		UINT32 temp;
+		int r, g, b;
+	
+		/* first convert the RGB components we got back into shifts */
+		for (temp = rgb32_components[0], rshift = 0; !(temp & 1); temp >>= 1)
+			rshift++;
+		for (temp = rgb32_components[1], gshift = 0; !(temp & 1); temp >>= 1)
+			gshift++;
+		for (temp = rgb32_components[2], bshift = 0; !(temp & 1); temp >>= 1)
+			bshift++;
+	
+		/* compute the alpha shift for the leftover byte */
+		nonalpha_mask = rgb32_components[0] | rgb32_components[1] | rgb32_components[2];
+		temp = ~nonalpha_mask;
+		for (ashift = 0; !(temp & 1); temp >>= 1)
+			ashift++;
+	
+		/* compute a transparent color; this is in the premultiplied space, so alpha is inverted */
+		transparent_color = ASSEMBLE_ARGB(0xff,0x00,0x00,0x00);
+	
+		/* allocate a palette lookup */
+		palette_lookup = auto_malloc(65536 * sizeof(palette_lookup[0]));
+		if (palette_lookup == 0)
+			return 1;
+	
+		/* switch off the depth */
+		switch (depth)
+		{
+			case 16:
+				/* do nothing */
+				break;
+	
+			case 32:
+				/* copy original components */
+				memcpy(rgb_components, rgb32_components, sizeof(rgb_components));
+				break;
+	
+			case 15:
+				/* make up components */
+				rgb_components[0] = 0x7c00;
+				rgb_components[1] = 0x03e0;
+				rgb_components[2] = 0x001f;
+	
+				/* now build up the palette */
+				for (r = 0; r < 32; r++)
+					for (g = 0; g < 32; g++)
+						for (b = 0; b < 32; b++)
+						{
+							int rr = (r << 3) | (r >> 2);
+							int gg = (g << 3) | (g >> 2);
+							int bb = (b << 3) | (b >> 2);
+							palette_lookup[(r << 10) | (g << 5) | b] = ASSEMBLE_ARGB(0, rr, gg, bb);
+						}
+				break;
+		}
+	
+		return 0;
+	}
+	
+	
+	
+	/*-------------------------------------------------
+		add_range_to_hint - add a given range to the
+		hint record for the specified scanline
+	-------------------------------------------------*/
+	
+	static void add_range_to_hint(UINT32 *hintbase, int scanline, int startx, int endx)
+	{
+		int closestdiff = 100000, closestindex = -1;
+		int i;
+	
+		/* first address the correct hint */
+		hintbase += scanline * MAX_HINTS_PER_SCANLINE;
+	
+		/* first, look for an intersection */
+		for (i = 0; i < MAX_HINTS_PER_SCANLINE; i++)
+		{
+			UINT32 hint = hintbase[i];
+			int hintstart = hint >> 16;
+			int hintend = hint & 0xffff;
+			int diff;
+	
+			/* stop if we hit a 0 */
+			if (hint == 0)
+				break;
+	
+			/* do we intersect? */
+			if (startx <= hintend && endx >= hintstart)
+			{
+				closestindex = i;
+				goto intersect;
+			}
+	
+			/* see how close we are to this entry */
+			if (hintend < startx)
+				diff = startx - hintend;
+			else
+				diff = hintstart - endx;
+	
+			/* if this is the closest, remember it */
+			if (diff < closestdiff)
+			{
+				closestdiff = diff;
+				closestindex = i;
+			}
+		}
+	
+		/* okay, we didn't find an intersection; do we have room to add? */
+		if (i < MAX_HINTS_PER_SCANLINE)
+		{
+			UINT32 newhint = (startx << 16) | endx;
+	
+			/* if there's nothing there yet, just assign to the first entry */
+			if (i == 0)
+				hintbase[0] = newhint;
+	
+			/* otherwise, shuffle the existing entries to make room for us */
+			else
+			{
+				/* determine our new index */
+				i = closestindex;
+				if (hintbase[i] < newhint)
+					i++;
+	
+				/* shift things over */
+				if (i < MAX_HINTS_PER_SCANLINE - 1)
+					memmove(&hintbase[i+1], &hintbase[i], (MAX_HINTS_PER_SCANLINE - (i+1)) * sizeof(hintbase[0]));
+				hintbase[i] = newhint;
+			}
+			return;
+		}
+	
+	intersect:
+		/* intersect with the closest entry */
+		{
+			UINT32 hint = hintbase[closestindex];
+			int hintstart = hint >> 16;
+			int hintend = hint & 0xffff;
+	
+			/* compute the intersection */
+			if (startx < hintstart)
+				hintstart = startx;
+			if (endx > hintend)
+				hintend = endx;
+			hintbase[closestindex] = (hintstart << 16) | hintend;
+		}
 	}
 }

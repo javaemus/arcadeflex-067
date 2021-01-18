@@ -28,56 +28,52 @@
 #ifndef _SH2_H
 #define _SH2_H
 
-#include "cpuintrf.h"
-#include "osd_cpu.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package cpu.sh2;
 
-#define SH2_INT_NONE	-1
-#define SH2_INT_VBLIN	0
-#define SH2_INT_VBLOUT	1
-#define SH2_INT_HBLIN	2
-#define SH2_INT_TIMER0	3
-#define SH2_INT_TIMER1	4
-#define SH2_INT_DSP 	5
-#define SH2_INT_SOUND	6
-#define SH2_INT_SMPC	7
-#define SH2_INT_PAD 	8
-#define SH2_INT_DMA2	9
-#define SH2_INT_DMA1	10
-#define SH2_INT_DMA0	11
-#define SH2_INT_DMAILL	12
-#define SH2_INT_SPRITE	13
-#define SH2_INT_14		14
-#define SH2_INT_15		15
-#define SH2_INT_ABUS	16
-
-enum {
-	SH2_PC=1, SH2_SR, SH2_PR, SH2_GBR, SH2_VBR, SH2_MACH, SH2_MACL,
-	SH2_R0, SH2_R1, SH2_R2, SH2_R3, SH2_R4, SH2_R5, SH2_R6, SH2_R7,
-	SH2_R8, SH2_R9, SH2_R10, SH2_R11, SH2_R12, SH2_R13, SH2_R14, SH2_R15, SH2_EA
-};
-extern int sh2_icount;				  /* cycle count */
-
-extern void sh2_init(void);
-extern void sh2_reset (void *param);		  /* Reset registers to the initial values */
-extern void sh2_exit  (void);				  /* Shut down CPU core */
-extern int	sh2_execute(int cycles);		  /* Execute cycles - returns number of cycles actually run */
-extern unsigned sh2_get_context (void *dst);  /* Get registers, return context size */
-extern void sh2_set_context (void *src);	  /* Set registers */
-extern unsigned sh2_get_reg (int regnum);
-extern void sh2_set_reg (int regnum, unsigned val);
-extern void sh2_set_irq_line(int irqline, int state);
-extern void sh2_set_irq_callback(int (*callback)(int irqline));
-extern void sh2_state_save(void *file);
-extern void sh2_state_load(void *file);
-extern const char *sh2_info(void *context, int regnum);
-extern unsigned sh2_dasm(char *buffer, unsigned pc);
-
-WRITE32_HANDLER( sh2_internal_w );
-READ32_HANDLER( sh2_internal_r );
-
-#ifdef MAME_DEBUG
-extern unsigned DasmSH2( char *dst, unsigned pc );
-#endif
-
-#endif /* _SH2_H */
-
+public class sh2H
+{
+	
+	#define SH2_INT_NONE	-1
+	#define SH2_INT_VBLIN	0
+	#define SH2_INT_VBLOUT	1
+	#define SH2_INT_HBLIN	2
+	#define SH2_INT_TIMER0	3
+	#define SH2_INT_TIMER1	4
+	#define SH2_INT_DSP 	5
+	#define SH2_INT_SOUND	6
+	#define SH2_INT_SMPC	7
+	#define SH2_INT_PAD 	8
+	#define SH2_INT_DMA2	9
+	#define SH2_INT_DMA1	10
+	#define SH2_INT_DMA0	11
+	#define SH2_INT_DMAILL	12
+	#define SH2_INT_SPRITE	13
+	#define SH2_INT_14		14
+	#define SH2_INT_15		15
+	#define SH2_INT_ABUS	16
+	
+	enum {
+		SH2_PC=1, SH2_SR, SH2_PR, SH2_GBR, SH2_VBR, SH2_MACH, SH2_MACL,
+		SH2_R0, SH2_R1, SH2_R2, SH2_R3, SH2_R4, SH2_R5, SH2_R6, SH2_R7,
+		SH2_R8, SH2_R9, SH2_R10, SH2_R11, SH2_R12, SH2_R13, SH2_R14, SH2_R15, SH2_EA
+	};
+	
+	extern unsigned sh2_get_context (void *dst);  /* Get registers, return context size */
+	extern unsigned sh2_get_reg (int regnum);
+	extern const char *sh2_info(void *context, int regnum);
+	extern unsigned sh2_dasm(char *buffer, unsigned pc);
+	
+	WRITE32_HANDLER( sh2_internal_w );
+	READ32_HANDLER( sh2_internal_r );
+	
+	#ifdef MAME_DEBUG
+	extern unsigned DasmSH2( char *dst, unsigned pc );
+	#endif
+	
+	#endif /* _SH2_H */
+	
+}

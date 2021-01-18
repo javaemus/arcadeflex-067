@@ -15,7 +15,6 @@ enum
 	NAMCO_XDAY2
 };
 
-extern int namcona1_gametype;
 
 #define NA1_NVRAM_SIZE (0x800)
 

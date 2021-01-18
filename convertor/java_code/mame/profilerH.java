@@ -61,8 +61,6 @@ the profiler handles a FILO list so calls may be nested.
 void profiler__mark(int type);
 
 /* functions called by usrintf.c */
-void profiler_start(void);
-void profiler_stop(void);
 void profiler_show(struct mame_bitmap *bitmap);
 
 #endif	/* PROFILER_H */

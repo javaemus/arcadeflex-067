@@ -9,7 +9,6 @@
 extern data16_t *artmagic_vram0;
 extern data16_t *artmagic_vram1;
 
-extern int artmagic_xor[16], artmagic_is_stoneball;
 
 VIDEO_START( artmagic );
 

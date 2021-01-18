@@ -172,15 +172,15 @@ static void PREFIX286(_0fpre)(void)
 		ModRM=FETCHOP;
 		switch (ModRM&0x38) {
 		case 0: /* sldt */
-			if (!PM) i286_trap2(ILLEGAL_INSTRUCTION);
+			if (PM == 0) i286_trap2(ILLEGAL_INSTRUCTION);
 			PutRMWord(ModRM, I.ldtr.sel);
 			break;
 		case 8: /* str */
-			if (!PM) i286_trap2(ILLEGAL_INSTRUCTION);
+			if (PM == 0) i286_trap2(ILLEGAL_INSTRUCTION);
 			PutRMWord(ModRM, I.tr.sel);
 			break;
 		case 0x10: /* lldt */
-			if (!PM) i286_trap2(ILLEGAL_INSTRUCTION);
+			if (PM == 0) i286_trap2(ILLEGAL_INSTRUCTION);
 			if (PM&&(CPL!=0)) i286_trap2(GENERAL_PROTECTION_FAULT);
 			I.ldtr.sel=GetRMWord(ModRM);
 			if ((I.ldtr.sel&~7)>=I.gdtr.limit) i286_trap2(GENERAL_PROTECTION_FAULT);
@@ -191,7 +191,7 @@ static void PREFIX286(_0fpre)(void)
 			I.ldtr.base&=0xffffff;
 			break;
 		case 0x18: /* ltr */
-			if (!PM) i286_trap2(ILLEGAL_INSTRUCTION);
+			if (PM == 0) i286_trap2(ILLEGAL_INSTRUCTION);
 			if (CPL!=0) i286_trap2(GENERAL_PROTECTION_FAULT);
 			I.tr.sel=GetRMWord(ModRM);
 			if ((I.tr.sel&~7)>=I.gdtr.limit) i286_trap2(GENERAL_PROTECTION_FAULT);
@@ -202,7 +202,7 @@ static void PREFIX286(_0fpre)(void)
 			I.tr.base&=0xffffff;
 			break;
 		case 0x20: /* verr */
-			if (!PM) i286_trap2(ILLEGAL_INSTRUCTION);
+			if (PM == 0) i286_trap2(ILLEGAL_INSTRUCTION);
 			tmp=GetRMWord(ModRM);
 			if (tmp&4) {
 				I.ZeroVal=( ((tmp&~7)<I.ldtr.limit)
@@ -213,7 +213,7 @@ static void PREFIX286(_0fpre)(void)
 			}
 			break;
 		case 0x28: /* verw */
-			if (!PM) i286_trap2(ILLEGAL_INSTRUCTION);
+			if (PM == 0) i286_trap2(ILLEGAL_INSTRUCTION);
 			tmp=GetRMWord(ModRM);
 			if (tmp&4) {
 				I.ZeroVal=( ((tmp&~7)<I.ldtr.limit)
@@ -274,7 +274,7 @@ static void PREFIX286(_0fpre)(void)
 		}
 		break;
 	case 3: /* LSL */
-		if (!PM) i286_trap2(ILLEGAL_INSTRUCTION);
+		if (PM == 0) i286_trap2(ILLEGAL_INSTRUCTION);
 		ModRM = FETCHOP;
 		tmp=GetRMWord(ModRM);
 		I.ZeroVal=i286_selector_okay(tmp);

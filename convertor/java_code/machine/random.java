@@ -60,7 +60,7 @@ static int initf = 0;
 static unsigned long *next;
 
 /* initializes state[N] with a seed */
-static void init_genrand(unsigned long s)
+public static InitDriverPtr init_genrand = new InitDriverPtr() { public void handler() (unsigned long s)
 {
     int j;
     state[0]= s & 0xffffffffUL;
@@ -73,13 +73,13 @@ static void init_genrand(unsigned long s)
         state[j] &= 0xffffffffUL;  /* for >32 bit machines */
     }
     left = 1; initf = 1;
-}
+} };
 
 #if 0	/* does not compile in MAME and is not necessary either */
 /* initialize by an array with array-length */
 /* init_key is the array for initializing keys */
 /* key_length is its length */
-static void init_by_array(init_key, key_length)
+public static InitDriverPtr init_by_array = new InitDriverPtr() { public void handler() (init_key, key_length)
 static unsigned long init_key[], key_length;
 {
     int i, j, k;
@@ -104,7 +104,7 @@ static unsigned long init_key[], key_length;
 
     state[0] = 0x80000000UL; /* MSB is 1; assuring non-zero initial array */
     left = 1; initf = 1;
-}
+} };
 #endif
 
 static void next_state(void)

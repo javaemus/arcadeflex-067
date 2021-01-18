@@ -22,7 +22,6 @@ WRITE16_HANDLER( kaneko16_layers_1_regs_w );
 
 /* Sprites: */
 
-extern int kaneko16_sprite_type;
 extern data16_t kaneko16_sprite_xoffs, kaneko16_sprite_flipx;
 extern data16_t kaneko16_sprite_yoffs, kaneko16_sprite_flipy;
 extern data16_t *kaneko16_sprites_regs;
@@ -72,7 +71,6 @@ MACHINE_INIT( kaneko16 );
 
 /* in drivers/galpani2.c */
 
-void galpani2_mcu_run(void);
 
 /* in vidhrdw/galpani2.c */
 

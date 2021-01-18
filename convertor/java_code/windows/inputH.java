@@ -39,7 +39,5 @@ typedef struct _KEYBOARD_INDICATOR_PARAMETERS {
 //	PROTOTYPES
 //============================================================
 
-void start_led(void);
-void stop_led(void);
 
 #endif /* ifndef __INPUTD_H */

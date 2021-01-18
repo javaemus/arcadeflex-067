@@ -48,7 +48,15 @@ void YM_DELTAT_savestate(const char *statename,int num,YM_DELTAT *DELTAT);
 
 
 #define YM_INLINE_BLOCK
-#include "ymdeltat.c" /* include inline function section */
-#undef  YM_INLINE_BLOCK
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package sound;
 
-#endif
+public class ymdeltatH
+{
+	#undef  YM_INLINE_BLOCK
+	
+	#endif
+}

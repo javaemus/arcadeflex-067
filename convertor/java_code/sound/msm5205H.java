@@ -26,9 +26,6 @@ struct MSM5205interface
 };
 
 int MSM5205_sh_start (const struct MachineSound *msound);
-void MSM5205_sh_stop (void);   /* empty this function */
-void MSM5205_sh_update (void); /* empty this function */
-void MSM5205_sh_reset (void);
 
 /* reset signal should keep for 2cycle of VCLK      */
 void MSM5205_reset_w (int num, int reset);

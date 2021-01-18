@@ -2,8 +2,15 @@
 	generate the tms9980a/tms9981 emulator
 */
 
-#include "tms9900.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package cpu.tms9900;
 
-#define TMS99XX_MODEL TMS9980_ID
-
-#include "99xxcore.h"
+public class tms9980a
+{
+	
+	#define TMS99XX_MODEL TMS9980_ID
+	
+	}

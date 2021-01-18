@@ -22,7 +22,6 @@ struct ES5505interface
 };
 
 int ES5505_sh_start(const struct MachineSound *msound);
-void ES5505_sh_stop(void);
 
 READ16_HANDLER( ES5505_data_0_r );
 READ16_HANDLER( ES5505_data_1_r );
@@ -48,12 +47,7 @@ struct ES5506interface
 };
 
 int ES5506_sh_start(const struct MachineSound *msound);
-void ES5506_sh_stop(void);
 
-READ_HANDLER( ES5506_data_0_r );
-READ_HANDLER( ES5506_data_1_r );
-WRITE_HANDLER( ES5506_data_0_w );
-WRITE_HANDLER( ES5506_data_1_w );
 
 READ16_HANDLER( ES5506_data_0_word_r );
 READ16_HANDLER( ES5506_data_1_word_r );

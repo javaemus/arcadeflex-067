@@ -20,8 +20,6 @@ struct BSMT2000interface
 };
 
 int BSMT2000_sh_start(const struct MachineSound *msound);
-void BSMT2000_sh_stop(void);
-void BSMT2000_sh_reset(void);
 
 WRITE16_HANDLER( BSMT2000_data_0_w );
 

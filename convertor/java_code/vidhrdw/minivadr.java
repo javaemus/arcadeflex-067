@@ -7,66 +7,73 @@ Driver by Takahiro Nogi (nogi@kt.rim.or.jp) 1999/12/19 -
 
 ***************************************************************************/
 
-#include "driver.h"
-#include "vidhrdw/generic.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package vidhrdw;
 
-
-
-/*******************************************************************
-
-	Palette Setting.
-
-*******************************************************************/
-
-PALETTE_INIT( minivadr )
+public class minivadr
 {
-	palette_set_color(0,0x00,0x00,0x00);
-	palette_set_color(1,0xff,0xff,0xff);
-}
-
-
-/*******************************************************************
-
-	Draw Pixel.
-
-*******************************************************************/
-WRITE_HANDLER( minivadr_videoram_w )
-{
-	int i;
-	int x, y;
-	int color;
-
-
-	videoram[offset] = data;
-
-	x = (offset % 32) * 8;
-	y = (offset / 32);
-
-	if (x >= Machine->visible_area.min_x &&
-			x <= Machine->visible_area.max_x &&
-			y >= Machine->visible_area.min_y &&
-			y <= Machine->visible_area.max_y)
+	
+	
+	
+	/*******************************************************************
+	
+		Palette Setting.
+	
+	*******************************************************************/
+	
+	PALETTE_INIT( minivadr )
 	{
-		for (i = 0; i < 8; i++)
+		palette_set_color(0,0x00,0x00,0x00);
+		palette_set_color(1,0xff,0xff,0xff);
+	}
+	
+	
+	/*******************************************************************
+	
+		Draw Pixel.
+	
+	*******************************************************************/
+	public static WriteHandlerPtr minivadr_videoram_w = new WriteHandlerPtr() {public void handler(int offset, int data)
+	{
+		int i;
+		int x, y;
+		int color;
+	
+	
+		videoram.write(offset,data);
+	
+		x = (offset % 32) * 8;
+		y = (offset / 32);
+	
+		if (x >= Machine->visible_area.min_x &&
+				x <= Machine->visible_area.max_x &&
+				y >= Machine->visible_area.min_y &&
+				y <= Machine->visible_area.max_y)
 		{
-			color = Machine->pens[((data >> i) & 0x01)];
-
-			plot_pixel(tmpbitmap, x + (7 - i), y, color);
+			for (i = 0; i < 8; i++)
+			{
+				color = Machine->pens[((data >> i) & 0x01)];
+	
+				plot_pixel(tmpbitmap, x + (7 - i), y, color);
+			}
 		}
-	}
-}
-
-
-VIDEO_UPDATE( minivadr )
-{
-	if (get_vh_global_attribute_changed())
+	} };
+	
+	
+	VIDEO_UPDATE( minivadr )
 	{
-		int offs;
-
-		/* redraw bitmap */
-
-		for (offs = 0; offs < videoram_size; offs++)
-			minivadr_videoram_w(offs,videoram[offs]);
+		if (get_vh_global_attribute_changed())
+		{
+			int offs;
+	
+			/* redraw bitmap */
+	
+			for (offs = 0; offs < videoram_size; offs++)
+				minivadr_videoram_w(offs,videoram.read(offs));
+		}
+		copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
 	}
-	copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->visible_area,TRANSPARENCY_NONE,0);
 }

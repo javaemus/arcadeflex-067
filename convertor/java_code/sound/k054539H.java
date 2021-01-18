@@ -19,10 +19,5 @@ struct K054539interface {
 
 
 int K054539_sh_start( const struct MachineSound *msound );
-void K054539_sh_stop( void );
-WRITE_HANDLER( K054539_0_w );
-READ_HANDLER( K054539_0_r );
-WRITE_HANDLER( K054539_1_w );
-READ_HANDLER( K054539_1_r );
 
 #endif /* __K054539_H__ */

@@ -34,260 +34,267 @@
 
 
 ***************************************************************************/
-#include "driver.h"
-#include "vidhrdw/generic.h"
+/*
+ * ported to v0.56
+ * using automatic conversion tool v0.01
+ */ 
+package vidhrdw;
 
-/* Variables only used here: */
-
-static unsigned char vreg[8];
-
-
-/* Variables that driver has access to: */
-
-int skyfox_bg_pos, skyfox_bg_ctrl;
-
-
-
-/***************************************************************************
-
-							Memory Handlers
-
-***************************************************************************/
-
-READ_HANDLER( skyfox_vregs_r )	// for debug
+public class skyfox
 {
-	return vreg[offset];
-}
-
-WRITE_HANDLER( skyfox_vregs_w )
-{
-	vreg[offset] = data;
-
-	switch (offset)
+	
+	/* Variables only used here: */
+	
+	static unsigned char vreg[8];
+	
+	
+	/* Variables that driver has access to: */
+	
+	int skyfox_bg_pos, skyfox_bg_ctrl;
+	
+	
+	
+	/***************************************************************************
+	
+								Memory Handlers
+	
+	***************************************************************************/
+	
+	public static ReadHandlerPtr skyfox_vregs_r  = new ReadHandlerPtr() { public int handler(int offset)	// for debug
 	{
-		case 0:	skyfox_bg_ctrl = data;	break;
-		case 1:	soundlatch_w(0,data);	break;
-		case 2:	break;
-		case 3:	break;
-		case 4:	break;
-		case 5:	break;
-		case 6:	break;
-		case 7:	break;
-	}
-}
-
-
-
-/***************************************************************************
-
-  Convert the color PROMs into a more useable format.
-
-  There are three 256x4 palette PROMs (one per gun).
-  I don't know the exact values of the resistors between the RAM and the
-  RGB output. I assumed these values (the same as Commando)
-
-  bit 3 -- 220 ohm resistor  -- RED/GREEN/BLUE
-        -- 470 ohm resistor  -- RED/GREEN/BLUE
-        -- 1  kohm resistor  -- RED/GREEN/BLUE
-  bit 0 -- 2.2kohm resistor  -- RED/GREEN/BLUE
-
-***************************************************************************/
-
-PALETTE_INIT( skyfox )
-{
-	int i;
-
-	for (i = 0;i < 256;i++)
+		return vreg[offset];
+	} };
+	
+	public static WriteHandlerPtr skyfox_vregs_w = new WriteHandlerPtr() {public void handler(int offset, int data)
 	{
-		int bit0,bit1,bit2,bit3,r,g,b;
-
-		/* red component */
-		bit0 = (color_prom[i] >> 0) & 0x01;
-		bit1 = (color_prom[i] >> 1) & 0x01;
-		bit2 = (color_prom[i] >> 2) & 0x01;
-		bit3 = (color_prom[i] >> 3) & 0x01;
-		r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[i + 256] >> 0) & 0x01;
-		bit1 = (color_prom[i + 256] >> 1) & 0x01;
-		bit2 = (color_prom[i + 256] >> 2) & 0x01;
-		bit3 = (color_prom[i + 256] >> 3) & 0x01;
-		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[i + 2*256] >> 0) & 0x01;
-		bit1 = (color_prom[i + 2*256] >> 1) & 0x01;
-		bit2 = (color_prom[i + 2*256] >> 2) & 0x01;
-		bit3 = (color_prom[i + 2*256] >> 3) & 0x01;
-		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(i,r,g,b);
-	}
-
-	/* Grey scale for the background??? */
-	for (i = 0; i < 256; i++)
-	{
-		palette_set_color(i+256,i,i,i);
-	}
-}
-
-
-
-/***************************************************************************
-
-								Sprites Drawing
-
-Offset:			Value:
-
-03				Code: selects one of the 32x32 tiles in the ROMs.
-				(Tiles $80-ff are bankswitched to cover $180 tiles)
-
-02				Code + Attr
-
-					7654 ----	Code (low 4 bits)
-								8x8   sprites use bits 7654	(since there are 16 8x8  tiles in the 32x32 one)
-								16x16 sprites use bits --54 (since there are 4 16x16 tiles in the 32x32 one)
-								32x32 sprites use no bits	(since the 32x32 tile is already selected)
-
-					7--- 3---	Size
-								1--- 1--- : 32x32 sprites
-								0--- 1--- : 16x16 sprites
-								8x8 sprites otherwise
-
-					---- -2--	Flip Y
-					---- --1-	Flip X
-					---- ---0	X Low Bit
-
-00				Y
-
-01				X (High 8 Bits)
-
-***************************************************************************/
-
-void skyfox_draw_sprites(struct mame_bitmap *bitmap)
-{
-	int offs;
-
-	int width	=	Machine->drv->screen_width;
-	int height	=	Machine->drv->screen_height;
-
-	/* The 32x32 tiles in the 80-ff range are bankswitched */
-	int shift	=	(skyfox_bg_ctrl & 0x80) ? (4-1) : 4;
-
-	for (offs = 0; offs < spriteram_size; offs += 4)
-	{
-		int xstart, ystart, xend, yend;
-		int xinc, yinc, dx, dy;
-		int low_code, high_code, n;
-
-		int y		=		spriteram[offs+0];
-		int x		=		spriteram[offs+1];
-		int code	=		spriteram[offs+2] + spriteram[offs+3] * 256;
-		int flipx	=		code & 0x2;
-		int flipy	=		code & 0x4;
-
-		x = x * 2 + (code & 1);	// add the least significant bit
-
-		high_code = ((code >> 4) & 0x7f0) +
-					((code & 0x8000) >> shift);
-
-		switch( code & 0x88 )
+		vreg[offset] = data;
+	
+		switch (offset)
 		{
-			case 0x88:	n = 4;	low_code = 0;										break;
-			case 0x08:	n = 2;	low_code = ((code&0x20)?8:0) + ((code&0x10)?2:0);	break;
-			default:	n = 1;	low_code = (code >> 4) & 0xf;
+			case 0:	skyfox_bg_ctrl = data;	break;
+			case 1:	soundlatch_w(0,data);	break;
+			case 2:	break;
+			case 3:	break;
+			case 4:	break;
+			case 5:	break;
+			case 6:	break;
+			case 7:	break;
 		}
-
-#define DRAW_SPRITE(DX,DY,CODE) \
-		drawgfx(bitmap,Machine->gfx[0], \
-				(CODE), \
-				0, \
-				flipx,flipy, \
-				x + (DX),y + (DY), \
-				&Machine->visible_area,TRANSPARENCY_PEN, 0xff); \
-
-		if (skyfox_bg_ctrl & 1)	// flipscreen
+	} };
+	
+	
+	
+	/***************************************************************************
+	
+	  Convert the color PROMs into a more useable format.
+	
+	  There are three 256x4 palette PROMs (one per gun).
+	  I don't know the exact values of the resistors between the RAM and the
+	  RGB output. I assumed these values (the same as Commando)
+	
+	  bit 3 -- 220 ohm resistor  -- RED/GREEN/BLUE
+	        -- 470 ohm resistor  -- RED/GREEN/BLUE
+	        -- 1  kohm resistor  -- RED/GREEN/BLUE
+	  bit 0 -- 2.2kohm resistor  -- RED/GREEN/BLUE
+	
+	***************************************************************************/
+	
+	PALETTE_INIT( skyfox )
+	{
+		int i;
+	
+		for (i = 0;i < 256;i++)
 		{
-			x = width  - x - (n-1)*8;
-			y = height - y - (n-1)*8;
-			flipx = !flipx;
-			flipy = !flipy;
+			int bit0,bit1,bit2,bit3,r,g,b;
+	
+			/* red component */
+			bit0 = (color_prom.read(i)>> 0) & 0x01;
+			bit1 = (color_prom.read(i)>> 1) & 0x01;
+			bit2 = (color_prom.read(i)>> 2) & 0x01;
+			bit3 = (color_prom.read(i)>> 3) & 0x01;
+			r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* green component */
+			bit0 = (color_prom.read(i + 256)>> 0) & 0x01;
+			bit1 = (color_prom.read(i + 256)>> 1) & 0x01;
+			bit2 = (color_prom.read(i + 256)>> 2) & 0x01;
+			bit3 = (color_prom.read(i + 256)>> 3) & 0x01;
+			g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+			/* blue component */
+			bit0 = (color_prom.read(i + 2*256)>> 0) & 0x01;
+			bit1 = (color_prom.read(i + 2*256)>> 1) & 0x01;
+			bit2 = (color_prom.read(i + 2*256)>> 2) & 0x01;
+			bit3 = (color_prom.read(i + 2*256)>> 3) & 0x01;
+			b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+	
+			palette_set_color(i,r,g,b);
 		}
-
-		if (flipx)	{ xstart = n-1;  xend = -1;  xinc = -1; }
-		else		{ xstart = 0;    xend = n;   xinc = +1; }
-
-		if (flipy)	{ ystart = n-1;  yend = -1;  yinc = -1; }
-		else		{ ystart = 0;    yend = n;   yinc = +1; }
-
-
-		code = low_code + high_code;
-
-		for (dy = ystart; dy != yend; dy += yinc)
+	
+		/* Grey scale for the background??? */
+		for (i = 0; i < 256; i++)
 		{
-			for (dx = xstart; dx != xend; dx += xinc)
-				DRAW_SPRITE( dx*8, dy*8, code++);
-
-			if (n==2)	code+=2;
+			palette_set_color(i+256,i,i,i);
 		}
 	}
-}
-
-
-
-
-
-/***************************************************************************
-
-							Background Rendering
-
-***************************************************************************/
-
-void skyfox_draw_background(struct mame_bitmap *bitmap)
-{
-	unsigned char *RAM	=	memory_region(REGION_GFX2);
-	int x,y,i;
-
-	/* The foreground stars (sprites) move at twice this speed when
-	   the bg scroll rate [e.g. (skyfox_bg_reg >> 1) & 7] is 4 */
-	int pos = (skyfox_bg_pos >> 4) & (512*2-1);
-
-	for (i = 0 ; i < 0x1000; i++)
+	
+	
+	
+	/***************************************************************************
+	
+									Sprites Drawing
+	
+	Offset:			Value:
+	
+	03				Code: selects one of the 32x32 tiles in the ROMs.
+					(Tiles $80-ff are bankswitched to cover $180 tiles)
+	
+	02				Code + Attr
+	
+						7654 ----	Code (low 4 bits)
+									8x8   sprites use bits 7654	(since there are 16 8x8  tiles in the 32x32 one)
+									16x16 sprites use bits --54 (since there are 4 16x16 tiles in the 32x32 one)
+									32x32 sprites use no bits	(since the 32x32 tile is already selected)
+	
+						7--- 3---	Size
+									1--- 1--- : 32x32 sprites
+									0--- 1--- : 16x16 sprites
+									8x8 sprites otherwise
+	
+						---- -2--	Flip Y
+						---- --1-	Flip X
+						---- ---0	X Low Bit
+	
+	00				Y
+	
+	01				X (High 8 Bits)
+	
+	***************************************************************************/
+	
+	void skyfox_draw_sprites(struct mame_bitmap *bitmap)
 	{
-		int pen,offs,j;
-
-		offs	=	(i*2+((skyfox_bg_ctrl>>4)&0x3)*0x2000) % 0x8000;
-
-		pen		=	RAM[offs];
-		x		=	RAM[offs+1]*2 + (i&1) + pos + ((i & 8)?512:0);
-		y		=	((i/8)/2)*8 + (i%8);
-
-		if (skyfox_bg_ctrl & 1)	// flipscreen
+		int offs;
+	
+		int width	=	Machine->drv->screen_width;
+		int height	=	Machine->drv->screen_height;
+	
+		/* The 32x32 tiles in the 80-ff range are bankswitched */
+		int shift	=	(skyfox_bg_ctrl & 0x80) ? (4-1) : 4;
+	
+		for (offs = 0; offs < spriteram_size; offs += 4)
 		{
-			x = 512 * 2 - (x%(512*2));
-			y = 256     - (y%256);
+			int xstart, ystart, xend, yend;
+			int xinc, yinc, dx, dy;
+			int low_code, high_code, n;
+	
+			int y		=		spriteram.read(offs+0);
+			int x		=		spriteram.read(offs+1);
+			int code	=		spriteram.read(offs+2)+ spriteram.read(offs+3)* 256;
+			int flipx	=		code & 0x2;
+			int flipy	=		code & 0x4;
+	
+			x = x * 2 + (code & 1);	// add the least significant bit
+	
+			high_code = ((code >> 4) & 0x7f0) +
+						((code & 0x8000) >> shift);
+	
+			switch( code & 0x88 )
+			{
+				case 0x88:	n = 4;	low_code = 0;										break;
+				case 0x08:	n = 2;	low_code = ((code&0x20)?8:0) + ((code&0x10)?2:0);	break;
+				default:	n = 1;	low_code = (code >> 4) & 0xf;
+			}
+	
+	#define DRAW_SPRITE(DX,DY,CODE) \
+			drawgfx(bitmap,Machine->gfx[0], \
+					(CODE), \
+					0, \
+					flipx,flipy, \
+					x + (DX),y + (DY), \
+					&Machine->visible_area,TRANSPARENCY_PEN, 0xff); \
+	
+			if (skyfox_bg_ctrl & 1)	// flipscreen
+			{
+				x = width  - x - (n-1)*8;
+				y = height - y - (n-1)*8;
+				flipx = !flipx;
+				flipy = !flipy;
+			}
+	
+			if (flipx)	{ xstart = n-1;  xend = -1;  xinc = -1; }
+			else		{ xstart = 0;    xend = n;   xinc = +1; }
+	
+			if (flipy)	{ ystart = n-1;  yend = -1;  yinc = -1; }
+			else		{ ystart = 0;    yend = n;   yinc = +1; }
+	
+	
+			code = low_code + high_code;
+	
+			for (dy = ystart; dy != yend; dy += yinc)
+			{
+				for (dx = xstart; dx != xend; dx += xinc)
+					DRAW_SPRITE( dx*8, dy*8, code++);
+	
+				if (n==2)	code+=2;
+			}
 		}
-
-		for (j = 0 ; j <= ((pen&0x80)?0:3); j++)
-			plot_pixel(	bitmap,
-						( (j&1)     + x ) % 512,
-						( ((j/2)&1) + y ) % 256,
-						Machine->pens[256+(pen&0x7f)] );
 	}
-}
-
-
-/***************************************************************************
-
-
-								Screen Drawing
-
-
-***************************************************************************/
-
-
-VIDEO_UPDATE( skyfox )
-{
-	fillbitmap(bitmap,Machine->pens[255],&Machine->visible_area);	// the bg is black
-	skyfox_draw_background(bitmap);
-	skyfox_draw_sprites(bitmap);
+	
+	
+	
+	
+	
+	/***************************************************************************
+	
+								Background Rendering
+	
+	***************************************************************************/
+	
+	void skyfox_draw_background(struct mame_bitmap *bitmap)
+	{
+		unsigned char *RAM	=	memory_region(REGION_GFX2);
+		int x,y,i;
+	
+		/* The foreground stars (sprites) move at twice this speed when
+		   the bg scroll rate [e.g. (skyfox_bg_reg >> 1) & 7] is 4 */
+		int pos = (skyfox_bg_pos >> 4) & (512*2-1);
+	
+		for (i = 0 ; i < 0x1000; i++)
+		{
+			int pen,offs,j;
+	
+			offs	=	(i*2+((skyfox_bg_ctrl>>4)&0x3)*0x2000) % 0x8000;
+	
+			pen		=	RAM[offs];
+			x		=	RAM[offs+1]*2 + (i&1) + pos + ((i & 8)?512:0);
+			y		=	((i/8)/2)*8 + (i%8);
+	
+			if (skyfox_bg_ctrl & 1)	// flipscreen
+			{
+				x = 512 * 2 - (x%(512*2));
+				y = 256     - (y%256);
+			}
+	
+			for (j = 0 ; j <= ((pen&0x80)?0:3); j++)
+				plot_pixel(	bitmap,
+							( (j&1)     + x ) % 512,
+							( ((j/2)&1) + y ) % 256,
+							Machine->pens[256+(pen&0x7f)] );
+		}
+	}
+	
+	
+	/***************************************************************************
+	
+	
+									Screen Drawing
+	
+	
+	***************************************************************************/
+	
+	
+	VIDEO_UPDATE( skyfox )
+	{
+		fillbitmap(bitmap,Machine->pens[255],&Machine->visible_area);	// the bg is black
+		skyfox_draw_background(bitmap);
+		skyfox_draw_sprites(bitmap);
+	}
 }
