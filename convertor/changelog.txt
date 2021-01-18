@@ -1,0 +1,57 @@
+08/03/2019
+==========
+-Added InitDriverPtr support
+-Improved InitDriverPtr not to mess with init_machine
+-MachineInitPtr support
+-Improved InitDriverPtr ,MachineDriverPtr if they start with static
+-Added custom sound support interface
+-Added DAC sound support
+
+07/03/2019
+==========
+-Fixed PORT_START macro
+-Added intteruptPtr support
+-Skip forward reference functions
+-Improved interruptPtr support
+-Added VH_START support
+-Improved forward reference functions and added VH_STOP
+-Added VH_UPDATE support
+-Improved VH_UPDATE support
+-Remove forward functions that starts with extern
+
+01/02/2019
+==========
+-Input ports support
+-Fix to GAME struct
+-Added MachineDriver support
+-Improvented null's conversion in MachineDriver (still not accurate)
+-More improvement in  null's conversion in MachineDriver (still not accurate)
+-Added SN76496 interface support
+-Added AY8910 interface  support
+
+31/01/2019
+==========
+-Improved WRITEHANDLER for 8bit writes
+-Implemented GAME,GAMEX macros
+
+30/01/2019
+==========
+-Implemented MEMORY_READ for 8bit handlers
+-Implemented MEMORY_WRITE for 8bit handlers
+-Implemented PORT_READ for 8bit handlers
+-Implemented PORT_WRITE for 8bit handlers
+-Removed references inside MEMORY-PORT handlers
+-Implemented READHANDLER for 8 bit reads
+-Implemented WRITEHANDLER for 8 bit writes
+-Implemented GFXLayout support
+-Implemented GFXDecode support
+-ROM Macros conversion support
+-Improved READHANDLER for 8 bit reads
+
+29/01/2019
+==========
+-Intial convertor
+-Partial support for enums conversion
+-Convert if(!variable) to if(variable==0)
+-plot_box , mark_dirty,plot_pixel support for drawgfx file
+-read_pixel support for drawgfx file
