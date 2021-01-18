@@ -43,7 +43,7 @@ Note : there is an ingame typo bug that doesn't display the bonus life values
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

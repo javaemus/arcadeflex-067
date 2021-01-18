@@ -9,7 +9,7 @@ the game was developed by UPL for Taito.
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

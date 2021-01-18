@@ -36,7 +36,7 @@ So this is the correct behavior of real hardware, not an emulation bug.
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

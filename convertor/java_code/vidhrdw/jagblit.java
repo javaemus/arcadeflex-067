@@ -11,7 +11,7 @@
 	#define A1FIXED  -- fixed A1 flag bits for blitter
 	#define A2FIXED  -- fixed A2 flag bits for blitter
 	/*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package vidhrdw;

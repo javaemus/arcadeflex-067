@@ -34,7 +34,7 @@ conversion kit which could be applied to a bootleg double dragon :-p?
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

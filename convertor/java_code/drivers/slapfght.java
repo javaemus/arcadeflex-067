@@ -185,7 +185,7 @@ $8609 - $860f    High score characters to display to screen for highest score
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

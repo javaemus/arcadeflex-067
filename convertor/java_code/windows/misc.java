@@ -30,7 +30,7 @@ Version 0.2, May 2000
 -rename uclock to sysdep_clock (Hans de Goede)
 */
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package windows;

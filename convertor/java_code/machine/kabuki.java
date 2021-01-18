@@ -93,7 +93,7 @@ Slam Masters                             54321076  65432107    3131     19
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package machine;

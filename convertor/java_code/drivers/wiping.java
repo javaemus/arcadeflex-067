@@ -34,7 +34,7 @@ dip: 6.7 7.7
 
 ***************************************************************************/
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

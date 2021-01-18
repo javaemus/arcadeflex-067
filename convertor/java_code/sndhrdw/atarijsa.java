@@ -31,7 +31,7 @@ Static Program ROM (48K bytes)            4000-FFFF   R    D0-D7
 ****************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package sndhrdw;

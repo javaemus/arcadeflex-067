@@ -75,7 +75,7 @@ quad primitives (n x 5 words) - indices of four verticies plus color code
 */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package vidhrdw;

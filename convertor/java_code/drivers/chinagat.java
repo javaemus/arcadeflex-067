@@ -69,7 +69,7 @@ Input is unique but has a few similarities to DD2 (the coin inputs)
 
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

@@ -367,7 +367,7 @@ STOP            01001000  10111011          12  stop
 
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.upd7810;

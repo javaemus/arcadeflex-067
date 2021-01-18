@@ -4,7 +4,7 @@
 #define _HD6309_H
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.hd6309;

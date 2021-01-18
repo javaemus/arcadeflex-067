@@ -37,7 +37,7 @@ The 2 ay-8910 read ports are responsible for reading the sound commands.
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

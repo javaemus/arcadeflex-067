@@ -101,7 +101,7 @@ z:      xxxx address bits a19 .. a16 for memory accesses with a15 1 ?
  */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.m6502;

@@ -222,7 +222,7 @@ The first sprite data is located at fa0b,then fa1b and so on.
 
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

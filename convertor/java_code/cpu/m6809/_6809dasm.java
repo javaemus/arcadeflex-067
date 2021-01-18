@@ -14,7 +14,7 @@
 /* Please send all bug reports, update ideas and data files to: */
 /* sriddle@ionet.net */
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.m6809;

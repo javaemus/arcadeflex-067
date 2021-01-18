@@ -119,7 +119,7 @@ Table 3-2.  TMS32025/26 Memory Blocks
 
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.tms32025;

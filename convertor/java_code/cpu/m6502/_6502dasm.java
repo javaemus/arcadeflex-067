@@ -26,7 +26,7 @@
 /* 9. May 2000 PeT added m4510 */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.m6502;

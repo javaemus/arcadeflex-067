@@ -115,7 +115,7 @@ BG0 palette intensity ( $C47F, $C4FF )
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package vidhrdw;

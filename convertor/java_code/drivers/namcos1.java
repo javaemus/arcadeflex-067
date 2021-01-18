@@ -199,7 +199,7 @@ C - uses sub board with support for player 3 and 4 controls
 ***********************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

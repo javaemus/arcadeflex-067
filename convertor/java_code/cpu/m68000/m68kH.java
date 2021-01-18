@@ -28,7 +28,7 @@
 
 /* Import the configuration for this build */
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.m68000;

@@ -145,7 +145,7 @@
 #define QUICKZERO		/* selects XOR r,r or MOV r,0 */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.m68000;

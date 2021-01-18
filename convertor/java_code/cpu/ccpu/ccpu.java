@@ -6,7 +6,7 @@ architecture.  Really, it's not so bad!
 **********************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.ccpu;

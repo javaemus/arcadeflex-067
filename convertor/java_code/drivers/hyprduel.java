@@ -21,7 +21,7 @@ sub68k is performing not only processing of sound but assistance of main68k.
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

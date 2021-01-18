@@ -165,7 +165,7 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

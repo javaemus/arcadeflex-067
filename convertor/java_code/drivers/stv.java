@@ -14,7 +14,7 @@ this hardware comes above hell on the great list of hellish things as far as emu
 */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

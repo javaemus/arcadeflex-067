@@ -23,7 +23,7 @@
 	* The real HAL21 board has a low-pass filter to supress rings and scratches.
 */
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

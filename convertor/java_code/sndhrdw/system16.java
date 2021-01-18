@@ -1,6 +1,6 @@
 // system 16 - 7751 emulation, based on monster bash code.
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package sndhrdw;

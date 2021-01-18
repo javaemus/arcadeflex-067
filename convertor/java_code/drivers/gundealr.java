@@ -47,7 +47,7 @@ Runs in interrupt mode 0, the interrupt vectors are 0xcf (RST 08h) and
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

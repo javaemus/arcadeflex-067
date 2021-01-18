@@ -93,7 +93,7 @@ ae500w07.ad1 - M6295 Samples (23c4001)
 */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

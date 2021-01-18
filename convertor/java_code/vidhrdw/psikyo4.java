@@ -27,7 +27,7 @@ HgKairak: 86010000 1f201918 a0000000 Large Screen
 */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package vidhrdw;

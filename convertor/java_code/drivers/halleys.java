@@ -156,7 +156,7 @@ Video sync   6 F   Video sync                 Post   6 F   Post
 // Compiler Directives
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

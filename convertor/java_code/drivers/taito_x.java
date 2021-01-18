@@ -183,7 +183,7 @@ its place. The East Technology games on this hardware follow Daisenpu.
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

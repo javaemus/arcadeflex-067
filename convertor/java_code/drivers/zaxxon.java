@@ -91,7 +91,7 @@ U77 U78 U79                                U90 U91 U92 U93
 
 ****************************************************************************/
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

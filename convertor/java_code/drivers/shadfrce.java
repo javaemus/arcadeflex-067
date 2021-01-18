@@ -77,7 +77,7 @@ lev 7 : 0x7c : 0000 11d0 - just rte
 */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

@@ -45,7 +45,7 @@ starfira has one less rom in total than starfire but everything passes as
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

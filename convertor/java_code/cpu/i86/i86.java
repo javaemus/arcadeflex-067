@@ -5,7 +5,7 @@
 /* 26.March 2000 PeT changed set_irq_line */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.i86;

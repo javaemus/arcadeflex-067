@@ -719,7 +719,7 @@ static void (*fill_op_table[])(int) =
 	#define BITS_PER_PIXEL					1
 	#define FUNCTION_NAME(base)				base##_1_op0
 	/*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package cpu.tms34010;

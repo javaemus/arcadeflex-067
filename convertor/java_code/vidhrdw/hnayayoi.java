@@ -10,7 +10,7 @@ The blitter reads compressed data from ROM and copies it to the bitmap RAM.
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package vidhrdw;

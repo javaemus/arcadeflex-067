@@ -85,7 +85,7 @@ void YM3526SetUpdateHandler(int which, OPL_UPDATEHANDLER UpdateHandler, int para
 #if BUILD_Y8950
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package sound;

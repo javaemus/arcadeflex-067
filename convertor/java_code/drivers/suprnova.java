@@ -66,7 +66,7 @@ should sengekis be rot90 with the sprites flipped?  scrolling is in the wrong di
 */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

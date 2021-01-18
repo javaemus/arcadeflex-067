@@ -266,7 +266,7 @@ There are read/writes on bit 7 of 0xfff009 ($f009) ...
 #define WELLTRIS_4P_HACK 0
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

@@ -96,7 +96,7 @@ sol divide doesn't seem to make much use of tilemaps at all, it uses them to fad
 */
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package vidhrdw;

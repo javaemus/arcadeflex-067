@@ -10,7 +10,7 @@
 #define __PPU_2C03B_H__
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package vidhrdw;

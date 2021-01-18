@@ -48,7 +48,7 @@ and 2764 eprom (swapped D3/D4 and D5/D6 data lines)
 ****************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

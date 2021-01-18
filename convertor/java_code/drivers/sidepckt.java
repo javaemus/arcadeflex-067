@@ -14,7 +14,7 @@ i8751 protection simluation and other fixes by Bryan McPhail, 15/10/00.
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package drivers;

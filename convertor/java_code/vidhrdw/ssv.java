@@ -131,7 +131,7 @@ Note: press Z to show some info on each sprite (debug builds only)
 ***************************************************************************/
 
 /*
- * ported to v0.56
+ * ported to v0.67
  * using automatic conversion tool v0.01
  */ 
 package vidhrdw;
