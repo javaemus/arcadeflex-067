@@ -2,3 +2,4 @@
 =========
 -Added dummy minivadr driver from convertor
 -More progress on compiling minivadr with dummy classes
+-More dummy classes for minivadr driver

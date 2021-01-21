@@ -1,3 +1,7 @@
+/*
+ * ported to v0.67
+ * 
+ */ 
 package gr.codebb.arcadeflex.v067.vidhrdw;
 
 import static gr.codebb.arcadeflex.common.PtrLib.*;
