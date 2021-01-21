@@ -4,6 +4,9 @@
  */ 
 package gr.codebb.arcadeflex.v067.vidhrdw;
 
+import static gr.codebb.arcadeflex.v067.common.FuncPtr.*;
+import static gr.codebb.arcadeflex.v067.vidhrdw.generic.*;
+
 public class minivadr
 {
 	/*******************************************************************
@@ -53,14 +56,14 @@ public class minivadr
 	
 	VIDEO_UPDATE( minivadr )
 	{
-		if (get_vh_global_attribute_changed())
+		if (get_vh_global_attribute_changed()!=0)
 		{
 			int offs;
 	
 			/* redraw bitmap */
 	
-			for (offs = 0; offs < videoram_size; offs++)
-				minivadr_videoram_w(offs,videoram.read(offs));
+			for (offs = 0; offs < videoram_size[0]; offs++)
+				minivadr_videoram_w.handler(offs,videoram.read(offs));
 		}
 		copybitmap(bitmap,tmpbitmap,0,0,0,0,Machine.visible_area,TRANSPARENCY_NONE,0);
 	}
