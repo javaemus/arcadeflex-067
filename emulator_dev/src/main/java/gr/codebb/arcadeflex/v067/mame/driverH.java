@@ -97,9 +97,8 @@ public class driverH {
 //TODO 
 //TODO #define MACHINE_DRIVER_END 												\
 //TODO 	}	
-    public static void MACHINE_DRIVER_END()
-    {
-        
+    public static void MACHINE_DRIVER_END() {
+
     }
 //TODO 
 //TODO 
@@ -115,9 +114,9 @@ public class driverH {
 //TODO #define MDRV_CPU_ADD(type, clock)										\
 //TODO 	MDRV_CPU_ADD_TAG(NULL, type, clock)									\
 //TODO 
-    public static void MDRV_CPU_ADD(int type,int clock)
-    {
-        
+
+    public static void MDRV_CPU_ADD(int type, int clock) {
+
     }
 //TODO #define MDRV_CPU_MODIFY(tag)											\
 //TODO 	cpu = machine_find_cpu(machine, tag);								\
@@ -144,9 +143,9 @@ public class driverH {
 //TODO 	if (cpu)															\
 //TODO 		cpu->reset_param = &(config);									\
 //TODO 
-    public static void MDRV_CPU_MEMORY(Memory_ReadAddress[] readmem, Memory_WriteAddress[] writemem)
-    {
-        
+
+    public static void MDRV_CPU_MEMORY(Memory_ReadAddress[] readmem, Memory_WriteAddress[] writemem) {
+
     }
 //TODO #define MDRV_CPU_MEMORY(readmem, writemem)								\
 //TODO 	if (cpu)															\
@@ -162,9 +161,9 @@ public class driverH {
 //TODO 		cpu->port_write = (writeport);									\
 //TODO 	}																	\
 //TODO 
-    public static void MDRV_CPU_VBLANK_INT(InterruptPtr func,int rate)
-    {
-        
+
+    public static void MDRV_CPU_VBLANK_INT(InterruptPtr func, int rate) {
+
     }
 //TODO #define MDRV_CPU_VBLANK_INT(func, rate)									\
 //TODO 	if (cpu)															\
@@ -182,16 +181,16 @@ public class driverH {
 //TODO 
 //TODO 
 //TODO /* core parameters */
-    public static void MDRV_FRAMES_PER_SECOND(int rate)
-    {
-        
+
+    public static void MDRV_FRAMES_PER_SECOND(int rate) {
+
     }
 //TODO #define MDRV_FRAMES_PER_SECOND(rate)									\
 //TODO 	machine->frames_per_second = (rate);								\
 //TODO 
-    public static void MDRV_VBLANK_DURATION(int duration)
-    {
-        
+
+    public static void MDRV_VBLANK_DURATION(int duration) {
+
     }
 //TODO #define MDRV_VBLANK_DURATION(duration)									\
 //TODO 	machine->vblank_duration = (duration);								\
@@ -212,9 +211,9 @@ public class driverH {
 //TODO 
 //TODO 
 //TODO /* core video parameters */
-    public static void MDRV_VIDEO_ATTRIBUTES(int flags)
-    {
-        
+
+    public static void MDRV_VIDEO_ATTRIBUTES(int flags) {
+
     }
 //TODO #define MDRV_VIDEO_ATTRIBUTES(flags)									\
 //TODO 	machine->video_attributes = (flags);								\
@@ -223,17 +222,17 @@ public class driverH {
 //TODO 	machine->aspect_x = (num);											\
 //TODO 	machine->aspect_y = (den);											\
 //TODO 
-    public static void MDRV_SCREEN_SIZE(int width, int height)
-    {
-        
+
+    public static void MDRV_SCREEN_SIZE(int width, int height) {
+
     }
 //TODO #define MDRV_SCREEN_SIZE(width, height)									\
 //TODO 	machine->screen_width = (width);									\
 //TODO 	machine->screen_height = (height);									\
 //TODO 
-    public static void MDRV_VISIBLE_AREA(int minx, int maxx, int miny, int maxy)
-    {
-        
+
+    public static void MDRV_VISIBLE_AREA(int minx, int maxx, int miny, int maxy) {
+
     }
 //TODO #define MDRV_VISIBLE_AREA(minx, maxx, miny, maxy)						\
 //TODO 	machine->default_visible_area.min_x = (minx);						\
@@ -244,9 +243,9 @@ public class driverH {
 //TODO #define MDRV_GFXDECODE(gfx)												\
 //TODO 	machine->gfxdecodeinfo = (gfx);										\
 //TODO 
-    public static void MDRV_PALETTE_LENGTH(int length)
-    {
-        
+
+    public static void MDRV_PALETTE_LENGTH(int length) {
+
     }
 //TODO #define MDRV_PALETTE_LENGTH(length)										\
 //TODO 	machine->total_colors = (length);									\
@@ -256,16 +255,16 @@ public class driverH {
 //TODO 
 //TODO 
 //TODO /* core video functions */
-    public static void MDRV_PALETTE_INIT(VhPaletteInitPtr name)
-    {
-        
+
+    public static void MDRV_PALETTE_INIT(VhPaletteInitPtr name) {
+
     }
 //TODO #define MDRV_PALETTE_INIT(name)											\
 //TODO 	machine->init_palette = palette_init_##name;						\
 //TODO 
-    public static void MDRV_VIDEO_START(VhStartPtr name)
-    {
-        
+
+    public static void MDRV_VIDEO_START(VhStartPtr name) {
+
     }
 //TODO #define MDRV_VIDEO_START(name)											\
 //TODO 	machine->video_start = video_start_##name;							\
@@ -276,13 +275,12 @@ public class driverH {
 //TODO #define MDRV_VIDEO_EOF(name)											\
 //TODO 	machine->video_eof = video_eof_##name;								\
 //TODO 
-    
+
 //TODO #define MDRV_VIDEO_UPDATE(name)											\
 //TODO 	machine->video_update = video_update_##name;						\
 //TODO 
-    public static void MDRV_VIDEO_UPDATE(VhUpdatePtr name)
-    {
-        
+    public static void MDRV_VIDEO_UPDATE(VhUpdatePtr name) {
+
     }
 //TODO 
 //TODO /* core sound parameters */
@@ -333,6 +331,7 @@ public class driverH {
 //TODO #define MAX_SOUND 5	/* MAX_SOUND is the maximum number of sound subsystems */
 //TODO 					/* which can run at the same time. Currently, 5 is enough. */
 //TODO 
+
     public static class InternalMachineDriver {
 //TODO 	struct MachineCPU cpu[MAX_CPU];
 //TODO 	float frames_per_second;
@@ -383,7 +382,7 @@ public class driverH {
 //TODO /* Here are some predefined, TOTALLY ARBITRARY values for vblank_duration, which should */
 //TODO /* be OK for most cases. I have NO IDEA how accurate they are compared to the real */
 //TODO /* hardware, they could be completely wrong. */
-public static final int DEFAULT_60HZ_VBLANK_DURATION =0;
+    public static final int DEFAULT_60HZ_VBLANK_DURATION = 0;
 //TODO #define DEFAULT_30HZ_VBLANK_DURATION 0
 //TODO /* If you use IPT_VBLANK, you need a duration different from 0. */
 //TODO #define DEFAULT_REAL_60HZ_VBLANK_DURATION 2500
@@ -393,7 +392,7 @@ public static final int DEFAULT_60HZ_VBLANK_DURATION =0;
 //TODO /* ----- flags for video_attributes ----- */
 //TODO 
 //TODO /* bit 0 of the video attributes indicates raster or vector video hardware */
-public static final int VIDEO_TYPE_RASTER			=0x0000;
+    public static final int VIDEO_TYPE_RASTER = 0x0000;
 //TODO #define	VIDEO_TYPE_VECTOR			0x0001
 //TODO 
 //TODO /* bit 3 of the video attributes indicates that the game's palette has 6 or more bits */
@@ -440,28 +439,38 @@ public static final int VIDEO_TYPE_RASTER			=0x0000;
 //TODO 
 //TODO ***************************************************************************/
 //TODO 
-//TODO struct GameDriver
-//TODO {
-//TODO 	const char *source_file;	/* set this to __FILE__ */
-//TODO 	const struct GameDriver *clone_of;	/* if this is a clone, point to */
-//TODO 										/* the main version of the game */
-//TODO 	const char *name;
-//TODO 	const char *description;
-//TODO 	const char *year;
-//TODO 	const char *manufacturer;
-//TODO 	void (*drv)(struct InternalMachineDriver *);
+
+    public static class GameDriver {
+
+        public GameDriver(String year, String name, String source, RomLoadPtr romload, GameDriver parent, MachinePtr drv, InputPortPtr input, InitDriverPtr init, int monitor, String manufacture, String fullname) {
+            this.year = year;
+            this.source_file = source;
+            this.clone_of = parent;
+            this.name = name;
+            this.description = fullname;
+            this.manufacturer = manufacture;
+            this.drv = drv;
+            this.driver_init = init;
+//TODO           romload.handler();//load the rom
+//TODO            input.handler();//load input
+//TODO            this.input_ports = input_macro;//copy input macro to input ports
+//TODO            this.rom = rommodule_macro; //copy rommodule_macro to rom
+            this.flags = monitor;
+        }
+
+        public String source_file;/* set this to __FILE__ */
+        public GameDriver clone_of;/*if this is a clone, point to the main version of the game */
+        public String name;
+        public String description;
+        public String year;
+        public String manufacturer;
+        public MachinePtr drv;
 //TODO 	const struct InputPortTiny *input_ports;
-//TODO 	void (*driver_init)(void);	/* optional function to be called during initialization */
-//TODO 								/* This is called ONCE, unlike Machine->init_machine */
-//TODO 								/* which is called every time the game is reset. */
-//TODO 
+        public InitDriverPtr driver_init;/* optional function to be called during initialization This is called ONCE, unlike Machine->init_machine which is called every time the game is reset. */
 //TODO 	const struct RomModule *rom;
-//TODO #ifdef MESS
-//TODO 	void (*sysconfig_ctor)(struct SystemConfigurationParamBlock *cfg);
-//TODO #endif
 //TODO 
-//TODO 	UINT32 flags;	/* orientation and other flags; see defines below */
-//TODO };
+        public int flags;/* orientation and other flags; see defines below */
+    }
 //TODO 
 //TODO 
 //TODO 

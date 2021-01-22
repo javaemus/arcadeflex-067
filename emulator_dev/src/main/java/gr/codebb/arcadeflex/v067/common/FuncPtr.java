@@ -40,6 +40,10 @@ public class FuncPtr {
 
         public abstract void handler();
     }
+    public static abstract interface InitDriverPtr {
+
+        public abstract void handler();
+    }
     /**
      * vidhrdw
      */

@@ -85,5 +85,5 @@ public class minivadr {
         }
     };
 
-//    public static GameDriver driver_minivadr = new GameDriver("1990", "minivadr", "minivadr.java", rom_minivadr, null, machine_driver_minivadr, input_ports_minivadr, null, ROT0, "Taito Corporation", "Minivader");
+    public static GameDriver driver_minivadr = new GameDriver("1990", "minivadr", "minivadr.java", rom_minivadr, null, construct_minivadr, input_ports_minivadr, null, ROT0, "Taito Corporation", "Minivader");
 }
