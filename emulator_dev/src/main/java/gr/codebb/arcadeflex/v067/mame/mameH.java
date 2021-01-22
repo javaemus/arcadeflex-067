@@ -4,6 +4,7 @@
  */
 package gr.codebb.arcadeflex.v067.mame;
 
+import gr.codebb.arcadeflex.common.SubArrays.UIntSubArray;
 import static gr.codebb.arcadeflex.v067.mame.drawgfxH.*;
 
 public class mameH {
@@ -57,11 +58,11 @@ public class mameH {
         /* current visible area, and a prerotated one adjusted for orientation */
         public rectangle visible_area;
         public rectangle absolute_visible_area;
-//TODO 
-//TODO 	/* remapped palette pen numbers. When you write directly to a bitmap in a
-//TODO 	   non-paletteized mode, use this array to look up the pen number. For example,
-//TODO 	   if you want to use color #6 in the palette, use pens[6] instead of just 6. */
-//TODO 	pen_t *					pens;
+
+        /* remapped palette pen numbers. When you write directly to a bitmap in a
+ 	   non-paletteized mode, use this array to look up the pen number. For example,
+ 	   if you want to use color #6 in the palette, use pens[6] instead of just 6. */
+        public UIntSubArray pens;
 //TODO 
 //TODO 	/* lookup table used to map gfx pen numbers to color numbers */
 //TODO 	UINT16 *				game_colortable;

@@ -6,6 +6,7 @@ package gr.codebb.arcadeflex.v067.vidhrdw;
 
 import static gr.codebb.arcadeflex.common.PtrLib.*;
 import static gr.codebb.arcadeflex.v067.common.FuncPtr.*;
+import static gr.codebb.arcadeflex.v067.mame.commonH.*;
 
 public class generic {
 
@@ -37,7 +38,7 @@ public class generic {
     public static /*data8_t*/ char u8_dirtybuffer[];
 //TODO data16_t *dirtybuffer16;
 //TODO data32_t *dirtybuffer32;
-//TODO struct mame_bitmap *tmpbitmap;
+    public static mame_bitmap tmpbitmap;
 //TODO 
 //TODO int flip_screen_x, flip_screen_y;
     static int global_attribute_changed;

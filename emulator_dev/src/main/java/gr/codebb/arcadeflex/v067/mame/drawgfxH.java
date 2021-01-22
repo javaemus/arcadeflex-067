@@ -4,6 +4,8 @@
  */
 package gr.codebb.arcadeflex.v067.mame;
 
+import static gr.codebb.arcadeflex.v067.mame.commonH.*;
+
 public class drawgfxH {
 //TODO #define MAX_GFX_PLANES 8
 //TODO #define MAX_GFX_SIZE 64
@@ -151,7 +153,11 @@ public class drawgfxH {
 //TODO 
 //TODO 
 //TODO /* pointers to pixel functions.  They're set based on depth */
-//TODO #define plot_pixel(bm,x,y,p)	(*(bm)->plot)(bm,x,y,p)
+    public static void plot_pixel(mame_bitmap bm,int x,int y,int p)
+    {
+        throw new UnsupportedOperationException("Unsupported");
+//TODO        (*(bm)->plot)(bm,x,y,p)
+    }	
 //TODO #define read_pixel(bm,x,y)		(*(bm)->read)(bm,x,y)
 //TODO #define plot_box(bm,x,y,w,h,p)	(*(bm)->plot_box)(bm,x,y,w,h,p)
 //TODO 
