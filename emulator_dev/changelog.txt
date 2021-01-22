@@ -3,6 +3,7 @@
 -More dummy work to generic class. Minivadr vidhrdw compiles now
 -More work in dummy classes to compile minivadr
 -Finished dummy functions. Now it is compiling
+-More dummy implementation for cli frontend
 
 21/01/2021
 =========
