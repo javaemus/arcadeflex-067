@@ -4,6 +4,17 @@
  */
 package gr.codebb.arcadeflex.v067.drivers;
 
+import static gr.codebb.arcadeflex.v067.common.FuncPtr.*;
+import static gr.codebb.arcadeflex.v067.mame.commonH.*;
+import static gr.codebb.arcadeflex.v067.mame.driverH.*;
+import static gr.codebb.arcadeflex.v067.mame.inptportH.*;
+import static gr.codebb.arcadeflex.v067.mame.inptport.*;
+import static gr.codebb.arcadeflex.v067.mame.memoryH.*;
+import static gr.codebb.arcadeflex.v067.vidhrdw.minivadr.*;
+import static gr.codebb.arcadeflex.v067.vidhrdw.generic.*;
+import static gr.codebb.arcadeflex.v067.mame.cpuintrfH.*;
+import static gr.codebb.arcadeflex.v067.mame.cpuint.*;
+
 public class minivadr {
 
     public static Memory_ReadAddress readmem[] = {
@@ -37,34 +48,35 @@ public class minivadr {
         }
     };
 
-    static MACHINE_DRIVER_START(minivadr ) /* basic machine hardware */
-    MDRV_CPU_ADD(Z80,24000000 / 6)		 /* 4 MHz ? */
-		MDRV_CPU_MEMORY(readmem,writemem)
-		MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-	
-		MDRV_FRAMES_PER_SECOND(60)
-		MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
-	
-		/* video hardware */
-		MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-		MDRV_SCREEN_SIZE(256, 256)
-		MDRV_VISIBLE_AREA(0, 256-1, 16, 240-1)
-		MDRV_PALETTE_LENGTH(2)
-	
-		MDRV_PALETTE_INIT(minivadr)
-		MDRV_VIDEO_START(generic)
-		MDRV_VIDEO_UPDATE(minivadr)
-	
-		/* sound hardware */
-	MACHINE_DRIVER_END
-	
-	
-	/***************************************************************************
-	
-	  Game driver(s)
-	
-	***************************************************************************/
-	
+    static MachinePtr construct_minivadr = new MachinePtr() {/* basic machine hardware */
+        public void handler(InternalMachineDriver machine) {
+            MDRV_CPU_ADD(CPU_Z80, 24000000 / 6);
+            /* 4 MHz ? */
+            MDRV_CPU_MEMORY(readmem, writemem);
+            MDRV_CPU_VBLANK_INT(irq0_line_hold, 1);
+
+            MDRV_FRAMES_PER_SECOND(60);
+            MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION);/* video hardware */
+            MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER);
+            MDRV_SCREEN_SIZE(256, 256);
+            MDRV_VISIBLE_AREA(0, 256 - 1, 16, 240 - 1);
+            MDRV_PALETTE_LENGTH(2);
+
+            MDRV_PALETTE_INIT(palette_init_minivadr);
+            MDRV_VIDEO_START(video_start_generic);
+            MDRV_VIDEO_UPDATE(video_update_minivadr);
+            /* sound hardware */
+            MACHINE_DRIVER_END();
+        }
+    };
+
+    /**
+     * *************************************************************************
+     *
+     * Game driver(s)
+     *
+     **************************************************************************
+     */
     static RomLoadPtr rom_minivadr = new RomLoadPtr() {
         public void handler() {
             ROM_REGION(0x10000, REGION_CPU1, 0);/* 64k for code */
@@ -73,5 +85,5 @@ public class minivadr {
         }
     };
 
-    public static GameDriver driver_minivadr = new GameDriver("1990", "minivadr", "minivadr.java", rom_minivadr, null, machine_driver_minivadr, input_ports_minivadr, null, ROT0, "Taito Corporation", "Minivader");
+//    public static GameDriver driver_minivadr = new GameDriver("1990", "minivadr", "minivadr.java", rom_minivadr, null, machine_driver_minivadr, input_ports_minivadr, null, ROT0, "Taito Corporation", "Minivader");
 }

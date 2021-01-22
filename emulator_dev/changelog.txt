@@ -1,6 +1,7 @@
 22/01/2021
 ==========
 -More dummy work to generic class. Minivadr vidhrdw compiles now
+-More work in dummy classes to compile minivadr
 
 21/01/2021
 =========

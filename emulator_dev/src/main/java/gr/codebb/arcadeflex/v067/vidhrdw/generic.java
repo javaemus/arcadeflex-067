@@ -53,6 +53,11 @@ public class generic {
 //TODO   Start the video hardware emulation.
 //TODO 
 //TODO ***************************************************************************/
+    public static VhStartPtr video_start_generic = new VhStartPtr() {
+        public int handler() {
+            throw new UnsupportedOperationException("Unsupported");
+        }
+    };
 //TODO VIDEO_START( generic )
 //TODO {
 //TODO 	dirtybuffer = 0;

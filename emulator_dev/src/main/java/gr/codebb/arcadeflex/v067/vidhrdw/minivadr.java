@@ -5,16 +5,13 @@
 package gr.codebb.arcadeflex.v067.vidhrdw;
 
 import static gr.codebb.arcadeflex.common.PtrLib.*;
-import static gr.codebb.arcadeflex.common.SubArrays.*;
 import static gr.codebb.arcadeflex.v067.common.FuncPtr.*;
 import static gr.codebb.arcadeflex.v067.mame.drawgfxH.*;
 import static gr.codebb.arcadeflex.v067.mame.mame.Machine;
-import static gr.codebb.arcadeflex.v067.mame.mameH.*;
 import static gr.codebb.arcadeflex.v067.vidhrdw.generic.*;
 import static gr.codebb.arcadeflex.v067.mame.palette.*;
 import static gr.codebb.arcadeflex.v067.mame.commonH.*;
 import static gr.codebb.arcadeflex.v067.mame.drawgfx.*;
-
 
 public class minivadr {
 

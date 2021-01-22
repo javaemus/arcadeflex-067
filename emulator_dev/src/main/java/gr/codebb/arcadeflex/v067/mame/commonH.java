@@ -9,7 +9,6 @@ public class commonH {
      *
      **************************************************************************
      */
-
     public static class mame_bitmap {
 //TODO 	int width,height;	/* width and height of the bitmap */
 //TODO 	int depth;			/* bits per pixel */
@@ -81,8 +80,8 @@ public class commonH {
 //TODO 
 //TODO enum
 //TODO {
-//TODO 	REGION_INVALID = 0x80,
-//TODO 	REGION_CPU1,
+    public static final int REGION_INVALID = 0x80;
+    public static final int REGION_CPU1 = 0x81;
 //TODO 	REGION_CPU2,
 //TODO 	REGION_CPU3,
 //TODO 	REGION_CPU4,
@@ -284,9 +283,15 @@ public class commonH {
 //TODO 
 //TODO /* ----- start/stop macros ----- */
 //TODO #define ROM_START(name)								static const struct RomModule rom_##name[] = {
+    public static void ROM_END() {
+        throw new UnsupportedOperationException("Unsupported");
 //TODO #define ROM_END										{ ROMENTRY_END, 0, 0, 0, 0, NULL } };
+    }
 //TODO 
 //TODO /* ----- ROM region macros ----- */
+    public static void ROM_REGION(int length, int type, int flags) {
+        throw new UnsupportedOperationException("Unsupported");
+    }
 //TODO #define ROM_REGION(length,type,flags)				{ ROMENTRY_REGION, 0, length, flags, type, NULL },
 //TODO #define ROM_REGION16_LE(length,type,flags)			ROM_REGION(length, type, (flags) | ROMREGION_16BIT | ROMREGION_LE)
 //TODO #define ROM_REGION16_BE(length,type,flags)			ROM_REGION(length, type, (flags) | ROMREGION_16BIT | ROMREGION_BE)
@@ -296,6 +301,9 @@ public class commonH {
 //TODO /* ----- core ROM loading macros ----- */
 //TODO #define ROMMD5_LOAD(name,offset,length,crc,md5,flags) { name, offset, length, flags, crc, ROMMD5(md5) },
 //TODO #define ROMX_LOAD(name,offset,length,crc,flags)		{ name, offset, length, flags, crc, NULL },
+    public static void ROM_LOAD(String name, int offset, int length, int crc) {
+        throw new UnsupportedOperationException("Unsupported");
+    }
 //TODO #define ROM_LOAD(name,offset,length,crc)			ROMX_LOAD(name, offset, length, crc, 0)
 //TODO #define ROM_LOAD_OPTIONAL(name,offset,length,crc)	ROMX_LOAD(name, offset, length, crc, ROM_OPTIONAL)
 //TODO #define ROM_CONTINUE(offset,length)					ROMX_LOAD(ROMENTRY_CONTINUE, offset, length, 0, ROM_INHERITFLAGS)
