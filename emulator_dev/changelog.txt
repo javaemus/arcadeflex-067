@@ -1,3 +1,7 @@
+01/02/2021
+==========
+-cli frontend finds gamename
+
 22/01/2021
 ==========
 -More dummy work to generic class. Minivadr vidhrdw compiles now

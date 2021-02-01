@@ -1,8 +1,14 @@
 package gr.codebb.arcadeflex.v067.platform;
 
 import static gr.codebb.arcadeflex.v067.platform.fronthlp.*;
+import static gr.codebb.arcadeflex.v067.platform.rc.*;
+import static gr.codebb.arcadeflex.common.libc.*;
+import static gr.codebb.arcadeflex.v067.platform.rcH.*;
+import java.io.PrintStream;
 
 public class conf {
+    
+    public static PrintStream stderr = System.out;
     //TODO 
 //TODO /*
 //TODO  * Configuration routines.
@@ -58,9 +64,9 @@ public class conf {
 //TODO static int readconfig;
 //TODO static int createconfig;
 //TODO extern int verbose;
-//TODO 
-//TODO struct rc_struct *rc;
-//TODO 
+
+    static rc_struct rc;
+
 //TODO /* fix me - need to have the core call osd_set_mastervolume with this value */
 //TODO /* instead of relying on the name of an osd variable */
 //TODO extern int attenuation;
@@ -69,7 +75,7 @@ public class conf {
 //TODO static char *playbackname;
 //TODO static char *recordname;
 
-    static String gamename;
+    public static String gamename;
 //TODO 
 //TODO char *rompath_extra;
 //TODO 
@@ -158,10 +164,10 @@ public class conf {
 //TODO 	option->priority = priority;
 //TODO 	return 0;
 //TODO }
-//TODO 
-//TODO 
-//TODO /* struct definitions */
-//TODO static struct rc_option opts[] = {
+ 
+ 
+    /* struct definitions */
+    static rc_option opts[] = {
 //TODO 	/* name, shortname, type, dest, deflt, min, max, func, help */
 //TODO 	{ NULL, NULL, rc_link, frontend_opts, NULL, 0, 0, NULL, NULL },
 //TODO 	{ NULL, NULL, rc_link, fileio_opts, NULL, 0, 0, NULL, NULL },
@@ -228,8 +234,8 @@ public class conf {
 //TODO 	{ "readconfig",	"rc", rc_bool, &readconfig, "1", 0, 0, NULL, "enable/disable loading of configfiles" },
 //TODO 	{ "verbose", "v", rc_bool, &verbose, "0", 0, 0, NULL, "display additional diagnostic information" },
 //TODO 	{ NULL,	NULL, rc_end, NULL, NULL, 0, 0,	NULL, NULL }
-//TODO };
-//TODO 
+    };
+
 //TODO /*
 //TODO  * Penalty string compare, the result _should_ be a measure on
 //TODO  * how "close" two strings ressemble each other.
@@ -392,26 +398,26 @@ public class conf {
 //TODO 	/* clear all core options */
 //TODO 	memset(&options,0,sizeof(options));
 //TODO 
-//TODO 	/* create the rc object */
-//TODO 	if (!(rc = rc_create()))
-//TODO 	{
-//TODO 		fprintf (stderr, "error on rc creation\n");
-//TODO 		exit(1);
-//TODO 	}
-//TODO 
-//TODO 	if (rc_register(rc, opts))
+ 	/* create the rc object */
+ 	if ((rc = rc_create()) == null)
+ 	{
+ 		fprintf (stderr, "error on rc creation\n");
+ 		System.exit(1);
+ 	}
+
+//TODO 	if (rc_register(rc, opts) != 0)
 //TODO 	{
 //TODO 		fprintf (stderr, "error on registering opts\n");
-//TODO 		exit(1);
+//TODO 		System.exit(1);
 //TODO 	}
-//TODO 
-//TODO 	/* parse the commandline */
-//TODO 	if (rc_parse_commandline(rc, argc, argv, 2, config_handle_arg))
-//TODO 	{
-//TODO 		fprintf (stderr, "error while parsing cmdline\n");
-//TODO 		exit(1);
-//TODO 	}
-//TODO 
+ 
+ 	/* parse the commandline */
+ 	if (rc_parse_commandline(rc, argc, argv, 2,  config_handle_arg ) != 0)
+ 	{
+ 		fprintf (stderr, "error while parsing cmdline\n");
+ 		System.exit(1);
+ 	}
+System.out.println("Game Name: "+gamename);
 //TODO 	/* determine global configfile name */
 //TODO 	cmd_name = win_strip_extension(win_basename(argv[0]));
 //TODO 	if (!cmd_name)
@@ -744,35 +750,44 @@ public class conf {
 //TODO 	if (options.language_file) mame_fclose(options.language_file);
 //TODO }
 //TODO 
-//TODO static int config_handle_arg(char *arg)
+    
+    static int got_gamename = 0;
+    
+    public static arg_callbackPtr config_handle_arg = new arg_callbackPtr() {
+        @Override
+        public int handler(String arg) {
+            /* notice: for MESS game means system */
+            if (got_gamename != 0)
+            {
+                    fprintf(stderr,"error: duplicate gamename: %s\n", arg);
+                    return -1;
+            }
+
+    //TODO 	rompath_extra = win_dirname(arg);
+    //TODO 
+    //TODO 	if (rompath_extra && !strlen(rompath_extra))
+    //TODO 	{
+    //TODO 		free (rompath_extra);
+    //TODO 		rompath_extra = NULL;
+    //TODO 	}
+    //TODO 
+            gamename = arg;
+
+            if (gamename==null || strlen(gamename)==0)
+            {
+                    fprintf(stderr,"error: no gamename given in %s\n", arg);
+                    return -1;
+            }
+
+            got_gamename = 1;
+            return 0;            
+        }
+    };
+      
 //TODO {
-//TODO 	static int got_gamename = 0;
+//TODO 	
 //TODO 
-//TODO 	/* notice: for MESS game means system */
-//TODO 	if (got_gamename)
-//TODO 	{
-//TODO 		fprintf(stderr,"error: duplicate gamename: %s\n", arg);
-//TODO 		return -1;
-//TODO 	}
-//TODO 
-//TODO 	rompath_extra = win_dirname(arg);
-//TODO 
-//TODO 	if (rompath_extra && !strlen(rompath_extra))
-//TODO 	{
-//TODO 		free (rompath_extra);
-//TODO 		rompath_extra = NULL;
-//TODO 	}
-//TODO 
-//TODO 	gamename = arg;
-//TODO 
-//TODO 	if (!gamename || !strlen(gamename))
-//TODO 	{
-//TODO 		fprintf(stderr,"error: no gamename given in %s\n", arg);
-//TODO 		return -1;
-//TODO 	}
-//TODO 
-//TODO 	got_gamename = 1;
-//TODO 	return 0;
+
 //TODO }
 //TODO 
 //TODO 
