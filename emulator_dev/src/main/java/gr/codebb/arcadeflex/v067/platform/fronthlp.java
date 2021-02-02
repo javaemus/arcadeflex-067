@@ -1,13 +1,42 @@
 package gr.codebb.arcadeflex.v067.platform;
 
+import static gr.codebb.arcadeflex.v067.platform.rcH.*;
+import static gr.codebb.arcadeflex.common.libc.cstdio.*;
+import static gr.codebb.arcadeflex.common.libc.cstring.*;
+import static gr.codebb.arcadeflex.v067.mame.common.*;
+import static gr.codebb.arcadeflex.v067.mame.driver.drivers;
+import static gr.codebb.arcadeflex.v067.mame.version.build_version;
+import static gr.codebb.arcadeflex.v067.mame.driverH.*;
+
 public class fronthlp {
-//TODO enum { LIST_SHORT = 1, LIST_INFO, LIST_FULL, LIST_SAMDIR, LIST_ROMS, LIST_SAMPLES,
-//TODO 		LIST_LMR, LIST_DETAILS, LIST_GAMELIST,
-//TODO 		LIST_GAMES, LIST_CLONES,
-//TODO 		LIST_WRONGORIENTATION, LIST_WRONGFPS, LIST_CRC, LIST_DUPCRC, LIST_WRONGMERGE,
-//TODO 		LIST_ROMSIZE, LIST_ROMDISTRIBUTION, LIST_ROMNUMBER, LIST_PALETTESIZE,
-//TODO 		LIST_CPU, LIST_CPUCLASS, LIST_NOSOUND, LIST_SOUND, LIST_NVRAM, LIST_SOURCEFILE,
-//TODO 		LIST_GAMESPERSOURCEFILE };
+
+    public static final int LIST_SHORT    = 1;
+    public static final int LIST_INFO     = 2;
+    public static final int LIST_FULL     = 3;
+    public static final int LIST_SAMDIR   = 4;
+    public static final int LIST_ROMS     = 5;
+    public static final int LIST_SAMPLES  = 6;
+    public static final int LIST_LMR      = 7;
+    public static final int LIST_DETAILS  = 8;
+    public static final int LIST_GAMELIST = 9;
+    public static final int LIST_GAMES    = 10;
+    public static final int LIST_CLONES   = 11;
+    public static final int LIST_WRONGORIENTATION = 12;
+    public static final int LIST_WRONGFPS = 13;
+    public static final int LIST_CRC      = 14;
+    public static final int LIST_DUPCRC   = 15;
+    public static final int LIST_WRONGMERGE   = 16;
+    public static final int LIST_ROMSIZE  = 17;
+    public static final int LIST_ROMDISTRIBUTION  = 18;
+    public static final int LIST_ROMNUMBER    = 19;
+    public static final int LIST_PALETTESIZE  = 20;
+    public static final int LIST_CPU      = 21;
+    public static final int LIST_CPUCLASS = 22;
+    public static final int LIST_NOSOUND  = 23;
+    public static final int LIST_SOUND    = 24;
+    public static final int LIST_NVRAM    = 25;
+    public static final int LIST_SOURCEFILE   = 26;
+    public static final int LIST_GAMESPERSOURCEFILE = 27;
 //TODO #else
 //TODO #include "messwin.h"
 //TODO enum { LIST_SHORT = 1, LIST_INFO, LIST_FULL, LIST_SAMDIR, LIST_ROMS, LIST_SAMPLES,
@@ -36,69 +65,83 @@ public class fronthlp {
 //TODO #define YEAR_BEGIN 1950
 //TODO #define YEAR_END   2000
 //TODO #endif
-//TODO 
-//TODO static int list = 0;
-//TODO static int listclones = 1;
-//TODO static int verify = 0;
-//TODO static int ident = 0;
-//TODO static int help = 0;
+
+    static int list = 0;
+    static int listclones = 1;
+    static int verify = 0;
+    static int ident = 0;
+    static int help = 0;
 //TODO static int sortby = 0;
-//TODO 
-//TODO struct rc_option frontend_opts[] = {
-//TODO 	{ "Frontend Related", NULL,	rc_seperator, NULL, NULL, 0, 0,	NULL, NULL },
-//TODO 
-//TODO 	{ "help", "h", rc_set_int, &help, NULL, 1, 0, NULL, "show help message" },
-//TODO 	{ "?", NULL,   rc_set_int, &help, NULL, 1, 0, NULL, "show help message" },
+    
+    static rc_assign_func assign_list = new rc_assign_func() {
+        @Override
+        public void handler(int value) {
+            list = value;
+        }
+    };
+    
+    static rc_assign_func assign_help = new rc_assign_func() {
+        @Override
+        public void handler(int value) {
+            help = value;
+        }
+    };
+
+    public static rc_option frontend_opts[] = {
+        new rc_option( "Frontend Related", null,	rc_seperator, null, null, 0, 0,	null, null ),
+
+        new rc_option( "help", "h", rc_set_int, assign_help, null, 1, 0, null, "show help message" ),
+        new rc_option( "?", null,   rc_set_int, assign_help, null, 1, 0, null, "show help message" ),
 //TODO 
 //TODO 	/* list options follow */
-//TODO 	{ "list", "ls", rc_set_int,	&list, NULL, LIST_SHORT, 0, NULL, "List supported games matching gamename, or all, gamename may contain * and ? wildcards" },
-//TODO 	{ "listfull", "ll", rc_set_int,	&list, NULL, LIST_FULL,	0, NULL, "short name, full name" },
-//TODO 	{ "listgames", NULL, rc_set_int, &list, NULL, LIST_GAMES, 0, NULL, "year, manufacturer and full name" },
-//TODO 	{ "listdetails", NULL, rc_set_int, &list, NULL, LIST_DETAILS, 0, NULL, "detailed info" },
-//TODO 	{ "gamelist", NULL, rc_set_int, &list, NULL, LIST_GAMELIST, 0, NULL, "output gamelist.txt main body" },
-//TODO 	{ "listsourcefile",	NULL, rc_set_int, &list, NULL, LIST_SOURCEFILE, 0, NULL, "driver sourcefile" },
-//TODO 	{ "listgamespersourcefile",	NULL, rc_set_int, &list, NULL, LIST_GAMESPERSOURCEFILE, 0, NULL, "games per sourcefile" },
-//TODO 	{ "listinfo", "li", rc_set_int, &list, NULL, LIST_INFO, 0, NULL, "all available info on driver" },
-//TODO 	{ "listclones", "lc", rc_set_int, &list, NULL, LIST_CLONES, 0, NULL, "show clones" },
-//TODO 	{ "listsamdir", NULL, rc_set_int, &list, NULL, LIST_SAMDIR, 0, NULL, "shared sample directory" },
-//TODO 	{ "listcrc", NULL, rc_set_int, &list, NULL, LIST_CRC, 0, NULL, "checksums" },
-//TODO 	{ "listdupcrc", NULL, rc_set_int, &list, NULL, LIST_DUPCRC, 0, NULL, "duplicate crc's" },
-//TODO 	{ "listwrongmerge", "lwm", rc_set_int, &list, NULL, LIST_WRONGMERGE, 0, NULL, "wrong merge attempts" },
-//TODO 	{ "listromsize", NULL, rc_set_int, &list, NULL, LIST_ROMSIZE, 0, NULL, "rom size" },
-//TODO 	{ "listromdistribution", NULL, rc_set_int, &list, NULL, LIST_ROMDISTRIBUTION, 0, NULL, "rom distribution" },
-//TODO 	{ "listromnumber", NULL, rc_set_int, &list, NULL, LIST_ROMNUMBER, 0, NULL, "rom size" },
-//TODO 	{ "listpalettesize", "lps", rc_set_int, &list, NULL, LIST_PALETTESIZE, 0, NULL, "palette size" },
-//TODO 	{ "listcpu", NULL, rc_set_int, &list, NULL, LIST_CPU, 0, NULL, "cpu's used" },
-//TODO 	{ "listcpuclass", NULL, rc_set_int, &list, NULL, LIST_CPUCLASS, 0, NULL, "class of cpu's used by year" },
-//TODO 	{ "listnosound", NULL, rc_set_int, &list, NULL, LIST_NOSOUND, 0, NULL, "drivers missing sound support" },
-//TODO 	{ "listsound", NULL, rc_set_int, &list, NULL, LIST_SOUND, 0, NULL, "sound chips used" },
-//TODO 	{ "listnvram",	NULL, rc_set_int, &list, NULL, LIST_NVRAM, 0, NULL, "games with nvram" },
+ 	new rc_option( "list", "ls", rc_set_int,	assign_list, null, LIST_SHORT, 0, null, "List supported games matching gamename, or all, gamename may contain * and ? wildcards" ),
+ 	new rc_option( "listfull", "ll", rc_set_int,	assign_list, null, LIST_FULL,	0, null, "short name, full name" ),
+//TODO 	{ "listgames", null, rc_set_int, &list, null, LIST_GAMES, 0, null, "year, manufacturer and full name" },
+//TODO 	{ "listdetails", null, rc_set_int, &list, null, LIST_DETAILS, 0, null, "detailed info" },
+//TODO 	{ "gamelist", null, rc_set_int, &list, null, LIST_GAMELIST, 0, null, "output gamelist.txt main body" },
+//TODO 	{ "listsourcefile",	null, rc_set_int, &list, null, LIST_SOURCEFILE, 0, null, "driver sourcefile" },
+//TODO 	{ "listgamespersourcefile",	null, rc_set_int, &list, null, LIST_GAMESPERSOURCEFILE, 0, null, "games per sourcefile" },
+//TODO 	{ "listinfo", "li", rc_set_int, &list, null, LIST_INFO, 0, null, "all available info on driver" },
+//TODO 	{ "listclones", "lc", rc_set_int, &list, null, LIST_CLONES, 0, null, "show clones" },
+//TODO 	{ "listsamdir", null, rc_set_int, &list, null, LIST_SAMDIR, 0, null, "shared sample directory" },
+//TODO 	{ "listcrc", null, rc_set_int, &list, null, LIST_CRC, 0, null, "checksums" },
+//TODO 	{ "listdupcrc", null, rc_set_int, &list, null, LIST_DUPCRC, 0, null, "duplicate crc's" },
+//TODO 	{ "listwrongmerge", "lwm", rc_set_int, &list, null, LIST_WRONGMERGE, 0, null, "wrong merge attempts" },
+//TODO 	{ "listromsize", null, rc_set_int, &list, null, LIST_ROMSIZE, 0, null, "rom size" },
+//TODO 	{ "listromdistribution", null, rc_set_int, &list, null, LIST_ROMDISTRIBUTION, 0, null, "rom distribution" },
+//TODO 	{ "listromnumber", null, rc_set_int, &list, null, LIST_ROMNUMBER, 0, null, "rom size" },
+//TODO 	{ "listpalettesize", "lps", rc_set_int, &list, null, LIST_PALETTESIZE, 0, null, "palette size" },
+//TODO 	{ "listcpu", null, rc_set_int, &list, null, LIST_CPU, 0, null, "cpu's used" },
+//TODO 	{ "listcpuclass", null, rc_set_int, &list, null, LIST_CPUCLASS, 0, null, "class of cpu's used by year" },
+//TODO 	{ "listnosound", null, rc_set_int, &list, null, LIST_NOSOUND, 0, null, "drivers missing sound support" },
+//TODO 	{ "listsound", null, rc_set_int, &list, null, LIST_SOUND, 0, null, "sound chips used" },
+//TODO 	{ "listnvram",	null, rc_set_int, &list, null, LIST_NVRAM, 0, null, "games with nvram" },
 //TODO #ifdef MAME_DEBUG /* do not put this into a public release! */
-//TODO 	{ "lmr", NULL, rc_set_int, &list, NULL, LIST_LMR, 0, NULL, "missing roms" },
+//TODO 	{ "lmr", null, rc_set_int, &list, null, LIST_LMR, 0, null, "missing roms" },
 //TODO #endif
-//TODO 	{ "wrongorientation", NULL, rc_set_int, &list, NULL, LIST_WRONGORIENTATION, 0, NULL, "wrong orientation" },
-//TODO 	{ "wrongfps", NULL, rc_set_int, &list, NULL, LIST_WRONGFPS, 0, NULL, "wrong fps" },
-//TODO 	{ "clones", NULL, rc_bool, &listclones, "1", 0, 0, NULL, "enable/disable clones" },
+//TODO 	{ "wrongorientation", null, rc_set_int, &list, null, LIST_WRONGORIENTATION, 0, null, "wrong orientation" },
+//TODO 	{ "wrongfps", null, rc_set_int, &list, null, LIST_WRONGFPS, 0, null, "wrong fps" },
+//TODO 	{ "clones", null, rc_bool, &listclones, "1", 0, 0, null, "enable/disable clones" },
 //TODO #ifdef MESS
-//TODO 	{ "listdevices", NULL, rc_set_int, &list, NULL, LIST_MESSDEVICES, 0, NULL, "list available devices" },
-//TODO 	{ "listtext", NULL, rc_set_int, &list, NULL, LIST_MESSTEXT, 0, NULL, "list available file extensions" },
-//TODO 	{ "createdir", NULL, rc_set_int, &list, NULL, LIST_MESSCREATEDIR, 0, NULL, NULL },
+//TODO 	{ "listdevices", null, rc_set_int, &list, null, LIST_MESSDEVICES, 0, null, "list available devices" },
+//TODO 	{ "listtext", null, rc_set_int, &list, null, LIST_MESSTEXT, 0, null, "list available file extensions" },
+//TODO 	{ "createdir", null, rc_set_int, &list, null, LIST_MESSCREATEDIR, 0, null, null },
 //TODO #endif
-//TODO 	{ "listroms", NULL, rc_set_int, &list, NULL, LIST_ROMS, 0, NULL, "list required roms for a driver" },
-//TODO 	{ "listsamples", NULL, rc_set_int, &list, NULL, LIST_SAMPLES, 0, NULL, "list optional samples for a driver" },
-//TODO 	{ "verifyroms", NULL, rc_set_int, &verify, NULL, VERIFY_ROMS, 0, NULL, "report romsets that have problems" },
-//TODO 	{ "verifysets", NULL, rc_set_int, &verify, NULL, VERIFY_ROMS|VERIFY_VERBOSE|VERIFY_TERSE, 0, NULL, "verify checksums of romsets (terse)" },
-//TODO 	{ "vset", NULL, rc_set_int, &verify, NULL, VERIFY_ROMS|VERIFY_VERBOSE, 0, NULL, "verify checksums of a romset (verbose)" },
-//TODO 	{ "verifysamples", NULL, rc_set_int, &verify, NULL, VERIFY_SAMPLES|VERIFY_VERBOSE, 0, NULL, "report samplesets that have problems" },
-//TODO 	{ "vsam", NULL, rc_set_int, &verify, NULL, VERIFY_SAMPLES|VERIFY_VERBOSE, 0, NULL, "verify a sampleset" },
-//TODO 	{ "romident", NULL, rc_set_int, &ident, NULL, 1, 0, NULL, "compare files with known MAME roms" },
-//TODO 	{ "isknown", NULL, rc_set_int, &ident, NULL, 2, 0, NULL, "compare files with known MAME roms (brief)" },
-//TODO 	{ "sortname", NULL, rc_set_int, &sortby, NULL, 1, 0, NULL, "sort by descriptive name" },
-//TODO 	{ "sortdriver", NULL, rc_set_int, &sortby, NULL, 2, 0, NULL, "sort by driver" },
-//TODO 	{ NULL, NULL, rc_end, NULL, NULL, 0, 0, NULL, NULL }
-//TODO };
-//TODO 
-//TODO 
+//TODO 	{ "listroms", null, rc_set_int, &list, null, LIST_ROMS, 0, null, "list required roms for a driver" },
+//TODO 	{ "listsamples", null, rc_set_int, &list, null, LIST_SAMPLES, 0, null, "list optional samples for a driver" },
+//TODO 	{ "verifyroms", null, rc_set_int, &verify, null, VERIFY_ROMS, 0, null, "report romsets that have problems" },
+//TODO 	{ "verifysets", null, rc_set_int, &verify, null, VERIFY_ROMS|VERIFY_VERBOSE|VERIFY_TERSE, 0, null, "verify checksums of romsets (terse)" },
+//TODO 	{ "vset", null, rc_set_int, &verify, null, VERIFY_ROMS|VERIFY_VERBOSE, 0, null, "verify checksums of a romset (verbose)" },
+//TODO 	{ "verifysamples", null, rc_set_int, &verify, null, VERIFY_SAMPLES|VERIFY_VERBOSE, 0, null, "report samplesets that have problems" },
+//TODO 	{ "vsam", null, rc_set_int, &verify, null, VERIFY_SAMPLES|VERIFY_VERBOSE, 0, null, "verify a sampleset" },
+//TODO 	{ "romident", null, rc_set_int, &ident, null, 1, 0, null, "compare files with known MAME roms" },
+//TODO 	{ "isknown", null, rc_set_int, &ident, null, 2, 0, null, "compare files with known MAME roms (brief)" },
+//TODO 	{ "sortname", null, rc_set_int, &sortby, null, 1, 0, null, "sort by descriptive name" },
+//TODO 	{ "sortdriver", null, rc_set_int, &sortby, null, 2, 0, null, "sort by driver" },
+ 	new rc_option( null, null, rc_end, null, null, 0, 0, null, null )
+    };
+
+
 //TODO int silentident,knownstatus;
 //TODO 
 //TODO extern unsigned int crc32 (unsigned int crc, const unsigned char *buf, unsigned int len);
@@ -418,32 +461,36 @@ public class fronthlp {
 
     public static int frontend_help(String gamename) {
 //TODO 	struct InternalMachineDriver drv;
-//TODO 	int i, j;
+ 	int i, j;
 //TODO 	const char *all_games = "*";
-//TODO 
-//TODO 	/* display help unless a game or an utility are specified */
-//TODO 	if (!gamename && !help && !list && !ident && !verify)
-//TODO 		help = 1;
-//TODO 
-//TODO 	if (help)  /* brief help - useful to get current version info */
-//TODO 	{
-//TODO 		#ifndef MESS
-//TODO 		printf("M.A.M.E. v%s - Multiple Arcade Machine Emulator\n"
-//TODO 				"Copyright (C) 1997-2003 by Nicola Salmoria and the MAME Team\n\n",build_version);
-//TODO 		showdisclaimer();
-//TODO 		printf("Usage:  MAME gamename [options]\n\n"
-//TODO 				"        MAME -list         for a brief list of supported games\n"
-//TODO 				"        MAME -listfull     for a full list of supported games\n"
-//TODO 				"        MAME -showusage    for a brief list of options\n"
-//TODO 				"        MAME -showconfig   for a list of configuration options\n"
-//TODO 				"        MAME -createconfig to create a mame.ini\n\n"
-//TODO 				"See readme.txt for a complete list of options.\n");
-//TODO 		#else
-//TODO 		showmessinfo();
-//TODO 		#endif
-//TODO 		return 0;
-//TODO 	}
-//TODO 
+
+ 	/* display help unless a game or an utility are specified */
+ 	if (gamename==null && help==0 && list==0 && ident==0 && verify==0)
+ 		help = 1;
+        
+        //System.out.println("LIST="+list);
+        //System.out.println("help="+help);
+        
+ 	if (help != 0)  /* brief help - useful to get current version info */
+ 	{
+            
+/*TODO*/// 		#ifndef MESS
+ 		printf("M.A.M.E. v%s - Multiple Arcade Machine Emulator\n"+
+ 				"Copyright (C) 1997-2003 by Nicola Salmoria and the MAME Team\n\n",build_version);
+ 		showdisclaimer();
+ 		printf("Usage:  MAME gamename [options]\n\n"+
+ 				"        MAME -list         for a brief list of supported games\n"+
+ 				"        MAME -listfull     for a full list of supported games\n"+
+ 				"        MAME -showusage    for a brief list of options\n"+
+ 				"        MAME -showconfig   for a list of configuration options\n"+
+ 				"        MAME -createconfig to create a mame.ini\n\n"+
+ 				"See readme.txt for a complete list of options.\n");
+/*TODO*/// 		#else
+/*TODO*/// 		showmessinfo();
+/*TODO*/// 		#endif
+ 		return 0;
+ 	}
+ 
 //TODO 	/* HACK: some options REQUIRE gamename field to work: default to "*" */
 //TODO 	if (!gamename || (strlen(gamename) == 0))
 //TODO 		gamename = all_games;
@@ -463,58 +510,58 @@ public class fronthlp {
 //TODO 			qsort(drivers, count, sizeof(drivers[0]), compare_driver_names);
 //TODO 	}
 //TODO 
-//TODO 	switch (list)  /* front-end utilities ;) */
-//TODO 	{
-//TODO 		case LIST_SHORT: /* simple games list */
+	switch (list)  /* front-end utilities ;) */
+ 	{
+ 		case LIST_SHORT: /* simple games list */
 //TODO 			#ifndef MESS
-//TODO 			printf("\nMAME currently supports the following games:\n\n");
+ 			printf("\nMAME currently supports the following games:\n\n");
 //TODO 			#else
-//TODO 			printf("\nMESS currently supports the following systems:\n\n");
+//TODO  			printf("\nMESS currently supports the following systems:\n\n");
 //TODO 			#endif
-//TODO 			for (i = j = 0; drivers[i]; i++)
-//TODO 				if ((listclones || drivers[i]->clone_of == 0
-//TODO 						|| (drivers[i]->clone_of->flags & NOT_A_DRIVER)
-//TODO 						) && !strwildcmp(gamename, drivers[i]->name))
-//TODO 				{
-//TODO 					printf("%-8s",drivers[i]->name);
-//TODO 					j++;
-//TODO 					if (!(j % 8)) printf("\n");
-//TODO 					else printf("  ");
-//TODO 				}
-//TODO 			if (j % 8) printf("\n");
-//TODO 			printf("\n");
-//TODO 			if (j != i) printf("Total ROM sets displayed: %4d - ", j);
+ 			for (i = j = 0; drivers[i]!=null; i++)
+ 				if ((listclones!=0 || drivers[i].clone_of == null
+ 						|| (drivers[i].clone_of.flags & NOT_A_DRIVER)!=0
+ 						) /*&& strwildcmp(gamename, drivers[i].name)==0*/)
+ 				{
+ 					printf("%-8s",drivers[i].name);
+ 					j++;
+ 					if ((j % 8)==0) printf("\n");
+ 					else printf("  ");
+ 				}
+ 			if ((j % 8)!=0) printf("\n");
+ 			printf("\n");
+ 			if (j != i) printf("Total ROM sets displayed: %4d - ", j);
 //TODO 			#ifndef MESS
-//TODO 			printf("Total ROM sets supported: %4d\n", i);
+			printf("Total ROM sets supported: %4d\n", i);
 //TODO 			#else
 //TODO 			printf("Total Systems supported: %4d\n", i);
 //TODO 			#endif
-//TODO             return 0;
+            return 0;
 //TODO 			break;
-//TODO 
-//TODO 		case LIST_FULL: /* games list with descriptions */
-//TODO 			printf("Name:     Description:\n");
-//TODO 			for (i = 0; drivers[i]; i++)
-//TODO 				if ((listclones || drivers[i]->clone_of == 0
-//TODO 						|| (drivers[i]->clone_of->flags & NOT_A_DRIVER)
-//TODO 						) && !strwildcmp(gamename, drivers[i]->name))
-//TODO 				{
-//TODO 					char name[200];
-//TODO 
-//TODO 					printf("%-10s",drivers[i]->name);
-//TODO 
-//TODO 					namecopy(name,drivers[i]->description);
-//TODO 					printf("\"%s",name);
-//TODO 
-//TODO 					/* print the additional description only if we are listing clones */
-//TODO 					if (listclones)
-//TODO 					{
-//TODO 						if (strchr(drivers[i]->description,'('))
-//TODO 							printf(" %s",strchr(drivers[i]->description,'('));
-//TODO 					}
-//TODO 					printf("\"\n");
-//TODO 				}
-//TODO 			return 0;
+ 
+ 		case LIST_FULL: /* games list with descriptions */
+ 			printf("Name:     Description:\n");
+ 			for (i = 0; drivers[i]!=null; i++)
+ 				if ((listclones!=0 || drivers[i].clone_of == null
+ 						|| (drivers[i].clone_of.flags & NOT_A_DRIVER)!=0
+ 						) /*&& !strwildcmp(gamename, drivers[i].name)*/)
+ 				{
+ 					String name;
+ 
+ 					printf("%-10s",drivers[i].name);
+ 
+ 					name = drivers[i].description;
+ 					printf("\"%s",name);
+ 
+ 					/* print the additional description only if we are listing clones */
+ 					if (listclones != 0)
+ 					{
+ 						if (strchr(drivers[i].description,'(') != null)
+ 							printf(" %s",strchr(drivers[i].description,'('));
+ 					}
+ 					printf("\"\n");
+ 				}
+ 			return 0;
 //TODO 			break;
 //TODO 
 //TODO 		case LIST_SAMDIR: /* games list with samples directories */
@@ -528,7 +575,7 @@ public class fronthlp {
 //TODO #if (HAS_SAMPLES || HAS_VLM5030)
 //TODO 					for( j = 0; drv.sound[j].sound_type && j < MAX_SOUND; j++ )
 //TODO 					{
-//TODO 						const char **samplenames = NULL;
+//TODO 						const char **samplenames = null;
 //TODO #if (HAS_SAMPLES)
 //TODO 						if( drv.sound[j].sound_type == SOUND_SAMPLES )
 //TODO 							samplenames = ((struct Samplesinterface *)drv.sound[j].sound_interface)->samplenames;
@@ -567,7 +614,7 @@ public class fronthlp {
 //TODO 				expand_machine_driver(gamedrv->drv, &drv);
 //TODO 				for( k = 0; drv.sound[k].sound_type && k < MAX_SOUND; k++ )
 //TODO 				{
-//TODO 					const char **samplenames = NULL;
+//TODO 					const char **samplenames = null;
 //TODO #if (HAS_SAMPLES)
 //TODO 					if( drv.sound[k].sound_type == SOUND_SAMPLES )
 //TODO 							samplenames = ((struct Samplesinterface *)drv.sound[k].sound_interface)->samplenames;
@@ -597,7 +644,7 @@ public class fronthlp {
 //TODO 				for (i = 0; drivers[i]; i++)
 //TODO 				{
 //TODO 					static int first_missing = 1;
-//TODO //					get_rom_sample_path (argc, argv, i, NULL);
+//TODO //					get_rom_sample_path (argc, argv, i, null);
 //TODO 					if (RomsetMissing (i))
 //TODO 					{
 //TODO 						if (first_missing)
@@ -807,7 +854,7 @@ public class fronthlp {
 //TODO 						printf("|  Yes  ");
 //TODO 
 //TODO 					{
-//TODO 						const char **samplenames = NULL;
+//TODO 						const char **samplenames = null;
 //TODO 						expand_machine_driver(drivers[i]->drv, &drv);
 //TODO #if (HAS_SAMPLES || HAS_VLM5030)
 //TODO 						for (j = 0;drv.sound[j].sound_type && j < MAX_SOUND; j++)
@@ -1491,7 +1538,7 @@ public class fronthlp {
 //TODO 		case LIST_INFO: /* list all info */
 //TODO 			print_mame_info( stdout, drivers );
 //TODO 			return 0;
-//TODO 	}
+ 	}
 //TODO 
 //TODO 	if (verify)  /* "verify" utilities */
 //TODO 	{
@@ -1516,7 +1563,7 @@ public class fronthlp {
 //TODO 				continue;
 //TODO 
 //TODO 			/* set rom and sample path correctly */
-//TODO //			get_rom_sample_path (argc, argv, i, NULL);
+//TODO //			get_rom_sample_path (argc, argv, i, null);
 //TODO 
 //TODO 			if (verify & VERIFY_ROMS)
 //TODO 			{
@@ -1537,7 +1584,7 @@ public class fronthlp {
 //TODO 			}
 //TODO 			if (verify & VERIFY_SAMPLES)
 //TODO 			{
-//TODO 				const char **samplenames = NULL;
+//TODO 				const char **samplenames = null;
 //TODO 				expand_machine_driver(drivers[i]->drv, &drv);
 //TODO #if (HAS_SAMPLES || HAS_VLM5030)
 //TODO  				for( j = 0; drv.sound[j].sound_type && j < MAX_SOUND; j++ )

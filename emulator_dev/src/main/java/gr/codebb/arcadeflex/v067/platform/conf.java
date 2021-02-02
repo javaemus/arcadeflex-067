@@ -2,7 +2,8 @@ package gr.codebb.arcadeflex.v067.platform;
 
 import static gr.codebb.arcadeflex.v067.platform.fronthlp.*;
 import static gr.codebb.arcadeflex.v067.platform.rc.*;
-import static gr.codebb.arcadeflex.common.libc.*;
+import static gr.codebb.arcadeflex.common.libc.cstdio.*;
+import static gr.codebb.arcadeflex.common.libc.cstring.*;
 import static gr.codebb.arcadeflex.v067.platform.rcH.*;
 import java.io.PrintStream;
 
@@ -167,9 +168,9 @@ public class conf {
  
  
     /* struct definitions */
-    static rc_option opts[] = {
-//TODO 	/* name, shortname, type, dest, deflt, min, max, func, help */
-//TODO 	{ NULL, NULL, rc_link, frontend_opts, NULL, 0, 0, NULL, NULL },
+    public static rc_option opts[] = {
+ 	/* name, shortname, type, dest, deflt, min, max, func, help */
+ 	new rc_option( null, null, rc_link, frontend_opts, null, 0, 0, null, null ),
 //TODO 	{ NULL, NULL, rc_link, fileio_opts, NULL, 0, 0, NULL, NULL },
 //TODO 	{ NULL, NULL, rc_link, video_opts, NULL, 0,	0, NULL, NULL },
 //TODO 	{ NULL, NULL, rc_link, sound_opts, NULL, 0,	0, NULL, NULL },
@@ -233,7 +234,7 @@ public class conf {
 //TODO 	{ "showusage", "su", rc_set_int, &showusage, NULL, 1, 0, NULL, "show this help" },
 //TODO 	{ "readconfig",	"rc", rc_bool, &readconfig, "1", 0, 0, NULL, "enable/disable loading of configfiles" },
 //TODO 	{ "verbose", "v", rc_bool, &verbose, "0", 0, 0, NULL, "display additional diagnostic information" },
-//TODO 	{ NULL,	NULL, rc_end, NULL, NULL, 0, 0,	NULL, NULL }
+ 	new rc_option( null,	null, rc_end, null, null, 0, 0,	null, null )
     };
 
 //TODO /*
@@ -405,11 +406,11 @@ public class conf {
  		System.exit(1);
  	}
 
-//TODO 	if (rc_register(rc, opts) != 0)
-//TODO 	{
-//TODO 		fprintf (stderr, "error on registering opts\n");
-//TODO 		System.exit(1);
-//TODO 	}
+ 	if (rc_register(rc, opts) != 0)
+ 	{
+ 		fprintf (stderr, "error on registering opts\n");
+ 		System.exit(1);
+ 	}
  
  	/* parse the commandline */
  	if (rc_parse_commandline(rc, argc, argv, 2,  config_handle_arg ) != 0)
@@ -417,7 +418,8 @@ public class conf {
  		fprintf (stderr, "error while parsing cmdline\n");
  		System.exit(1);
  	}
-System.out.println("Game Name: "+gamename);
+        //System.out.println("Game Name: "+gamename);
+        
 //TODO 	/* determine global configfile name */
 //TODO 	cmd_name = win_strip_extension(win_basename(argv[0]));
 //TODO 	if (!cmd_name)

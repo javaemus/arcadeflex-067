@@ -1,3 +1,7 @@
+02/02/2021
+==========
+-frontend shows help and list (short and full)
+
 01/02/2021
 ==========
 -cli frontend finds gamename

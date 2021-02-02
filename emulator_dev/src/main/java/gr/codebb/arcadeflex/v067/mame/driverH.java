@@ -495,8 +495,8 @@ public class driverH {
 //TODO #define GAME_NO_COCKTAIL			0x0100	/* screen flip support is missing */
 //TODO #define GAME_NO_SOUND				0x0200	/* sound is missing */
 //TODO #define GAME_IMPERFECT_SOUND		0x0400	/* sound is known to be wrong */
-//TODO #define NOT_A_DRIVER				0x4000	/* set by the fake "root" driver_0 and by "containers" */
-//TODO 											/* e.g. driver_neogeo. */
+    public static final int NOT_A_DRIVER				= 0x4000;	/* set by the fake "root" driver_0 and by "containers" */
+								/* e.g. driver_neogeo. */
 //TODO #ifdef MESS
 //TODO #define GAME_COMPUTER               0x8000  /* Driver is a computer (needs full keyboard) */
 //TODO #define GAME_COMPUTER_MODIFIED      0x0800	/* Official? Hack */
