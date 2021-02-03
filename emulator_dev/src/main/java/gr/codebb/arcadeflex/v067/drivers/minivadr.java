@@ -48,7 +48,7 @@ public class minivadr {
         }
     };
 
-    static MachinePtr construct_minivadr = new MachinePtr() {/* basic machine hardware */
+    static MachinePtr machine_driver_minivadr = new MachinePtr() {/* basic machine hardware */
         public void handler(InternalMachineDriver machine) {
             MDRV_CPU_ADD(CPU_Z80, 24000000 / 6);
             /* 4 MHz ? */
@@ -85,5 +85,5 @@ public class minivadr {
         }
     };
 
-    public static GameDriver driver_minivadr = new GameDriver("1990", "minivadr", "minivadr.java", rom_minivadr, null, construct_minivadr, input_ports_minivadr, null, ROT0, "Taito Corporation", "Minivader");
+    public static GameDriver driver_minivadr = new GameDriver("1990", "minivadr", "minivadr.java", rom_minivadr, null, machine_driver_minivadr, input_ports_minivadr, null, ROT0, "Taito Corporation", "Minivader");
 }

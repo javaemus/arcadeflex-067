@@ -23,3 +23,4 @@
 hs_err_pid*
 /convertor/target/
 /emulator_dev/target/
+/emulator_dev/nbactions.xml
