@@ -1,5 +1,9 @@
 package gr.codebb.arcadeflex.v067.mame;
 
+import gr.codebb.arcadeflex.v067.common.FuncPtr.MachinePtr;
+import gr.codebb.arcadeflex.v067.mame.cpuexecH.MachineCPU;
+import gr.codebb.arcadeflex.v067.mame.driverH.InternalMachineDriver;
+import static gr.codebb.arcadeflex.v067.mame.driverH.MAX_CPU;
 import static gr.codebb.arcadeflex.v067.mame.mameH.*;
 
 public class mame {
@@ -479,13 +483,12 @@ public class mame {
 //TODO 	expand_machine_driver - construct a machine
 //TODO 	driver from the macroized state
 //TODO -------------------------------------------------*/
-//TODO 
-//TODO void expand_machine_driver(void (*constructor)(struct InternalMachineDriver *), struct InternalMachineDriver *output)
-//TODO {
-//TODO 	/* keeping this function allows us to pre-init the driver before constructing it */
+
+    public static void expand_machine_driver(MachinePtr constructor, InternalMachineDriver output) {
+        /* keeping this function allows us to pre-init the driver before constructing it */
 //TODO 	memset(output, 0, sizeof(*output));
-//TODO 	(*constructor)(output);
-//TODO }
+        (constructor).handler(output);
+    }
 //TODO 
 //TODO 
 //TODO 
@@ -1201,28 +1204,26 @@ public class mame {
 //TODO }
 //TODO 
 //TODO 
-//TODO 
-//TODO /*-------------------------------------------------
-//TODO 	machine_add_cpu - add a CPU during machine
-//TODO 	driver expansion
-//TODO -------------------------------------------------*/
-//TODO 
-//TODO struct MachineCPU *machine_add_cpu(struct InternalMachineDriver *machine, const char *tag, int type, int cpuclock)
-//TODO {
-//TODO 	int cpunum;
-//TODO 
-//TODO 	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
-//TODO 		if (machine->cpu[cpunum].cpu_type == 0)
-//TODO 		{
-//TODO 			machine->cpu[cpunum].tag = tag;
-//TODO 			machine->cpu[cpunum].cpu_type = type;
-//TODO 			machine->cpu[cpunum].cpu_clock = cpuclock;
-//TODO 			return &machine->cpu[cpunum];
-//TODO 		}
-//TODO 
+
+    /*-------------------------------------------------
+ 	machine_add_cpu - add a CPU during machine
+ 	driver expansion
+    -------------------------------------------------*/
+    public static MachineCPU machine_add_cpu(InternalMachineDriver machine, String tag, int type, int cpuclock) {
+        int cpunum;
+
+        for (cpunum = 0; cpunum < MAX_CPU; cpunum++) {
+            if (machine.cpu[cpunum].cpu_type == 0) {
+                machine.cpu[cpunum].tag = tag;
+                machine.cpu[cpunum].cpu_type = type;
+                machine.cpu[cpunum].cpu_clock = cpuclock;
+                return machine.cpu[cpunum];
+            }
+        }
+
 //TODO 	logerror("Out of CPU's!\n");
-//TODO 	return NULL;
-//TODO }
+        return null;
+    }
 //TODO 
 //TODO 
 //TODO 

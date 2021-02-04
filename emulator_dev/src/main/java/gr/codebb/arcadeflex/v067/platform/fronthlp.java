@@ -4,9 +4,12 @@ import static gr.codebb.arcadeflex.v067.platform.rcH.*;
 import static gr.codebb.arcadeflex.common.libc.cstdio.*;
 import static gr.codebb.arcadeflex.common.libc.cstring.*;
 import static gr.codebb.arcadeflex.v067.mame.common.*;
+import gr.codebb.arcadeflex.v067.mame.cpuexecH.MachineCPU;
+import static gr.codebb.arcadeflex.v067.mame.cpuintrf.cputype_name;
 import static gr.codebb.arcadeflex.v067.mame.driver.drivers;
 import static gr.codebb.arcadeflex.v067.mame.version.build_version;
 import static gr.codebb.arcadeflex.v067.mame.driverH.*;
+import static gr.codebb.arcadeflex.v067.mame.mame.expand_machine_driver;
 
 public class fronthlp {
 
@@ -95,7 +98,7 @@ public class fronthlp {
         new rc_option("list", "ls", rc_set_int, assign_list, null, LIST_SHORT, 0, null, "List supported games matching gamename, or all, gamename may contain * and ? wildcards"),
         new rc_option("listfull", "ll", rc_set_int, assign_list, null, LIST_FULL, 0, null, "short name, full name"),
         new rc_option("listgames", null, rc_set_int, assign_list, null, LIST_GAMES, 0, null, "year, manufacturer and full name"),
-        //TODO 	{ "listdetails", null, rc_set_int, &list, null, LIST_DETAILS, 0, null, "detailed info" },
+        new rc_option("listdetails", null, rc_set_int, assign_list, null, LIST_DETAILS, 0, null, "detailed info"),
         //TODO 	{ "gamelist", null, rc_set_int, &list, null, LIST_GAMELIST, 0, null, "output gamelist.txt main body" },
         //TODO 	{ "listsourcefile",	null, rc_set_int, &list, null, LIST_SOURCEFILE, 0, null, "driver sourcefile" },
         //TODO 	{ "listgamespersourcefile",	null, rc_set_int, &list, null, LIST_GAMESPERSOURCEFILE, 0, null, "games per sourcefile" },
@@ -650,57 +653,61 @@ public class fronthlp {
 //TODO 			return 0;
 //TODO 			break;
 //TODO 
-//TODO 		case LIST_DETAILS: /* A detailed MAMELIST.TXT type roms lister */
+            case LIST_DETAILS:
+                /* A detailed MAMELIST.TXT type roms lister */
+
+ /* First, we shall print the header */
+
+                printf(" romname driver        ");
+                for (j = 0; j < MAX_CPU; j++) {
+                    printf("cpu %d    ", j + 1);
+                }
+                for (j = 0; j < MAX_SOUND; j++) {
+                    printf("sound %d     ", j + 1);
+                }
+                printf("name\n");
+                printf("-------- ------------- ");
+                for (j = 0; j < MAX_CPU; j++) {
+                    printf("-------- ");
+                }
+                for (j = 0; j < MAX_SOUND; j++) {
+                    printf("----------- ");
+                }
+                printf("--------------------------\n");
+
+                /* Let's cycle through the drivers */
+ 
+ 			for (i = 0; drivers[i]!=null; i++)
+ 				if ((listclones!=0 || drivers[i].clone_of == null
+ 						|| ((drivers[i].clone_of.flags & NOT_A_DRIVER)!=0)) 
+                                                /*&& !strwildcmp(gamename, drivers[i]->name)*/)
+ 				{
+					/* Dummy structs to fetch the information from */
 //TODO 
-//TODO 			/* First, we shall print the header */
-//TODO 
-//TODO 			printf(" romname driver     ");
-//TODO 			for(j=0;j<MAX_CPU;j++) printf("cpu %d    ",j+1);
-//TODO 			for(j=0;j<MAX_SOUND;j++) printf("sound %d     ",j+1);
-//TODO 			printf("name\n");
-//TODO 			printf("-------- ---------- ");
-//TODO 			for(j=0;j<MAX_CPU;j++) printf("-------- ");
-//TODO 			for(j=0;j<MAX_SOUND;j++) printf("----------- ");
-//TODO 			printf("--------------------------\n");
-//TODO 
-//TODO 			/* Let's cycle through the drivers */
-//TODO 
-//TODO 			for (i = 0; drivers[i]; i++)
-//TODO 				if ((listclones || drivers[i]->clone_of == 0
-//TODO 						|| (drivers[i]->clone_of->flags & NOT_A_DRIVER)
-//TODO 						) && !strwildcmp(gamename, drivers[i]->name))
-//TODO 				{
-//TODO 					/* Dummy structs to fetch the information from */
-//TODO 
-//TODO 					const struct MachineCPU *x_cpu;
+					MachineCPU[] x_cpu;
 //TODO 					const struct MachineSound *x_sound;
-//TODO 					struct InternalMachineDriver x_driver;
-//TODO 
-//TODO 					expand_machine_driver(drivers[i]->drv, &x_driver);
-//TODO 					x_cpu = x_driver.cpu;
+                                        InternalMachineDriver x_driver=new InternalMachineDriver();
+ 
+ 					expand_machine_driver(drivers[i].drv, x_driver);
+					x_cpu = x_driver.cpu;
 //TODO 					x_sound = x_driver.sound;
-//TODO 
-//TODO 					/* First, the rom name */
-//TODO 
-//TODO 					printf("%-8s ",drivers[i]->name);
-//TODO 
-//TODO 					#ifndef MESS
-//TODO 					/* source file (skip the leading "src/drivers/" */
-//TODO 					printf("%-10s ",&drivers[i]->source_file[12]);
-//TODO 					#else
-//TODO 					/* source file (skip the leading "src/mess/systems/" */
-//TODO 					printf("%-10s ",&drivers[i]->source_file[17]);
-//TODO 					#endif
-//TODO 
-//TODO 					/* Then, cpus */
-//TODO 
-//TODO 					for(j=0;j<MAX_CPU;j++)
-//TODO 					{
+
+					/* First, the rom name */
+
+					printf("%-8s ",drivers[i].name);
+
+					printf("%-15s ",drivers[i].source_file);
+
+ 
+ 					/* Then, cpus */
+ 
+ 					for(j=0;j<MAX_CPU;j++)
+ 					{
 //TODO 						if (x_cpu[j].cpu_flags & CPU_AUDIO_CPU)
 //TODO 							printf("[%-6s] ",cputype_name(x_cpu[j].cpu_type));
 //TODO 						else
-//TODO 							printf("%-8s ",cputype_name(x_cpu[j].cpu_type));
-//TODO 					}
+ 							printf("%-8s ",cputype_name(x_cpu[j].cpu_type));
+ 					}
 //TODO 
 //TODO 					/* Then, sound chips */
 //TODO 
@@ -717,11 +724,9 @@ public class fronthlp {
 //TODO 
 //TODO 					/* Lastly, the name of the game and a \newline */
 //TODO 
-//TODO 					printf("%s\n",drivers[i]->description);
-//TODO 				}
-//TODO 			return 0;
-//TODO 			break;
-//TODO 
+ 					printf("%s\n",drivers[i].description);
+ 				}
+                return 0;
 //TODO 		case LIST_GAMELIST: /* GAMELIST.TXT */
 //TODO 			printf("This is the complete list of games supported by MAME %s.\n",build_version);
 //TODO 			if (!listclones)

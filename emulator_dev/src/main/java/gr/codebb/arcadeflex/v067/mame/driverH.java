@@ -1,6 +1,8 @@
 package gr.codebb.arcadeflex.v067.mame;
 
 import static gr.codebb.arcadeflex.v067.common.FuncPtr.*;
+import gr.codebb.arcadeflex.v067.mame.cpuexecH.MachineCPU;
+import static gr.codebb.arcadeflex.v067.mame.mame.machine_add_cpu;
 import static gr.codebb.arcadeflex.v067.mame.memoryH.*;
 
 public class driverH {
@@ -96,7 +98,7 @@ public class driverH {
 //TODO 		(void)cpu;														\
 //TODO 
 //TODO #define MACHINE_DRIVER_END 												\
-//TODO 	}	
+//TODO 	}
     public static void MACHINE_DRIVER_END() {
 
     }
@@ -107,16 +109,14 @@ public class driverH {
 //TODO 	construct_##game(machine); 											\
 //TODO 
 //TODO 
-//TODO /* add/modify/remove/replace CPUs */
-//TODO #define MDRV_CPU_ADD_TAG(tag, type, clock)								\
-//TODO 	cpu = machine_add_cpu(machine, (tag), CPU_##type, (clock));			\
-//TODO 
-//TODO #define MDRV_CPU_ADD(type, clock)										\
-//TODO 	MDRV_CPU_ADD_TAG(NULL, type, clock)									\
-//TODO 
 
-    public static void MDRV_CPU_ADD(int type, int clock) {
+    /* add/modify/remove/replace CPUs */
+    public static void MDRV_CPU_ADD_TAG(InternalMachineDriver machine, String tag, int type, int clock) {
+        machine_add_cpu(machine, tag, type, clock);
+    }
 
+    public static void MDRV_CPU_ADD(InternalMachineDriver machine, int type, int clock) {
+        MDRV_CPU_ADD_TAG(machine, null, type, clock);
     }
 //TODO #define MDRV_CPU_MODIFY(tag)											\
 //TODO 	cpu = machine_find_cpu(machine, tag);								\
@@ -318,22 +318,20 @@ public class driverH {
 //TODO void machine_remove_sound(struct InternalMachineDriver *machine, const char *tag);
 //TODO 
 //TODO 
-//TODO 
-//TODO /***************************************************************************
-//TODO 
-//TODO 	Internal representation of a machine driver, built from the constructor
-//TODO 
-//TODO ***************************************************************************/
-//TODO 
-//TODO #define MAX_CPU 8	/* MAX_CPU is the maximum number of CPUs which cpuintrf.c */
-//TODO 					/* can run at the same time. Currently, 8 is enough. */
-//TODO 
-//TODO #define MAX_SOUND 5	/* MAX_SOUND is the maximum number of sound subsystems */
-//TODO 					/* which can run at the same time. Currently, 5 is enough. */
-//TODO 
+
+    /**
+     * *************************************************************************
+     *
+     * Internal representation of a machine driver, built from the constructor
+     *
+     **************************************************************************
+     */
+    public static final int MAX_CPU = 8;/* MAX_CPU is the maximum number of CPUs which cpuintrf.c  can run at the same time. Currently, 8 is enough. */
+    public static final int MAX_SOUND = 5;/* MAX_SOUND is the maximum number of sound subsystems which can run at the same time. Currently, 5 is enough. */
 
     public static class InternalMachineDriver {
-//TODO 	struct MachineCPU cpu[MAX_CPU];
+
+        public MachineCPU cpu[] = MachineCPU.create(MAX_CPU);
 //TODO 	float frames_per_second;
 //TODO 	int vblank_duration;
 //TODO 	UINT32 cpu_slices_per_frame;
@@ -495,8 +493,9 @@ public class driverH {
 //TODO #define GAME_NO_COCKTAIL			0x0100	/* screen flip support is missing */
 //TODO #define GAME_NO_SOUND				0x0200	/* sound is missing */
 //TODO #define GAME_IMPERFECT_SOUND		0x0400	/* sound is known to be wrong */
-    public static final int NOT_A_DRIVER				= 0x4000;	/* set by the fake "root" driver_0 and by "containers" */
-								/* e.g. driver_neogeo. */
+    public static final int NOT_A_DRIVER = 0x4000;
+    /* set by the fake "root" driver_0 and by "containers" */
+ /* e.g. driver_neogeo. */
 //TODO #ifdef MESS
 //TODO #define GAME_COMPUTER               0x8000  /* Driver is a computer (needs full keyboard) */
 //TODO #define GAME_COMPUTER_MODIFIED      0x0800	/* Official? Hack */

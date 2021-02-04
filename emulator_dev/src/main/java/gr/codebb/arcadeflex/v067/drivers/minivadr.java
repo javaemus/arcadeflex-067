@@ -50,7 +50,7 @@ public class minivadr {
 
     static MachinePtr machine_driver_minivadr = new MachinePtr() {/* basic machine hardware */
         public void handler(InternalMachineDriver machine) {
-            MDRV_CPU_ADD(CPU_Z80, 24000000 / 6);
+            MDRV_CPU_ADD(machine,CPU_Z80, 24000000 / 6);
             /* 4 MHz ? */
             MDRV_CPU_MEMORY(readmem, writemem);
             MDRV_CPU_VBLANK_INT(irq0_line_hold, 1);
