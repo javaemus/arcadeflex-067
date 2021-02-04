@@ -50,6 +50,8 @@ public class minivadr {
 
     static MachinePtr machine_driver_minivadr = new MachinePtr() {/* basic machine hardware */
         public void handler(InternalMachineDriver machine) {
+            System.out.println("Running machine_driver_minivadr!!!!");
+            
             MDRV_CPU_ADD(machine,CPU_Z80, 24000000 / 6);
             /* 4 MHz ? */
             MDRV_CPU_MEMORY(readmem, writemem);

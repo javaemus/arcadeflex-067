@@ -5,6 +5,8 @@ import static gr.codebb.arcadeflex.v067.platform.rc.*;
 import static gr.codebb.arcadeflex.common.libc.cstdio.*;
 import static gr.codebb.arcadeflex.common.libc.cstring.*;
 import static gr.codebb.arcadeflex.v067.mame.driver.drivers;
+import static gr.codebb.arcadeflex.v067.mame.driverH.*;
+import static gr.codebb.arcadeflex.v067.mame.mame.expand_machine_driver;
 import static gr.codebb.arcadeflex.v067.platform.rcH.*;
 import java.io.PrintStream;
 
@@ -396,12 +398,12 @@ public class conf {
 //TODO 
 
     public static int cli_frontend_init(int argc, String[] argv) {
-//TODO 	struct InternalMachineDriver drv;
+ 	InternalMachineDriver drv = null;
 //TODO 	char buffer[128];
 //TODO 	char *cmd_name;
         int game_index;
-//TODO 	int i;
-//TODO 
+ 	int i;
+ 
         gamename = null;
         game_index = -1;
 //TODO 
@@ -536,17 +538,17 @@ public class conf {
 //TODO 	gamename = win_strip_extension(gamename);
 //TODO 
 //TODO 	/* if not given by .inp file yet */
-//TODO 	if (game_index == -1)
-//TODO 	{
-//TODO 		/* do we have a driver for this? */
-//TODO 		for (i = 0; drivers[i]; i++)
-//TODO 			if (stricmp(gamename,drivers[i]->name) == 0)
-//TODO 			{
-//TODO 				game_index = i;
-//TODO 				break;
-//TODO 			}
-//TODO 	}
-//TODO 
+ 	if (game_index == -1)
+ 	{
+ 		/* do we have a driver for this? */
+ 		for (i = 0; drivers[i] != null; i++)
+ 			if (stricmp(gamename,drivers[i].name) == 0)
+ 			{
+ 				game_index = i;
+ 				break;
+ 			}
+ 	}
+ 
 //TODO #ifdef MAME_DEBUG
 //TODO 	if (game_index == -1)
 //TODO 	{
@@ -579,7 +581,7 @@ public class conf {
 //TODO 	/* ok, got a gamename */
 //TODO 
 //TODO 	/* if this is a vector game, parse vector.ini first */
-//TODO 	expand_machine_driver(drivers[game_index]->drv, &drv);
+ 	expand_machine_driver(drivers[game_index].drv, drv);
 //TODO 	if (drv.video_attributes & VIDEO_TYPE_VECTOR)
 //TODO 		if (parse_config ("vector.ini", NULL))
 //TODO 			exit(1);
