@@ -780,7 +780,7 @@ public class rc
 	   int i;
 	   rc_option result;
 	
-	   for(i=0; ((option[i].type != 0)) ; i++)
+	   for(i=0; ((option[i] != null)&&(option[i].type != 0)) ; i++)
 	   {
                
 	      switch(option[i].type)

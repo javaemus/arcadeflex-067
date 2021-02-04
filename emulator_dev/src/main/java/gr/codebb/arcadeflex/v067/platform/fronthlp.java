@@ -99,7 +99,7 @@ public class fronthlp {
         new rc_option("listfull", "ll", rc_set_int, assign_list, null, LIST_FULL, 0, null, "short name, full name"),
         new rc_option("listgames", null, rc_set_int, assign_list, null, LIST_GAMES, 0, null, "year, manufacturer and full name"),
         new rc_option("listdetails", null, rc_set_int, assign_list, null, LIST_DETAILS, 0, null, "detailed info"),
-        //TODO 	{ "gamelist", null, rc_set_int, &list, null, LIST_GAMELIST, 0, null, "output gamelist.txt main body" },
+        new rc_option("gamelist", null, rc_set_int, assign_list, null, LIST_GAMELIST, 0, null, "output gamelist.txt main body" ),
         //TODO 	{ "listsourcefile",	null, rc_set_int, &list, null, LIST_SOURCEFILE, 0, null, "driver sourcefile" },
         //TODO 	{ "listgamespersourcefile",	null, rc_set_int, &list, null, LIST_GAMESPERSOURCEFILE, 0, null, "games per sourcefile" },
         //TODO 	{ "listinfo", "li", rc_set_int, &list, null, LIST_INFO, 0, null, "all available info on driver" },
@@ -200,27 +200,30 @@ public class fronthlp {
 //TODO 
 //TODO 	return stricmp(s1, s2);
 //TODO }
-//TODO 
-//TODO 
-//TODO static void namecopy(char *name_ref,const char *desc)
-//TODO {
-//TODO 	char name[200];
-//TODO 
-//TODO 	strcpy(name,desc);
-//TODO 
-//TODO 	/* remove details in parenthesis */
-//TODO 	if (strstr(name," (")) *strstr(name," (") = 0;
-//TODO 
-//TODO 	/* Move leading "The" to the end */
-//TODO 	if (strncmp(name,"The ",4) == 0)
-//TODO 	{
-//TODO 		sprintf(name_ref,"%s, The",name+4);
-//TODO 	}
-//TODO 	else
-//TODO 		sprintf(name_ref,"%s",name);
-//TODO }
-//TODO 
-//TODO 
+ 
+ 
+    static String namecopy(String name_ref, String desc)
+    {
+           String name="";
+
+           name = desc;
+
+           /* remove details in parenthesis */
+           if (strstr(name," (") != -1) 
+               name = name.substring(0, strstr(name," ("));
+
+           /* Move leading "The" to the end */
+           if (strncmp(name.toCharArray(),"The ",4) == false)
+           {
+                   name_ref = sprintf("%s, The",name+4);
+           }
+           else
+                   name_ref = sprintf("%s",name);
+
+           return name_ref;
+    }
+
+ 
 //TODO /* Identifies a rom from from this checksum */
 //TODO static void match_roms(const struct GameDriver *driver,int checksum,int *found)
 //TODO {
@@ -727,172 +730,172 @@ public class fronthlp {
  					printf("%s\n",drivers[i].description);
  				}
                 return 0;
-//TODO 		case LIST_GAMELIST: /* GAMELIST.TXT */
-//TODO 			printf("This is the complete list of games supported by MAME %s.\n",build_version);
-//TODO 			if (!listclones)
-//TODO 				printf("Variants of the same game are not included, you can use the -listclones command\n"
-//TODO 					"to get a list of the alternate versions of a given game.\n");
-//TODO 			printf("\n"
-//TODO 				"This list is generated automatically and is not 100%% accurate (particularly in\n"
-//TODO 				"the Screen Flip column). Please let us know of any errors so we can correct\n"
-//TODO 				"them.\n"
-//TODO 				"\n"
-//TODO 				"Here are the meanings of the columns:\n"
-//TODO 				"\n"
-//TODO 				"Working\n"
-//TODO 				"=======\n"
-//TODO 				"  NO: Emulation is still in progress; the game does not work correctly. This\n"
-//TODO 				"  means anything from major problems to a black screen.\n"
-//TODO 				"\n"
-//TODO 				"Correct Colors\n"
-//TODO 				"==============\n"
-//TODO 				"    YES: Colors should be identical to the original.\n"
-//TODO 				"  CLOSE: Colors are nearly correct.\n"
-//TODO 				"     NO: Colors are completely wrong. \n"
-//TODO 				"  \n"
-//TODO 				"  Note: In some cases, the color PROMs for some games are not yet available.\n"
-//TODO 				"  This causes a NO GOOD DUMP KNOWN message on startup (and, of course, the game\n"
-//TODO 				"  has wrong colors). The game will still say YES in this column, however,\n"
-//TODO 				"  because the code to handle the color PROMs has been added to the driver. When\n"
-//TODO 				"  the PROMs are available, the colors will be correct.\n"
-//TODO 				"\n"
-//TODO 				"Sound\n"
-//TODO 				"=====\n"
-//TODO 				"  PARTIAL: Sound support is incomplete or not entirely accurate. \n"
-//TODO 				"\n"
-//TODO 				"  Note: Some original games contain analog sound circuitry, which is difficult\n"
-//TODO 				"  to emulate. Therefore, these emulated sounds may be significantly different.\n"
-//TODO 				"\n"
-//TODO 				"Screen Flip\n"
-//TODO 				"===========\n"
-//TODO 				"  Many games were offered in cocktail-table models, allowing two players to sit\n"
-//TODO 				"  across from each other; the game's image flips 180 degrees for each player's\n"
-//TODO 				"  turn. Some games also have a \"Flip Screen\" DIP switch setting to turn the\n"
-//TODO 				"  picture (particularly useful with vertical games).\n"
-//TODO 				"  In many cases, this feature has not yet been emulated.\n"
-//TODO 				"\n"
-//TODO 				"Internal Name\n"
-//TODO 				"=============\n"
-//TODO 				"  This is the unique name that must be used when running the game from a\n"
-//TODO 				"  command line.\n"
-//TODO 				"\n"
-//TODO 				"  Note: Each game's ROM set must be placed in the ROM path, either in a .zip\n"
-//TODO 				"  file or in a subdirectory with the game's Internal Name. The former is\n"
-//TODO 				"  suggested, because the files will be identified by their CRC instead of\n"
-//TODO 				"  requiring specific names.\n\n");
-//TODO 			printf("+----------------------------------+-------+-------+-------+-------+----------+\n");
-//TODO 			printf("|                                  |       |Correct|       |Screen | Internal |\n");
-//TODO 			printf("| Game Name                        |Working|Colors | Sound | Flip  |   Name   |\n");
-//TODO 			printf("+----------------------------------+-------+-------+-------+-------+----------+\n");
-//TODO 
-//TODO 			for (i = 0; drivers[i]; i++)
-//TODO 				if ((listclones || drivers[i]->clone_of == 0
-//TODO 						|| (drivers[i]->clone_of->flags & NOT_A_DRIVER)
-//TODO 						) && !strwildcmp(gamename, drivers[i]->name))
-//TODO 				{
-//TODO 					char name_ref[200];
-//TODO 
-//TODO 					namecopy(name_ref,drivers[i]->description);
-//TODO 
-//TODO 					strcat(name_ref," ");
-//TODO 
-//TODO 					/* print the additional description only if we are listing clones */
-//TODO 					if (listclones)
-//TODO 					{
-//TODO 						if (strchr(drivers[i]->description,'('))
-//TODO 							strcat(name_ref,strchr(drivers[i]->description,'('));
-//TODO 					}
-//TODO 
-//TODO 					printf("| %-33.33s",name_ref);
-//TODO 
-//TODO 					if (drivers[i]->flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION))
-//TODO 					{
-//TODO 						const struct GameDriver *maindrv;
-//TODO 						int foundworking;
-//TODO 
-//TODO 						if (drivers[i]->clone_of && !(drivers[i]->clone_of->flags & NOT_A_DRIVER))
-//TODO 							maindrv = drivers[i]->clone_of;
-//TODO 						else maindrv = drivers[i];
-//TODO 
-//TODO 						foundworking = 0;
-//TODO 						j = 0;
-//TODO 						while (drivers[j])
-//TODO 						{
-//TODO 							if (drivers[j] == maindrv || drivers[j]->clone_of == maindrv)
-//TODO 							{
-//TODO 								if ((drivers[j]->flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)) == 0)
-//TODO 								{
-//TODO 									foundworking = 1;
-//TODO 									break;
-//TODO 								}
-//TODO 							}
-//TODO 							j++;
-//TODO 						}
-//TODO 
-//TODO 						if (foundworking)
-//TODO 							printf("| No(1) ");
-//TODO 						else
-//TODO 							printf("|   No  ");
-//TODO 					}
-//TODO 					else
-//TODO 						printf("|  Yes  ");
-//TODO 
-//TODO 					if (drivers[i]->flags & GAME_WRONG_COLORS)
-//TODO 						printf("|   No  ");
-//TODO 					else if (drivers[i]->flags & GAME_IMPERFECT_COLORS)
-//TODO 						printf("| Close ");
-//TODO 					else
-//TODO 						printf("|  Yes  ");
-//TODO 
-//TODO 					{
-//TODO 						const char **samplenames = null;
-//TODO 						expand_machine_driver(drivers[i]->drv, &drv);
+ 		case LIST_GAMELIST: /* GAMELIST.TXT */
+ 			printf("This is the complete list of games supported by MAME %s.\n",build_version);
+ 			if (listclones == 0)
+ 				printf("Variants of the same game are not included, you can use the -listclones command\n"+
+ 					"to get a list of the alternate versions of a given game.\n");
+ 			printf("\n"+
+ 				"This list is generated automatically and is not 100%% accurate (particularly in\n"+
+ 				"the Screen Flip column). Please let us know of any errors so we can correct\n"+
+ 				"them.\n"+
+ 				"\n"+
+ 				"Here are the meanings of the columns:\n"+
+ 				"\n"+
+ 				"Working\n"+
+ 				"=======\n"+
+ 				"  NO: Emulation is still in progress; the game does not work correctly. This\n"+
+ 				"  means anything from major problems to a black screen.\n"+
+ 				"\n"+
+ 				"Correct Colors\n"+
+ 				"==============\n"+
+ 				"    YES: Colors should be identical to the original.\n"+
+ 				"  CLOSE: Colors are nearly correct.\n"+
+ 				"     NO: Colors are completely wrong. \n"+
+ 				"  \n"+
+ 				"  Note: In some cases, the color PROMs for some games are not yet available.\n"+
+ 				"  This causes a NO GOOD DUMP KNOWN message on startup (and, of course, the game\n"+
+ 				"  has wrong colors). The game will still say YES in this column, however,\n"+
+ 				"  because the code to handle the color PROMs has been added to the driver. When\n"+
+ 				"  the PROMs are available, the colors will be correct.\n"+
+ 				"\n"+
+ 				"Sound\n"+
+ 				"=====\n"+
+ 				"  PARTIAL: Sound support is incomplete or not entirely accurate. \n"+
+ 				"\n"+
+ 				"  Note: Some original games contain analog sound circuitry, which is difficult\n"+
+ 				"  to emulate. Therefore, these emulated sounds may be significantly different.\n"+
+ 				"\n"+
+ 				"Screen Flip\n"+
+ 				"===========\n"+
+ 				"  Many games were offered in cocktail-table models, allowing two players to sit\n"+
+ 				"  across from each other; the game's image flips 180 degrees for each player's\n"+
+ 				"  turn. Some games also have a \"Flip Screen\" DIP switch setting to turn the\n"+
+ 				"  picture (particularly useful with vertical games).\n"+
+ 				"  In many cases, this feature has not yet been emulated.\n"+
+ 				"\n"+
+ 				"Internal Name\n"+
+ 				"=============\n"+
+ 				"  This is the unique name that must be used when running the game from a\n"+
+ 				"  command line.\n"+
+ 				"\n"+
+ 				"  Note: Each game's ROM set must be placed in the ROM path, either in a .zip\n"+
+ 				"  file or in a subdirectory with the game's Internal Name. The former is\n"+
+ 				"  suggested, because the files will be identified by their CRC instead of\n"+
+ 				"  requiring specific names.\n\n");
+ 			printf("+----------------------------------+-------+-------+-------+-------+----------+\n");
+ 			printf("|                                  |       |Correct|       |Screen | Internal |\n");
+ 			printf("| Game Name                        |Working|Colors | Sound | Flip  |   Name   |\n");
+ 			printf("+----------------------------------+-------+-------+-------+-------+----------+\n");
+ 
+ 			for (i = 0; drivers[i] != null; i++)
+ 				if ((listclones!=0 || drivers[i].clone_of == null
+ 						|| ((drivers[i].clone_of.flags & NOT_A_DRIVER) != 0)
+ 						) /*&& !strwildcmp(gamename, drivers[i]->name)*/)
+ 				{
+ 					String name_ref="";
+ 
+ 					name_ref = namecopy(name_ref,drivers[i].description);
+ 
+ 					name_ref = strcat(name_ref, " ");
+ 
+ 					/* print the additional description only if we are listing clones */
+ 					if (listclones != 0)
+ 					{
+ 						if (strchr(drivers[i].description,'(') != null)
+ 							strcat(name_ref,strchr(drivers[i].description,'('));
+ 					}
+ 
+ 					printf("| %-33.33s",name_ref);
+ 
+ 					if ((drivers[i].flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)) != 0)
+ 					{
+ 						GameDriver maindrv;
+ 						int foundworking;
+ 
+ 						if (drivers[i].clone_of!=null && (drivers[i].clone_of.flags & NOT_A_DRIVER)==0)
+ 							maindrv = drivers[i].clone_of;
+ 						else maindrv = drivers[i];
+ 
+ 						foundworking = 0;
+ 						j = 0;
+ 						while (drivers[j] != null)
+ 						{
+ 							if (drivers[j] == maindrv || drivers[j].clone_of == maindrv)
+ 							{
+ 								if ((drivers[j].flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)) == 0)
+ 								{
+ 									foundworking = 1;
+ 									break;
+ 								}
+ 							}
+ 							j++;
+ 						}
+ 
+ 						if (foundworking != 0)
+ 							printf("| No(1) ");
+ 						else
+ 							printf("|   No  ");
+ 					}
+ 					else
+ 						printf("|  Yes  ");
+ 
+ 					if ((drivers[i].flags & GAME_WRONG_COLORS) != 0)
+ 						printf("|   No  ");
+ 					else if ((drivers[i].flags & GAME_IMPERFECT_COLORS) != 0)
+ 						printf("| Close ");
+ 					else
+ 						printf("|  Yes  ");
+ 
+ 					{
+ 						String[] samplenames = null;
+// TODO 						expand_machine_driver(drivers[i].drv, &drv);
 //TODO #if (HAS_SAMPLES || HAS_VLM5030)
 //TODO 						for (j = 0;drv.sound[j].sound_type && j < MAX_SOUND; j++)
 //TODO 						{
 //TODO #if (HAS_SAMPLES)
 //TODO 							if (drv.sound[j].sound_type == SOUND_SAMPLES)
 //TODO 							{
-//TODO 								samplenames = ((struct Samplesinterface *)drv.sound[j].sound_interface)->samplenames;
+//TODO 								samplenames = ((struct Samplesinterface *)drv.sound[j].sound_interface).samplenames;
 //TODO 								break;
 //TODO 							}
 //TODO #endif
 //TODO 						}
 //TODO #endif
-//TODO 						if (drivers[i]->flags & GAME_NO_SOUND)
-//TODO 							printf("|   No  ");
-//TODO 						else if (drivers[i]->flags & GAME_IMPERFECT_SOUND)
-//TODO 						{
-//TODO 							if (samplenames)
-//TODO 								printf("|Part(2)");
-//TODO 							else
-//TODO 								printf("|Partial");
-//TODO 						}
-//TODO 						else
-//TODO 						{
-//TODO 							if (samplenames)
-//TODO 								printf("| Yes(2)");
-//TODO 							else
-//TODO 								printf("|  Yes  ");
-//TODO 						}
-//TODO 					}
-//TODO 
-//TODO 					if (drivers[i]->flags & GAME_NO_COCKTAIL)
-//TODO 						printf("|   No  ");
-//TODO 					else
-//TODO 						printf("|  Yes  ");
-//TODO 
-//TODO 					printf("| %-8s |\n",drivers[i]->name);
-//TODO 				}
-//TODO 
-//TODO 			printf("+----------------------------------+-------+-------+-------+-------+----------+\n\n");
-//TODO 			printf("(1) There are variants of the game (usually bootlegs) that work correctly\n");
+ 						if ((drivers[i].flags & GAME_NO_SOUND) != 0)
+ 							printf("|   No  ");
+ 						else if ((drivers[i].flags & GAME_IMPERFECT_SOUND) != 0)
+ 						{
+ 							if (samplenames != null)
+ 								printf("|Part(2)");
+ 							else
+ 								printf("|Partial");
+ 						}
+ 						else
+ 						{
+ 							if (samplenames != null)
+ 								printf("| Yes(2)");
+ 							else
+ 								printf("|  Yes  ");
+ 						}
+ 					}
+ 
+ 					if ((drivers[i].flags & GAME_NO_COCKTAIL) != 0)
+ 						printf("|   No  ");
+ 					else
+ 						printf("|  Yes  ");
+ 
+ 					printf("| %-8s |\n",drivers[i].name);
+ 				}
+ 
+ 			printf("+----------------------------------+-------+-------+-------+-------+----------+\n\n");
+ 			printf("(1) There are variants of the game (usually bootlegs) that work correctly\n");
 //TODO #if (HAS_SAMPLES)
 //TODO 			printf("(2) Needs samples provided separately\n");
 //TODO #endif
-//TODO 			return 0;
+ 			return 0;
 //TODO 			break;
-//TODO 
+
             case LIST_GAMES:
                 /* list games, production year, manufacturer */
                 for (i = 0; drivers[i] != null; i++) {

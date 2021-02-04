@@ -4,6 +4,7 @@ import static gr.codebb.arcadeflex.v067.platform.fronthlp.*;
 import static gr.codebb.arcadeflex.v067.platform.rc.*;
 import static gr.codebb.arcadeflex.common.libc.cstdio.*;
 import static gr.codebb.arcadeflex.common.libc.cstring.*;
+import static gr.codebb.arcadeflex.v067.mame.driver.drivers;
 import static gr.codebb.arcadeflex.v067.platform.rcH.*;
 import java.io.PrintStream;
 
@@ -237,95 +238,103 @@ public class conf {
  	new rc_option( null,	null, rc_end, null, null, 0, 0,	null, null )
     };
 
-//TODO /*
-//TODO  * Penalty string compare, the result _should_ be a measure on
-//TODO  * how "close" two strings ressemble each other.
-//TODO  * The implementation is way too simple, but it sort of suits the
-//TODO  * purpose.
-//TODO  * This used to be called fuzzy matching, but there's no randomness
-//TODO  * involved and it is in fact a penalty method.
-//TODO  */
-//TODO 
-//TODO int penalty_compare (const char *s, const char *l)
-//TODO {
-//TODO 	int gaps = 0;
-//TODO 	int match = 0;
-//TODO 	int last = 1;
-//TODO 
-//TODO 	for (; *s && *l; l++)
-//TODO 	{
-//TODO 		if (*s == *l)
-//TODO 			match = 1;
-//TODO 		else if (*s >= 'a' && *s <= 'z' && (*s - 'a') == (*l - 'A'))
-//TODO 			match = 1;
-//TODO 		else if (*s >= 'A' && *s <= 'Z' && (*s - 'A') == (*l - 'a'))
-//TODO 			match = 1;
-//TODO 		else
-//TODO 			match = 0;
-//TODO 
-//TODO 		if (match)
-//TODO 			s++;
-//TODO 
-//TODO 		if (match != last)
-//TODO 		{
-//TODO 			last = match;
-//TODO 			if (!match)
-//TODO 				gaps++;
-//TODO 		}
-//TODO 	}
-//TODO 
-//TODO 	/* penalty if short string does not completely fit in */
-//TODO 	for (; *s; s++)
-//TODO 		gaps++;
-//TODO 
-//TODO 	return gaps;
-//TODO }
-//TODO 
-//TODO /*
-//TODO  * We compare the game name given on the CLI against the long and
-//TODO  * the short game names supported
-//TODO  */
-//TODO void show_approx_matches(void)
-//TODO {
-//TODO 	struct { int penalty; int index; } topten[10];
-//TODO 	int i,j;
-//TODO 	int penalty; /* best fuzz factor so far */
-//TODO 
-//TODO 	for (i = 0; i < 10; i++)
-//TODO 	{
-//TODO 		topten[i].penalty = 9999;
-//TODO 		topten[i].index = -1;
-//TODO 	}
-//TODO 
-//TODO 	for (i = 0; (drivers[i] != 0); i++)
-//TODO 	{
-//TODO 		int tmp;
-//TODO 
-//TODO 		penalty = penalty_compare (gamename, drivers[i]->description);
-//TODO 		tmp = penalty_compare (gamename, drivers[i]->name);
-//TODO 		if (tmp < penalty) penalty = tmp;
-//TODO 
-//TODO 		/* eventually insert into table of approximate matches */
-//TODO 		for (j = 0; j < 10; j++)
-//TODO 		{
-//TODO 			if (penalty >= topten[j].penalty) break;
-//TODO 			if (j > 0)
-//TODO 			{
-//TODO 				topten[j-1].penalty = topten[j].penalty;
-//TODO 				topten[j-1].index = topten[j].index;
-//TODO 			}
-//TODO 			topten[j].index = i;
-//TODO 			topten[j].penalty = penalty;
-//TODO 		}
-//TODO 	}
-//TODO 
-//TODO 	for (i = 9; i >= 0; i--)
-//TODO 	{
-//TODO 		if (topten[i].index != -1)
-//TODO 			fprintf (stderr, "%-10s%s\n", drivers[topten[i].index]->name, drivers[topten[i].index]->description);
-//TODO 	}
-//TODO }
-//TODO 
+    /*
+     * Penalty string compare, the result _should_ be a measure on
+     * how "close" two strings ressemble each other.
+     * The implementation is way too simple, but it sort of suits the
+     * purpose.
+     * This used to be called fuzzy matching, but there's no randomness
+     * involved and it is in fact a penalty method.
+     */
+
+    static int penalty_compare (String s, String l)
+    {
+           int gaps = 0;
+           int match = 0;
+           int last = 1;
+           
+           int _l=0;
+           int _s=0;
+
+           for (; (_s<s.length()) && (_l<l.length()); _l++)
+           {
+                   if (s.charAt(_s) == l.charAt(_l))
+                           match = 1;
+                   else if (s.charAt(_s) >= 'a' && s.charAt(_s) <= 'z' && (s.charAt(_s) - 'a') == (l.charAt(_l) - 'A'))
+                           match = 1;
+                   else if (s.charAt(_s) >= 'A' && s.charAt(_s) <= 'Z' && (s.charAt(_s) - 'A') == (l.charAt(_l) - 'a'))
+                           match = 1;
+                   else
+                           match = 0;
+
+                   if (match != 0)
+                           _s++;
+
+                   if (match != last)
+                   {
+                           last = match;
+                           if (match == 0)
+                                   gaps++;
+                   }
+           }
+
+           /* penalty if short string does not completely fit in */
+           for (; _s<s.length() ; _s++)
+                   gaps++;
+
+           return gaps;
+    }
+ 
+    /*
+     * We compare the game name given on the CLI against the long and
+     * the short game names supported
+     */
+    public static class _top { int penalty; int index; }
+    
+    static void show_approx_matches()
+    {
+           _top[] topten = new _top[10];
+           
+           int i,j;
+           int penalty; /* best fuzz factor so far */
+
+           for (i = 0; i < 10; i++)
+           {
+                   topten[i] = new _top();
+                   
+                   topten[i].penalty = 9999;
+                   topten[i].index = -1;
+           }
+
+           for (i = 0; (drivers[i] != null); i++)
+           {
+                   int tmp;
+
+                   penalty = penalty_compare (gamename, drivers[i].description);
+                   tmp = penalty_compare (gamename, drivers[i].name);
+                   if (tmp < penalty) penalty = tmp;
+
+                   /* eventually insert into table of approximate matches */
+                   for (j = 0; j < 10; j++)
+                   {
+                           if (penalty >= topten[j].penalty) break;
+                           if (j > 0)
+                           {
+                                   topten[j-1].penalty = topten[j].penalty;
+                                   topten[j-1].index = topten[j].index;
+                           }
+                           topten[j].index = i;
+                           topten[j].penalty = penalty;
+                   }
+           }
+
+           for (i = 9; i >= 0; i--)
+           {
+                   if (topten[i].index != -1)
+                           fprintf (stderr, "%-10s%s\n", drivers[topten[i].index].name, drivers[topten[i].index].description);
+           }
+    }
+
 //TODO /*
 //TODO  * gamedrv  = NULL --> parse named configfile
 //TODO  * gamedrv != NULL --> parse gamename.ini and all parent.ini's (recursively)
@@ -557,16 +566,16 @@ public class conf {
 //TODO 		}
 //TODO 	}
 //TODO #endif
-//TODO 
-//TODO 	/* we give up. print a few approximate matches */
-//TODO 	if (game_index == -1)
-//TODO 	{
-//TODO 		fprintf(stderr, "\n\"%s\" approximately matches the following\n"
-//TODO 				"supported games (best match first):\n\n", gamename);
-//TODO 		show_approx_matches();
-//TODO 		exit(1);
-//TODO 	}
-//TODO 
+ 
+ 	/* we give up. print a few approximate matches */
+ 	if (game_index == -1)
+ 	{
+ 		fprintf(stderr, "\n\"%s\" approximately matches the following\n"+
+ 				"supported games (best match first):\n\n", gamename);
+ 		show_approx_matches();
+ 		System.exit(0);
+ 	}
+ 
 //TODO 	/* ok, got a gamename */
 //TODO 
 //TODO 	/* if this is a vector game, parse vector.ini first */

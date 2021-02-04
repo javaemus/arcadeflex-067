@@ -27,6 +27,11 @@ public class cstring {
             return Integer.toString(found);//return in String
         }
     }
+    
+    public static String strcat(String X, String Y)
+    {
+        return (X + Y);
+    }
  
     // Function to implement strstr() function
     public static int strstr(String X, String Y)
