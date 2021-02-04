@@ -1,3 +1,7 @@
+04/02/2021
+==========
+-Added -listgames in frontend
+
 03/02/2021
 ==========
 -Machine driver name changing
