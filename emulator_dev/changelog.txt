@@ -3,6 +3,7 @@
 -Added -listgames in frontend
 -Partially listdetails support (at least a workaround on how machine driver macros will be done)
 -Added -gamelist and shows games that matches approximately (by game name)
+-Added -listsourcefile in frontend
 
 03/02/2021
 ==========

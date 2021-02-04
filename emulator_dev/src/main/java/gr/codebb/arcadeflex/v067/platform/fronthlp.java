@@ -100,7 +100,7 @@ public class fronthlp {
         new rc_option("listgames", null, rc_set_int, assign_list, null, LIST_GAMES, 0, null, "year, manufacturer and full name"),
         new rc_option("listdetails", null, rc_set_int, assign_list, null, LIST_DETAILS, 0, null, "detailed info"),
         new rc_option("gamelist", null, rc_set_int, assign_list, null, LIST_GAMELIST, 0, null, "output gamelist.txt main body" ),
-        //TODO 	{ "listsourcefile",	null, rc_set_int, &list, null, LIST_SOURCEFILE, 0, null, "driver sourcefile" },
+        new rc_option("listsourcefile",	null, rc_set_int, assign_list, null, LIST_SOURCEFILE, 0, null, "driver sourcefile" ),
         //TODO 	{ "listgamespersourcefile",	null, rc_set_int, &list, null, LIST_GAMESPERSOURCEFILE, 0, null, "games per sourcefile" },
         //TODO 	{ "listinfo", "li", rc_set_int, &list, null, LIST_INFO, 0, null, "all available info on driver" },
         //TODO 	{ "listclones", "lc", rc_set_int, &list, null, LIST_CLONES, 0, null, "show clones" },
@@ -154,7 +154,7 @@ public class fronthlp {
 //TODO /* for this to work correctly, the shells internal wildcard expansion */
 //TODO /* mechanism has to be disabled. Look into msdos.c */
 //TODO 
-//TODO int strwildcmp(const char *sp1, const char *sp2)
+//TODO static int strwildcmp(const char *sp1, const char *sp2)
 //TODO {
 //TODO 	char s1[9], s2[9];
 //TODO 	int i, l1, l2;
@@ -1016,12 +1016,12 @@ public class fronthlp {
 //TODO 			}
 //TODO 			return 0;
 //TODO 			break;
-//TODO 
-//TODO 		case LIST_SOURCEFILE:
-//TODO 			for (i = 0; drivers[i]; i++)
+ 
+ 		case LIST_SOURCEFILE:
+ 			for (i = 0; drivers[i] != null; i++)
 //TODO 				if (!strwildcmp(gamename,drivers[i]->name))
-//TODO 					printf("%-8s %s\n",drivers[i]->name,drivers[i]->source_file);
-//TODO 			return 0;
+ 					printf("%-8s %s\n",drivers[i].name,drivers[i].source_file);
+ 			return 0;
 //TODO 			break;
 //TODO 
 //TODO 		case LIST_GAMESPERSOURCEFILE:

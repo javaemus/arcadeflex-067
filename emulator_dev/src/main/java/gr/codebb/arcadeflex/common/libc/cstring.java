@@ -32,6 +32,21 @@ public class cstring {
     {
         return (X + Y);
     }
+    
+    public static char[] strncpy (char[] dest, String source, int cont)
+    {
+        char[] _out=dest;
+        
+        if (source!=null){
+            int _top = dest.length < source.length() ? dest.length : source.length();
+            _top = _top<cont ? _top : cont;
+            
+            for (int _i=0 ; _i<_top ; _i++)
+                _out[_i] = source.charAt(_i);
+        }
+        
+        return _out;
+    }
  
     // Function to implement strstr() function
     public static int strstr(String X, String Y)
@@ -282,4 +297,20 @@ public class cstring {
             return Integer.toString(found);//return in String
         }
     }
+    
+    /*
+    
+    public static String strchr(char[] str,char ch)
+    {
+        int found = str.indexOf(ch);
+        if(found==-1)
+        {
+            return null;
+        }
+        else
+        {
+            return Integer.toString(found);
+        }
+    }
+*/
 }
