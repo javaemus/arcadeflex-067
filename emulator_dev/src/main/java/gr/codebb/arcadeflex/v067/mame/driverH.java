@@ -1,6 +1,8 @@
 package gr.codebb.arcadeflex.v067.mame;
 
 import static gr.codebb.arcadeflex.v067.common.FuncPtr.*;
+import gr.codebb.arcadeflex.v067.mame.commonH.RomModule;
+import static gr.codebb.arcadeflex.v067.mame.commonH.rommodule_macro;
 import gr.codebb.arcadeflex.v067.mame.cpuexecH.MachineCPU;
 import static gr.codebb.arcadeflex.v067.mame.mame.machine_add_cpu;
 import static gr.codebb.arcadeflex.v067.mame.memoryH.*;
@@ -108,8 +110,8 @@ public class driverH {
 
     public static void MACHINE_DRIVER_END() {
         //clear temp variables
-        temp_cpu=null;
-        temp_machine=null;
+        temp_cpu = null;
+        temp_machine = null;
     }
 //TODO 
 //TODO 
@@ -430,14 +432,14 @@ public class driverH {
 //TODO #define	SOUND_SUPPORTS_STEREO		0x0001
 //TODO 
 //TODO 
-//TODO 
-//TODO /***************************************************************************
-//TODO 
-//TODO 	Game driver structure
-//TODO 
-//TODO ***************************************************************************/
-//TODO 
 
+    /**
+     * *************************************************************************
+     *
+     * Game driver structure
+     *
+     **************************************************************************
+     */
     public static class GameDriver {
 
         public GameDriver(String year, String name, String source, RomLoadPtr romload, GameDriver parent, MachinePtr drv, InputPortPtr input, InitDriverPtr init, int monitor, String manufacture, String fullname) {
@@ -449,10 +451,10 @@ public class driverH {
             this.manufacturer = manufacture;
             this.drv = drv;
             this.driver_init = init;
-//TODO           romload.handler();//load the rom
+            romload.handler();//load the rom
 //TODO            input.handler();//load input
 //TODO            this.input_ports = input_macro;//copy input macro to input ports
-//TODO            this.rom = rommodule_macro; //copy rommodule_macro to rom
+            this.rom = rommodule_macro; //copy rommodule_macro to rom
             this.flags = monitor;
         }
 
@@ -465,8 +467,8 @@ public class driverH {
         public MachinePtr drv;
 //TODO 	const struct InputPortTiny *input_ports;
         public InitDriverPtr driver_init;/* optional function to be called during initialization This is called ONCE, unlike Machine->init_machine which is called every time the game is reset. */
-//TODO 	const struct RomModule *rom;
-//TODO 
+        public RomModule[] rom;
+
         public int flags;/* orientation and other flags; see defines below */
     }
 

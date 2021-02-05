@@ -1,5 +1,7 @@
 package gr.codebb.arcadeflex.v067.mame;
 
+import java.util.ArrayList;
+
 public class commonH {
 
     /**
@@ -24,18 +26,25 @@ public class commonH {
 //TODO 	pen_t (*read)(struct mame_bitmap *bitmap,int x,int y);
 //TODO 	void (*plot_box)(struct mame_bitmap *bitmap,int x,int y,int width,int height,pen_t pen);
     }
-//TODO 
-//TODO 
-//TODO struct RomModule
-//TODO {
-//TODO 	const char *_name;	/* name of the file to load */
-//TODO 	UINT32 _offset;		/* offset to load it to */
-//TODO 	UINT32 _length;		/* length of the file */
-//TODO 	UINT32 _flags;		/* flags */
-//TODO 	UINT32 _crc;		/* standard CRC-32 checksum */
-//TODO 	const char *_verify;/* alternate verification, MD5 or SHA */
-//TODO };
-//TODO 
+
+    public static class RomModule {
+
+        public RomModule(String _name, int _offset, int _length, int _flags, int _crc, String _verify) {
+            this._name = _name;
+            this._offset = _offset;
+            this._length = _length;
+            this._flags = _flags;
+            this._crc = _crc;
+            this._verify = _verify;
+        }
+
+        public String _name;/* name of the file to load */
+        public int/*UINT32*/ _offset;/* offset to load it to */
+        public int/*UINT32*/ _length;/* length of the file */
+        public int/*UINT32*/ _flags;/* flags */
+        public int/*UINT32*/ _crc;/* standard CRC-32 checksum */
+        public String _verify;/* alternate verification, MD5 or SHA */
+    }
 //TODO 
 //TODO struct GameSample
 //TODO {
@@ -123,40 +132,78 @@ public class commonH {
 //TODO #define ROMMD5(md5) ("MD5" #md5)
 //TODO 
 //TODO 
-//TODO 
-//TODO /***************************************************************************
-//TODO 
-//TODO 	Core macros for the ROM loading system
-//TODO 
-//TODO ***************************************************************************/
-//TODO 
-//TODO /* ----- per-entry constants ----- */
-//TODO #define ROMENTRYTYPE_REGION			1					/* this entry marks the start of a region */
-//TODO #define ROMENTRYTYPE_END			2					/* this entry marks the end of a region */
-//TODO #define ROMENTRYTYPE_RELOAD			3					/* this entry reloads the previous ROM */
-//TODO #define ROMENTRYTYPE_CONTINUE		4					/* this entry continues loading the previous ROM */
-//TODO #define ROMENTRYTYPE_FILL			5					/* this entry fills an area with a constant value */
-//TODO #define ROMENTRYTYPE_COPY			6					/* this entry copies data from another region/offset */
-//TODO #define ROMENTRYTYPE_COUNT			7
-//TODO 
-//TODO #define ROMENTRY_REGION				((const char *)ROMENTRYTYPE_REGION)
-//TODO #define ROMENTRY_END				((const char *)ROMENTRYTYPE_END)
-//TODO #define ROMENTRY_RELOAD				((const char *)ROMENTRYTYPE_RELOAD)
-//TODO #define ROMENTRY_CONTINUE			((const char *)ROMENTRYTYPE_CONTINUE)
-//TODO #define ROMENTRY_FILL				((const char *)ROMENTRYTYPE_FILL)
-//TODO #define ROMENTRY_COPY				((const char *)ROMENTRYTYPE_COPY)
-//TODO 
-//TODO /* ----- per-entry macros ----- */
-//TODO #define ROMENTRY_GETTYPE(r)			((FPTR)(r)->_name)
-//TODO #define ROMENTRY_ISSPECIAL(r)		(ROMENTRY_GETTYPE(r) < ROMENTRYTYPE_COUNT)
-//TODO #define ROMENTRY_ISFILE(r)			(!ROMENTRY_ISSPECIAL(r))
-//TODO #define ROMENTRY_ISREGION(r)		((r)->_name == ROMENTRY_REGION)
-//TODO #define ROMENTRY_ISEND(r)			((r)->_name == ROMENTRY_END)
-//TODO #define ROMENTRY_ISRELOAD(r)		((r)->_name == ROMENTRY_RELOAD)
-//TODO #define ROMENTRY_ISCONTINUE(r)		((r)->_name == ROMENTRY_CONTINUE)
-//TODO #define ROMENTRY_ISFILL(r)			((r)->_name == ROMENTRY_FILL)
-//TODO #define ROMENTRY_ISCOPY(r)			((r)->_name == ROMENTRY_COPY)
-//TODO #define ROMENTRY_ISREGIONEND(r)		(ROMENTRY_ISREGION(r) || ROMENTRY_ISEND(r))
+
+    /**
+     * *************************************************************************
+     *
+     * Core macros for the ROM loading system
+     *
+     **************************************************************************
+     */
+    /* ----- per-entry constants ----- */
+    //arcadeflex note : use negative numbers in case game has rom named "1" to "6" this has been found in wiping driver
+    public static final int ROMENTRYTYPE_REGION = -1;/* this entry marks the start of a region */
+    public static final int ROMENTRYTYPE_END = -2;/* this entry marks the end of a region */
+    public static final int ROMENTRYTYPE_RELOAD = -3;/* this entry reloads the previous ROM */
+    public static final int ROMENTRYTYPE_CONTINUE = -4;/* this entry continues loading the previous ROM */
+    public static final int ROMENTRYTYPE_FILL = -5;/* this entry fills an area with a constant value */
+    public static final int ROMENTRYTYPE_COPY = -6;/* this entry copies data from another region/offset */
+    public static final int ROMENTRYTYPE_COUNT = -7;
+
+    public static final String ROMENTRY_REGION = "-1";
+    public static final String ROMENTRY_END = "-2";
+    public static final String ROMENTRY_RELOAD = "-3";
+    public static final String ROMENTRY_CONTINUE = "-4";
+    public static final String ROMENTRY_FILL = "-5";
+    public static final String ROMENTRY_COPY = "-6";
+
+    /* ----- per-entry macros ----- */
+    public static int ROMENTRY_GETTYPE(RomModule[] romp, int romp_ptr) {
+        //((FPTR)(r)->_name)
+        int result;
+        try {
+            result = Integer.parseInt(romp[romp_ptr]._name);//possible values 1-6
+        } catch (Exception e) {
+            result = 15; //random value just not to be something between 1-6
+        }
+        return result;
+    }
+
+    public static boolean ROMENTRY_ISSPECIAL(RomModule[] romp, int romp_ptr) {
+        return (ROMENTRY_GETTYPE(romp, romp_ptr) < ROMENTRYTYPE_COUNT);
+    }
+
+    public static boolean ROMENTRY_ISFILE(RomModule[] romp, int romp_ptr) {
+        return (!ROMENTRY_ISSPECIAL(romp, romp_ptr));
+    }
+
+    public static boolean ROMENTRY_ISREGION(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._name.matches(ROMENTRY_REGION);
+    }
+
+    public static boolean ROMENTRY_ISEND(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._name.matches(ROMENTRY_END);
+    }
+
+    public static boolean ROMENTRY_ISRELOAD(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._name.matches(ROMENTRY_RELOAD);
+    }
+
+    public static boolean ROMENTRY_ISCONTINUE(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._name.matches(ROMENTRY_CONTINUE);
+    }
+
+    public static boolean ROMENTRY_ISFILL(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._name.matches(ROMENTRY_FILL);
+    }
+
+    public static boolean ROMENTRY_ISCOPY(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._name.matches(ROMENTRY_COPY);
+    }
+
+    public static boolean ROMENTRY_ISREGIONEND(RomModule[] romp, int romp_ptr) {
+        return (ROMENTRY_ISREGION(romp, romp_ptr) || ROMENTRY_ISEND(romp, romp_ptr));
+    }
 //TODO 
 //TODO 
 //TODO /* ----- per-region constants ----- */
@@ -195,14 +242,16 @@ public class commonH {
 //TODO #define		ROMREGION_ERASE00		ROMREGION_ERASEVAL(0)
 //TODO #define		ROMREGION_ERASEFF		ROMREGION_ERASEVAL(0xff)
 //TODO 
-//TODO #define ROMREGION_DATATYPEMASK		0x00010000			/* inherit all flags from previous definition */
-//TODO #define		ROMREGION_DATATYPEROM	0x00000000
-//TODO #define		ROMREGION_DATATYPEDISK	0x00010000
-//TODO 
+    public static final int ROMREGION_DATATYPEMASK = 0x00010000;/* inherit all flags from previous definition */
+    public static final int ROMREGION_DATATYPEROM = 0x00000000;
+    public static final int ROMREGION_DATATYPEDISK = 0x00010000;
+
 //TODO /* ----- per-region macros ----- */
 //TODO #define ROMREGION_GETTYPE(r)		((r)->_crc)
 //TODO #define ROMREGION_GETLENGTH(r)		((r)->_length)
-//TODO #define ROMREGION_GETFLAGS(r)		((r)->_flags)
+    public static int ROMREGION_GETFLAGS(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._flags;
+    }
 //TODO #define ROMREGION_GETWIDTH(r)		(8 << (ROMREGION_GETFLAGS(r) & ROMREGION_WIDTHMASK))
 //TODO #define ROMREGION_ISLITTLEENDIAN(r)	((ROMREGION_GETFLAGS(r) & ROMREGION_ENDIANMASK) == ROMREGION_LE)
 //TODO #define ROMREGION_ISBIGENDIAN(r)	((ROMREGION_GETFLAGS(r) & ROMREGION_ENDIANMASK) == ROMREGION_BE)
@@ -212,10 +261,19 @@ public class commonH {
 //TODO #define ROMREGION_ISLOADUPPER(r)	((ROMREGION_GETFLAGS(r) & ROMREGION_LOADUPPERMASK) == ROMREGION_LOADUPPER)
 //TODO #define ROMREGION_ISERASE(r)		((ROMREGION_GETFLAGS(r) & ROMREGION_ERASEMASK) == ROMREGION_ERASE)
 //TODO #define ROMREGION_GETERASEVAL(r)	((ROMREGION_GETFLAGS(r) & ROMREGION_ERASEVALMASK) >> 8)
-//TODO #define ROMREGION_GETDATATYPE(r)	(ROMREGION_GETFLAGS(r) & ROMREGION_DATATYPEMASK)
-//TODO #define ROMREGION_ISROMDATA(r)		(ROMREGION_GETDATATYPE(r) == ROMREGION_DATATYPEROM)
-//TODO #define ROMREGION_ISDISKDATA(r)		(ROMREGION_GETDATATYPE(r) == ROMREGION_DATATYPEDISK)
-//TODO 
+
+    public static int ROMREGION_GETDATATYPE(RomModule[] romp, int romp_ptr) {
+        return ROMREGION_GETFLAGS(romp, romp_ptr) & ROMREGION_DATATYPEMASK;
+    }
+
+    public static boolean ROMREGION_ISROMDATA(RomModule[] romp, int romp_ptr) {
+        return (ROMREGION_GETDATATYPE(romp, romp_ptr) == ROMREGION_DATATYPEROM);
+    }
+
+    public static boolean ROMREGION_ISDISKDATA(RomModule[] romp, int romp_ptr) {
+        return (ROMREGION_GETDATATYPE(romp, romp_ptr) == ROMREGION_DATATYPEDISK);
+    }
+
 //TODO 
 //TODO /* ----- per-ROM constants ----- */
 //TODO #define ROM_OPTIONALMASK			0x00000800			/* optional - won't hurt if it's not there */
@@ -252,12 +310,20 @@ public class commonH {
 //TODO 
 //TODO #define ROM_INHERITEDFLAGS			(ROM_GROUPMASK | ROM_SKIPMASK | ROM_REVERSEMASK | ROM_BITWIDTHMASK | ROM_BITSHIFTMASK)
 //TODO 
-//TODO /* ----- per-ROM macros ----- */
-//TODO #define ROM_GETNAME(r)				((r)->_name)
+/* ----- per-ROM macros ----- */
+    public static String ROM_GETNAME(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._name;
+    }
 //TODO #define ROM_SAFEGETNAME(r)			(ROMENTRY_ISFILL(r) ? "fill" : ROMENTRY_ISCOPY(r) ? "copy" : ROM_GETNAME(r))
 //TODO #define ROM_GETOFFSET(r)			((r)->_offset)
-//TODO #define ROM_GETCRC(r)				((r)->_crc)
-//TODO #define ROM_GETLENGTH(r)			((r)->_length)
+
+    public static int ROM_GETCRC(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._crc;
+    }
+
+    public static int ROM_GETLENGTH(RomModule[] romp, int romp_ptr) {
+        return romp[romp_ptr]._length;
+    }
 //TODO #define ROM_GETFLAGS(r)				((r)->_flags)
 //TODO #define ROM_HASMD5(r)				((r)->_verify && !strncmp((r)->_verify, "MD5", 3))
 //TODO #define ROM_GETMD5(r,m)				(rom_extract_md5(r,m))
@@ -273,25 +339,28 @@ public class commonH {
 //TODO /* ----- per-disk macros ----- */
 //TODO #define DISK_GETINDEX(r)			((r)->_offset)
 //TODO 
-//TODO 
-//TODO 
-//TODO /***************************************************************************
-//TODO 
-//TODO 	Derived macros for the ROM loading system
-//TODO 
-//TODO ***************************************************************************/
-//TODO 
-//TODO /* ----- start/stop macros ----- */
-//TODO #define ROM_START(name)								static const struct RomModule rom_##name[] = {
+
+    /**
+     * *************************************************************************
+     *
+     * Derived macros for the ROM loading system
+     *
+     **************************************************************************
+     */
+    public static RomModule[] rommodule_macro = null;
+    public static ArrayList<RomModule> arload = new ArrayList<>();
+
     public static void ROM_END() {
-        throw new UnsupportedOperationException("Unsupported");
-//TODO #define ROM_END										{ ROMENTRY_END, 0, 0, 0, 0, NULL } };
+        arload.add(new RomModule(ROMENTRY_END, 0, 0, 0, 0, null));
+        rommodule_macro = arload.toArray(new RomModule[arload.size()]);
+        arload.clear();
     }
-//TODO 
-//TODO /* ----- ROM region macros ----- */
+
+    /* ----- ROM region macros ----- */
     public static void ROM_REGION(int length, int type, int flags) {
-        throw new UnsupportedOperationException("Unsupported");
+        arload.add(new RomModule(ROMENTRY_REGION, 0, length, flags, type, null));
     }
+
 //TODO #define ROM_REGION(length,type,flags)				{ ROMENTRY_REGION, 0, length, flags, type, NULL },
 //TODO #define ROM_REGION16_LE(length,type,flags)			ROM_REGION(length, type, (flags) | ROMREGION_16BIT | ROMREGION_LE)
 //TODO #define ROM_REGION16_BE(length,type,flags)			ROM_REGION(length, type, (flags) | ROMREGION_16BIT | ROMREGION_BE)
@@ -300,11 +369,14 @@ public class commonH {
 //TODO 
 //TODO /* ----- core ROM loading macros ----- */
 //TODO #define ROMMD5_LOAD(name,offset,length,crc,md5,flags) { name, offset, length, flags, crc, ROMMD5(md5) },
-//TODO #define ROMX_LOAD(name,offset,length,crc,flags)		{ name, offset, length, flags, crc, NULL },
-    public static void ROM_LOAD(String name, int offset, int length, int crc) {
-        throw new UnsupportedOperationException("Unsupported");
+    public static void ROMX_LOAD(String name, int offset, int length, int crc, int flags) {
+        arload.add(new RomModule(name, offset, length, flags, crc, null));
     }
-//TODO #define ROM_LOAD(name,offset,length,crc)			ROMX_LOAD(name, offset, length, crc, 0)
+
+    public static void ROM_LOAD(String name, int offset, int length, int crc) {
+        ROMX_LOAD(name, offset, length, crc, 0);
+    }
+
 //TODO #define ROM_LOAD_OPTIONAL(name,offset,length,crc)	ROMX_LOAD(name, offset, length, crc, ROM_OPTIONAL)
 //TODO #define ROM_CONTINUE(offset,length)					ROMX_LOAD(ROMENTRY_CONTINUE, offset, length, 0, ROM_INHERITFLAGS)
 //TODO #define ROM_RELOAD(offset,length)					ROMX_LOAD(ROMENTRY_RELOAD, offset, length, 0, ROM_INHERITFLAGS)
