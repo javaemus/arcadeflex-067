@@ -1,3 +1,7 @@
+05/02/2021
+=========
+-Improved machine driver macros and small fixes
+
 04/02/2021
 ==========
 -Added -listgames in frontend

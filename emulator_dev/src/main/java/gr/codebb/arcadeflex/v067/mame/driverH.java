@@ -99,8 +99,17 @@ public class driverH {
 //TODO 
 //TODO #define MACHINE_DRIVER_END 												\
 //TODO 	}
-    public static void MACHINE_DRIVER_END() {
+    static MachineCPU temp_cpu = null;//reference to current cpu
+    static InternalMachineDriver temp_machine = null;//reference to current machine
 
+    public static void MACHINE_DRIVER_START(InternalMachineDriver machine) {
+        temp_machine = machine;
+    }
+
+    public static void MACHINE_DRIVER_END() {
+        //clear temp variables
+        temp_cpu=null;
+        temp_machine=null;
     }
 //TODO 
 //TODO 
@@ -110,13 +119,14 @@ public class driverH {
 //TODO 
 //TODO 
 
+
     /* add/modify/remove/replace CPUs */
-    public static void MDRV_CPU_ADD_TAG(InternalMachineDriver machine, String tag, int type, int clock) {
-        machine_add_cpu(machine, tag, type, clock);
+    public static void MDRV_CPU_ADD_TAG(String tag, int type, int clock) {
+        temp_cpu = machine_add_cpu(temp_machine, tag, type, clock);
     }
 
-    public static void MDRV_CPU_ADD(InternalMachineDriver machine, int type, int clock) {
-        MDRV_CPU_ADD_TAG(machine, null, type, clock);
+    public static void MDRV_CPU_ADD(int type, int clock) {
+        MDRV_CPU_ADD_TAG(null, type, clock);
     }
 //TODO #define MDRV_CPU_MODIFY(tag)											\
 //TODO 	cpu = machine_find_cpu(machine, tag);								\
@@ -144,16 +154,13 @@ public class driverH {
 //TODO 		cpu->reset_param = &(config);									\
 //TODO 
 
-    public static void MDRV_CPU_MEMORY(Memory_ReadAddress[] readmem, Memory_WriteAddress[] writemem) {
-
+    public static void MDRV_CPU_MEMORY(Object[] readmem, Object[] writemem) {
+        if (temp_cpu != null) {
+            temp_cpu.memory_read = readmem;
+            temp_cpu.memory_write = writemem;
+        }
     }
-//TODO #define MDRV_CPU_MEMORY(readmem, writemem)								\
-//TODO 	if (cpu)															\
-//TODO 	{																	\
-//TODO 		cpu->memory_read = (readmem);									\
-//TODO 		cpu->memory_write = (writemem);									\
-//TODO 	}																	\
-//TODO 
+
 //TODO #define MDRV_CPU_PORTS(readport, writeport)								\
 //TODO 	if (cpu)															\
 //TODO 	{																	\
@@ -161,16 +168,12 @@ public class driverH {
 //TODO 		cpu->port_write = (writeport);									\
 //TODO 	}																	\
 //TODO 
-
     public static void MDRV_CPU_VBLANK_INT(InterruptPtr func, int rate) {
-
+        if (temp_cpu != null) {
+            temp_cpu.vblank_interrupt = func;
+            temp_cpu.vblank_interrupts_per_frame = (rate);
+        }
     }
-//TODO #define MDRV_CPU_VBLANK_INT(func, rate)									\
-//TODO 	if (cpu)															\
-//TODO 	{																	\
-//TODO 		cpu->vblank_interrupt = func;									\
-//TODO 		cpu->vblank_interrupts_per_frame = (rate);						\
-//TODO 	}																	\
 //TODO 
 //TODO #define MDRV_CPU_PERIODIC_INT(func, rate)								\
 //TODO 	if (cpu)															\
@@ -183,11 +186,8 @@ public class driverH {
 //TODO /* core parameters */
 
     public static void MDRV_FRAMES_PER_SECOND(int rate) {
-
+        temp_machine.frames_per_second = (rate);
     }
-//TODO #define MDRV_FRAMES_PER_SECOND(rate)									\
-//TODO 	machine->frames_per_second = (rate);								\
-//TODO 
 
     public static void MDRV_VBLANK_DURATION(int duration) {
 
@@ -332,7 +332,7 @@ public class driverH {
     public static class InternalMachineDriver {
 
         public MachineCPU cpu[] = MachineCPU.create(MAX_CPU);
-//TODO 	float frames_per_second;
+        public float frames_per_second;
 //TODO 	int vblank_duration;
 //TODO 	UINT32 cpu_slices_per_frame;
 //TODO 
@@ -469,31 +469,40 @@ public class driverH {
 //TODO 
         public int flags;/* orientation and other flags; see defines below */
     }
- 
- 
- 
-    /***************************************************************************
 
-           Game driver flags
-
-    ***************************************************************************/
+    /**
+     * *************************************************************************
+     *
+     * Game driver flags
+     *
+     **************************************************************************
+     */
 
     /* ----- values for the flags field ----- */
+    public static final int ORIENTATION_MASK = 0x0007;
+    public static final int ORIENTATION_FLIP_X = 0x0001;
+    /* mirror everything in the X direction */
+    public static final int ORIENTATION_FLIP_Y = 0x0002;
+    /* mirror everything in the Y direction */
+    public static final int ORIENTATION_SWAP_XY = 0x0004;
+    /* mirror along the top-left/bottom-right diagonal */
 
-    public static final int     ORIENTATION_MASK        = 0x0007;
-    public static final int	ORIENTATION_FLIP_X	= 0x0001;	/* mirror everything in the X direction */
-    public static final int	ORIENTATION_FLIP_Y	= 0x0002;	/* mirror everything in the Y direction */
-    public static final int     ORIENTATION_SWAP_XY	= 0x0004;	/* mirror along the top-left/bottom-right diagonal */
-    
-    public static final int GAME_NOT_WORKING		= 0x0008;
-    public static final int GAME_UNEMULATED_PROTECTION  = 0x0010;	/* game's protection not fully emulated */
-    public static final int GAME_WRONG_COLORS		= 0x0020;	/* colors are totally wrong */
-    public static final int GAME_IMPERFECT_COLORS	= 0x0040;	/* colors are not 100% accurate, but close */
-    public static final int GAME_IMPERFECT_GRAPHICS	= 0x0080;	/* graphics are wrong/incomplete */
-    public static final int GAME_NO_COCKTAIL		= 0x0100;	/* screen flip support is missing */
-    public static final int GAME_NO_SOUND		= 0x0200;	/* sound is missing */
-    public static final int GAME_IMPERFECT_SOUND	= 0x0400;	/* sound is known to be wrong */
-    public static final int NOT_A_DRIVER                = 0x4000;
+    public static final int GAME_NOT_WORKING = 0x0008;
+    public static final int GAME_UNEMULATED_PROTECTION = 0x0010;
+    /* game's protection not fully emulated */
+    public static final int GAME_WRONG_COLORS = 0x0020;
+    /* colors are totally wrong */
+    public static final int GAME_IMPERFECT_COLORS = 0x0040;
+    /* colors are not 100% accurate, but close */
+    public static final int GAME_IMPERFECT_GRAPHICS = 0x0080;
+    /* graphics are wrong/incomplete */
+    public static final int GAME_NO_COCKTAIL = 0x0100;
+    /* screen flip support is missing */
+    public static final int GAME_NO_SOUND = 0x0200;
+    /* sound is missing */
+    public static final int GAME_IMPERFECT_SOUND = 0x0400;
+    /* sound is known to be wrong */
+    public static final int NOT_A_DRIVER = 0x4000;
     /* set by the fake "root" driver_0 and by "containers" */
  /* e.g. driver_neogeo. */
 //TODO #ifdef MESS

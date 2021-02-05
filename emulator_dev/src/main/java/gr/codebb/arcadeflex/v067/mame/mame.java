@@ -486,7 +486,9 @@ public class mame {
 
     public static void expand_machine_driver(MachinePtr constructor, InternalMachineDriver output) {
         /* keeping this function allows us to pre-init the driver before constructing it */
- 	output = new InternalMachineDriver();
+        if (output == null) {
+            output = new InternalMachineDriver();
+        }
         (constructor).handler(output);
     }
 //TODO 
